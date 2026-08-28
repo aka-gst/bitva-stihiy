@@ -92,6 +92,27 @@ export function clashPhrase(winner, loser) {
     return `${ELEMENT[winner].glyph} ${ELEMENT[winner].name} ${verb} ${ELEMENT[loser].glyph} ${ELEMENT[loser].accusative}`;
 }
 
+/**
+ * Роль хода относительно коронки слота. Именно в этих терминах противник
+ * запоминает привычки игрока: так узор виден даже когда коронка меняется.
+ *
+ *   answer — стихия, гасящая коронку (очевидный ответ)
+ *   mirror — сама коронка (ничья против неё,но сжигает приманку)
+ *   third  — третья стихия, ту самую, что коронка бьёт
+ */
+export function roleOf(move, signature) {
+    if (move === signature) return 'mirror';
+    if (beats(move, signature)) return 'answer';
+    return 'third';
+}
+
+/** Обратное преобразование: какую стихию означает роль при данной коронке. */
+export function elementForRole(role, signature) {
+    if (role === 'mirror') return signature;
+    if (role === 'answer') return counterTo(signature);
+    return preyOf(signature);
+}
+
 /** Колесо для обучающего экрана и постоянной подсказки в бою. */
 export const WHEEL = ELEMENTS.map((id) => ({
     winner: id,

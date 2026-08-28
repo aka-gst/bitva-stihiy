@@ -6,7 +6,7 @@
  * в последовательность, которую игрок набирает прямо сейчас.
  */
 
-import { ELEMENTS, counterTo } from './rules.js';
+import { ELEMENTS, counterTo, elementForRole } from './rules.js';
 
 /** Порог здоровья и подмена коронки в ярости. */
 export function isEnraged(opponent, state) {
@@ -92,6 +92,38 @@ function chooseSlots(count, total, rng) {
 }
 
 /**
+ * Читает ритм: какую роль игрок привычно ставит в конкретный слот цепочки.
+ *
+ * Детектор спама смотрит на стихии, а этот — на роли относительно коронки,
+ * поэтому он видит узор даже когда коронка меняется от раунда к раунду.
+ * Именно так ловится «через слот бью коронку, через слот отвечаю».
+ *
+ * @returns {Map<number, string>} слот → предсказанная роль
+ */
+export function detectRhythm(state, opponent) {
+    const found = new Map();
+    if (!opponent?.readsRhythm) return found;
+
+    const rounds = state.roleRounds ?? [];
+    const need = opponent.rhythmRounds ?? 2;
+    if (rounds.length < need) return found;
+
+    const threshold = opponent.rhythmThreshold ?? 0.75;
+    for (let slot = 0; slot < state.slots; slot += 1) {
+        const seen = rounds.map((round) => round[slot]).filter(Boolean);
+        if (seen.length < need) continue;
+
+        const counts = seen.reduce((acc, role) => {
+            acc[role] = (acc[role] ?? 0) + 1;
+            return acc;
+        }, {});
+        const [role, hits] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+        if (hits / seen.length >= threshold) found.set(slot, role);
+    }
+    return found;
+}
+
+/**
  * Замечает, что игрок методично бьёт по коронке.
  *
  * Это главный сигнал для противника: «всегда контри коронку» — очевидная
@@ -124,28 +156,37 @@ export function planEnemyRound(state, rng) {
     const opponent = state.opponent;
     const chance = signatureChanceFor(opponent, state);
     const spam = detectSpam(state, opponent);
-    const counterSlots = spam ? (opponent.counterSlots ?? 2) : 0;
     const counterElement = spam ? counterTo(spam) : null;
     const punishing = detectCounterPlay(state, opponent);
+    const rhythm = detectRhythm(state, opponent);
     const baitWeight = baitWeightFor(opponent, state);
 
-    // Наказание за предсказуемость. Однообразный жест бьётся прямым контром,
-    // методичная контр-игра — приманкой под ожидаемый ответ. Одно или другое:
-    // складывать оба наказания в одном раунде — двойная кара за одну ошибку.
-    // Позиции случайны — фиксированные слоты игрок бы просто выучил.
-    const punishCount = counterElement ? counterSlots : punishing ? (opponent.punishSlots ?? 2) : 0;
+    // Наказание за предсказуемость. В каждом наказанном слоте кара одна, но
+    // чем большим числом способов игрок читается, тем больше слотов противник
+    // на это тратит — отсюда максимум, а не сумма. Позиции случайны:
+    // фиксированные слоты игрок бы просто выучил.
+    const punishCount = Math.max(
+        rhythm.size ? (opponent.rhythmSlots ?? opponent.punishSlots ?? 2) : 0,
+        counterElement ? (opponent.counterSlots ?? 2) : 0,
+        punishing ? (opponent.punishSlots ?? 2) : 0,
+    );
     const punishAt = chooseSlots(punishCount, state.slots, rng);
 
     const plan = [];
     for (let i = 0; i < state.slots; i += 1) {
         const signature = signatureAt(opponent, state, i);
         if (punishAt.has(i)) {
-            const element = counterElement ?? counterTo(counterTo(signature));
-            plan.push({ element, signature: element === signature });
+            // Приоритет самому точному знанию: пойманный ритм бьёт по
+            // конкретному предсказанию, спам — по стихии, иначе общая приманка.
+            const predicted = rhythm.get(i);
+            const element = predicted
+                ? counterTo(elementForRole(predicted, signature))
+                : counterElement ?? counterTo(counterTo(signature));
+            plan.push({ element, signature: element === signature, sig: signature });
             continue;
         }
         if (rng() < chance) {
-            plan.push({ element: signature, signature: true });
+            plan.push({ element: signature, signature: true, sig: signature });
             continue;
         }
         // Не-коронка: с вероятностью baitWeight это приманка — стихия, которая
@@ -154,7 +195,13 @@ export function planEnemyRound(state, rng) {
         const answer = counterTo(signature);
         const bait = counterTo(answer);
         const element = rng() < baitWeight ? bait : answer;
-        plan.push({ element, signature: false });
+        plan.push({ element, signature: false, sig: signature });
     }
-    return { plan, signature: signatureFor(opponent, state), counteredElement: spam, punishing };
+    return {
+        plan,
+        signature: signatureFor(opponent, state),
+        counteredElement: spam,
+        punishing,
+        rhythmSlots: [...rhythm.keys()],
+    };
 }

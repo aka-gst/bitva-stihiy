@@ -436,8 +436,13 @@ async function runRound() {
         app.seq.push(id);
     }
 
-    const { plan, counteredElement, punishing } = planEnemyRound(app.battle, app.rng);
-    if (counteredElement) {
+    const { plan, counteredElement, punishing, rhythmSlots } = planEnemyRound(app.battle, app.rng);
+    // Игрок должен понимать, почему его вдруг начали ловить, — иначе
+    // адаптивный ИИ читается как «рандом стал злее».
+    if (rhythmSlots.length) {
+        const slots = rhythmSlots.map((i) => i + 1).join(', ');
+        pushLog(dom.log, `${app.opponent.name} поймал твой ритм: он знает, что ты ставишь в слоты ${slots}. Сломай привычку.`, 'system');
+    } else if (counteredElement) {
         pushLog(dom.log, `${app.opponent.name} разгадал узор: слишком много ${ELEMENT[counteredElement].genitive}. Часть слотов закрыта контр-стихией.`, 'system');
     } else if (punishing) {
         pushLog(dom.log, `${app.opponent.name} заметил, что ты бьёшь строго по коронке, и ставит приманки под твой ответ.`, 'system');

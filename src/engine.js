@@ -6,13 +6,15 @@
  * со списком событий. Анимация — это просто проигрывание этого списка.
  */
 
-import { ELEMENTS, beats, clashPhrase } from './rules.js';
+import { ELEMENTS, beats, clashPhrase, roleOf } from './rules.js';
 
 export const DEFAULT_HP = 10;
 export const DEFAULT_SLOTS = 5;
 export const CHARGE_COST = 3;
 /** Оглушить противника можно не чаще одного раза за раунд. */
 export const MAX_STUNS_PER_ROUND = 1;
+/** Сколько последних раундов противник помнит по позициям в цепочке. */
+export const RHYTHM_MEMORY = 4;
 
 /** Урон по умолчанию. Профиль противника может усилить только коронку. */
 const HIT = 1;
@@ -43,6 +45,8 @@ export function createBattle({
         // и сколько из них игрок пробил. Высокая доля = игрок читает коронку.
         sigSeen: 0,
         sigParried: 0,
+        // Роли ходов игрока по позициям в цепочке — сырьё для чтения ритма.
+        roleRounds: [],
         outcome: null,
     };
 }
@@ -75,6 +79,7 @@ export function resolveRound(state, playerSeq, enemySeq) {
         wins: { ...state.wins },
         history: [...state.history, ...playerSeq].slice(-10),
     };
+    const roundRoles = [];
 
     const events = [{ type: 'round-start', round: state.round, slots: state.slots }];
     const dealt = { player: 0, enemy: 0 };
@@ -84,6 +89,7 @@ export function resolveRound(state, playerSeq, enemySeq) {
         const player = playerSeq[index];
         const planned = enemySeq[index] ?? { element: ELEMENTS[0], signature: false };
         const clash = resolveClash(next, player, planned, index);
+        roundRoles[index] = planned.sig ? roleOf(player, planned.sig) : null;
 
         if (clash.target) {
             next.hp[clash.target] = Math.max(0, next.hp[clash.target] - clash.damage);
@@ -116,6 +122,9 @@ export function resolveRound(state, playerSeq, enemySeq) {
     else if (next.hp.player <= 0) next.outcome = 'enemy';
 
     delete next.stunBudget;
+    if (roundRoles.some(Boolean)) {
+        next.roleRounds = [...state.roleRounds, roundRoles].slice(-RHYTHM_MEMORY);
+    }
 
     if (next.outcome) {
         events.push({ type: 'ko', winner: next.outcome, hp: { ...next.hp } });

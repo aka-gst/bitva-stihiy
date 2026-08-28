@@ -47,6 +47,10 @@ are revealed and resolved slot by slot.
   round — but if that slot is not won, the same 2 come back at you.
 - **Pattern reading.** Opponents past the first tier remember recent moves and
   lock part of their chain to a hard counter when one element dominates.
+- **Rhythm reading.** The top tiers remember by *position*: if slot three gets
+  the same kind of answer round after round, that slot gets a precise reply.
+  Even a clean alternation is a pattern. The strongest play is to have no
+  readable habit at all — which is the point the whole campaign builds toward.
 
 ## Modes
 
@@ -76,7 +80,7 @@ a list of events; the animation simply replays that list.
 | `styles/game.css` | Styling, arena, and animation keyframes |
 | `src/rules.js` | Elements and the reason each one beats another |
 | `src/engine.js` | Round resolution as an event stream, DOM-free |
-| `src/ai.js` | Opponent behaviour: signature, baits, pattern reading |
+| `src/ai.js` | Opponent behaviour: signature, baits, pattern and rhythm reading |
 | `src/campaign.js` | Five tower tiers and their text |
 | `src/modes.js` | Free-fight modes |
 | `src/arena.js` | Mages and the spell-exchange animation |
@@ -94,10 +98,10 @@ a list of events; the animation simply replays that list.
 npm test
 ```
 
-55 tests: the element wheel is a closed cycle, round resolution (draw, crit,
+61 tests: the element wheel is a closed cycle, round resolution (draw, crit,
 parry, stun cap, special, knockout), the engine never touches the DOM, AI
-behaviour (signature frequency, baits, pattern reading, mask switching),
-campaign structure, and shell integrity.
+behaviour (signature frequency, baits, pattern reading, rhythm detection,
+punishment budget, mask switching), campaign structure, and shell integrity.
 
 Balance is tuned against a simulation rather than by feel:
 
@@ -116,20 +120,21 @@ kept the prototype aligned with the design goals.
 
 This is a playable prototype, not a finished commercial game.
 
-- Balance is derived from simulation: the five tiers give a descending win rate
-  (≈100 / 88 / 74 / 69 / 53 % for a player who simply counters the signature),
-  and a strategy that accounts for baits wins noticeably more often — but that
-  is a model, not live playtesting.
-- The AI catches two patterns: a repeated element and methodical signature
-  countering. More complex shapes — strict alternation between two elements,
-  for instance — still go unnoticed.
+- Balance is derived from simulation, not from feel. Against a player who
+  simply counters the signature the five tiers give a descending win rate of
+  ≈100 / 88 / 77 / 68 / 60 %. Simulated strategies rank the way the design
+  intends — an unreadable player beats a methodical one beats a random one —
+  but this is a model, and it has not been validated by live playtesting.
+- The AI reads three things: a dominant element, methodical signature
+  countering, and a per-slot habit. It still has no model of the player beyond
+  those, so a human who deliberately mixes will stay ahead of it.
 - There is no network multiplayer yet.
 
 ## Next steps
 
-- multiplayer on top of the now-stable rules;
-- detection of periodic patterns in player behaviour;
-- live playtests to validate the balance model.
+- asynchronous link-based multiplayer on top of the now-stable rules;
+- live playtests to validate the balance model;
+- richer arena art and per-element impact effects.
 
 ## License
 

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { baitWeightFor, detectCounterPlay, detectSpam, isEnraged, masksFor, planEnemyRound, signatureAt, signatureChanceFor, signatureFor } from "../src/ai.js";
+import { baitWeightFor, detectCounterPlay, detectRhythm, detectSpam, isEnraged, masksFor, planEnemyRound, signatureAt, signatureChanceFor, signatureFor } from "../src/ai.js";
 import { createBattle, resolveRound } from "../src/engine.js";
 import { makeRng } from "../src/rng.js";
 import { CAMPAIGN } from "../src/campaign.js";
-import { beats, counterTo } from "../src/rules.js";
+import { beats, counterTo, elementForRole, roleOf } from "../src/rules.js";
 
 const withHistory = (state, moves) => ({ ...state, history: moves });
 const reader = (over = {}) => ({
@@ -148,8 +148,8 @@ test("наблюдений мало — противник не делает в�
     assert.equal(detectCounterPlay(early, opponent), false);
 });
 
-test("контр-слотов ровно столько, сколько заявлено, даже когда сработали оба детектора", () => {
-    // Коронка отключена (signatureChance 0), все не-наказанные слоты — приманка «огонь»,
+test("бюджет наказания равен максимуму сигналов, а не их сумме", () => {
+    // Коронка отключена (signatureChance 0), все ненаказанные слоты — приманка «огонь»,
     // а прямой контр против спама водой — «ветер». Так их можно пересчитать по отдельности.
     const opponent = reader({
         element: "water", signatureChance: 0, baitWeight: 1,
@@ -165,10 +165,13 @@ test("контр-слотов ровно столько, сколько заяв
     const { plan, counteredElement, punishing } = planEnemyRound(state, makeRng(9));
     assert.equal(counteredElement, "water");
     assert.equal(punishing, true);
-    assert.equal(plan.filter((cast) => cast.element === "wind").length, opponent.counterSlots,
-        "прямой контр занимает ровно counterSlots слотов");
-    assert.equal(plan.filter((cast) => cast.element === "fire").length, 5 - opponent.counterSlots,
-        "остальные слоты — обычные приманки, а не второе наказание");
+
+    const punished = plan.filter((cast) => cast.element === "wind").length;
+    assert.equal(punished, 3, "оба сигнала сработали — бюджет равен большему из них");
+    assert.notEqual(punished, opponent.counterSlots + opponent.punishSlots,
+        "наказания не складываются");
+    assert.equal(plan.filter((cast) => cast.element === "fire").length, 2,
+        "остальные слоты живут обычной жизнью");
 });
 
 test("двуликий меняет маску посреди раунда, и обе маски определены", () => {
@@ -193,4 +196,89 @@ test("коронка первого яруса не зависит от того
     const state = { ...createBattle({ opponent: ember }), sigSeen: 20, sigParried: 20, history: Array(10).fill("water") };
     assert.equal(detectCounterPlay(state, ember), false, "обучающий противник не наказывает");
     assert.equal(detectSpam(state, ember), null);
+});
+
+const rhythmReader = (over = {}) => reader({
+    readsRhythm: true, rhythmRounds: 2, rhythmThreshold: 0.75, rhythmSlots: 2, ...over,
+});
+
+test("ритм не читается, пока противник не умеет и пока мало раундов", () => {
+    const rounds = [["answer", "mirror", "answer", "mirror", "answer"],
+                    ["answer", "mirror", "answer", "mirror", "answer"]];
+
+    const deaf = { ...createBattle({ opponent: reader() }), roleRounds: rounds };
+    assert.equal(detectRhythm(deaf, deaf.opponent).size, 0, "обычный противник ритм не слышит");
+
+    const opponent = rhythmReader();
+    const early = { ...createBattle({ opponent }), roleRounds: rounds.slice(0, 1) };
+    assert.equal(detectRhythm(early, opponent).size, 0, "одного раунда мало для вывода");
+});
+
+test("устойчивая привычка по слотам распознаётся как ритм", () => {
+    const opponent = rhythmReader();
+    const state = {
+        ...createBattle({ opponent }),
+        roleRounds: [
+            ["answer", "mirror", "answer", "mirror", "answer"],
+            ["answer", "mirror", "answer", "mirror", "answer"],
+        ],
+    };
+    const rhythm = detectRhythm(state, opponent);
+    assert.equal(rhythm.size, 5);
+    assert.equal(rhythm.get(0), "answer");
+    assert.equal(rhythm.get(1), "mirror");
+});
+
+test("разнобой в слоте ритмом не считается", () => {
+    const opponent = rhythmReader({ rhythmThreshold: 0.75 });
+    const state = {
+        ...createBattle({ opponent }),
+        roleRounds: [
+            ["answer", "mirror", "answer", "third", "answer"],
+            ["mirror", "third", "answer", "answer", "mirror"],
+            ["third", "answer", "answer", "mirror", "third"],
+            ["answer", "mirror", "answer", "third", "answer"],
+        ],
+    };
+    const rhythm = detectRhythm(state, opponent);
+    assert.equal(rhythm.get(2), "answer", "слот 2 стабилен — он и ловится");
+    assert.equal(rhythm.has(0), false, "слот 0 меняется — ловить нечего");
+    assert.equal(rhythm.has(1), false);
+});
+
+test("пойманный ритм превращается в точный контр-жест", () => {
+    const opponent = rhythmReader({ element: "fire", signatureChance: 0, rhythmSlots: 5 });
+    const state = {
+        ...createBattle({ opponent }),
+        roleRounds: [Array(5).fill("mirror"), Array(5).fill("mirror")],
+    };
+    const { plan, rhythmSlots } = planEnemyRound(state, makeRng(4));
+    assert.equal(rhythmSlots.length, 5);
+    // Игрок привык зеркалить коронку — противник ставит то, что бьёт саму коронку.
+    const expected = counterTo(elementForRole("mirror", "fire"));
+    assert.ok(plan.every((cast) => cast.element === expected), "все наказанные слоты бьют предсказанный ход");
+});
+
+test("план сообщает коронку слота, иначе движку не из чего считать роли", () => {
+    const opponent = rhythmReader();
+    const { plan } = planEnemyRound(createBattle({ opponent }), makeRng(6));
+    for (const cast of plan) {
+        assert.ok(cast.sig, "у каждого хода противника указана коронка слота");
+        assert.equal(cast.signature, cast.element === cast.sig);
+    }
+});
+
+test("бюджет наказания — максимум по сработавшим сигналам, а не сумма", () => {
+    const opponent = rhythmReader({ counterSlots: 3, punishSlots: 1, rhythmSlots: 1, spamWindow: 4, readWindow: 4 });
+    const state = {
+        ...createBattle({ opponent }),
+        history: Array(8).fill("water"),
+        sigSeen: 10,
+        sigParried: 10,
+        roleRounds: [Array(5).fill("answer"), Array(5).fill("answer")],
+    };
+    const { plan } = planEnemyRound(state, makeRng(12));
+    assert.equal(plan.length, 5);
+    // 3 + 1 + 1 = 5 слотов было бы «все»; максимум даёт 3 — остальные слоты живут обычной жизнью.
+    assert.ok(plan.some((cast) => cast.signature), "не весь раунд уходит на наказание");
 });

@@ -9,7 +9,7 @@
  */
 import { armSuper, canArmSuper, createBattle, resolveRound } from '../src/engine.js';
 import { planEnemyRound, signatureAt } from '../src/ai.js';
-import { counterTo, ELEMENTS } from '../src/rules.js';
+import { counterTo, elementForRole, ELEMENTS } from '../src/rules.js';
 import { makeRng } from '../src/rng.js';
 import { CAMPAIGN, healAfterWin, PLAYER_MAX_HP } from '../src/campaign.js';
 
@@ -26,6 +26,12 @@ const STRATEGIES = {
     adaptive: (state) => Array.from({ length: state.slots }, (_, i) => {
         const sig = signatureAt(state.opponent, state, i);
         return i % 2 === 0 ? counterTo(sig) : sig;
+    }),
+    // Игрок, который перестал быть предсказуемым: те же две осмысленные роли,
+    // но в случайном порядке. Ритм-детектору здесь ловить нечего.
+    unpredictable: (state, rng) => Array.from({ length: state.slots }, (_, i) => {
+        const sig = signatureAt(state.opponent, state, i);
+        return elementForRole(rng() < 0.5 ? 'answer' : 'mirror', sig);
     }),
     random: (state, rng) => Array.from({ length: state.slots }, () => ELEMENTS[Math.floor(rng() * 3) % 3]),
 };
