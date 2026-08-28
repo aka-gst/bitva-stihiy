@@ -10,6 +10,7 @@
 import { ELEMENT } from './rules.js';
 import { haptic, sweep, tone } from './audio.js';
 import { applyPose, fighterSvg, pickAttack } from './fighter.js';
+import { backdropSvg } from './backdrop.js';
 
 /** Длительности при нормальной скорости, мс. */
 const T = {
@@ -60,6 +61,16 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         applyPose(playerNode, 'idle');
         applyPose(enemyNode, 'idle');
         lastAttack = { player: null, enemy: null };
+        // Задник под стихию противника: бойцы должны стоять в месте, а не в пустоте.
+        let stage = root.querySelector('.backdrop-layer');
+        if (!stage) {
+            stage = document.createElement('div');
+            stage.className = 'backdrop-layer';
+            root.prepend(stage);
+        }
+        stage.replaceChildren();
+        stage.insertAdjacentHTML('afterbegin', backdropSvg(enemyElement));
+
         // Зал подсвечивается стихией противника — бой узнаётся с первого взгляда.
         root.style.setProperty('--enemy-glow', tint(enemyElement, 0.16));
         root.style.setProperty('--player-glow', tint(playerElement, 0.12));

@@ -288,28 +288,24 @@ button:disabled { cursor: default; }
     overflow: hidden;
     --enemy-glow: rgba(148, 163, 184, 0.12);
     --player-glow: rgba(96, 165, 250, 0.12);
-    background:
-        radial-gradient(42% 52% at 80% 62%, var(--enemy-glow), transparent 72%),
-        radial-gradient(42% 52% at 20% 62%, var(--player-glow), transparent 72%),
-        radial-gradient(70% 46% at 50% 104%, rgba(148, 163, 184, 0.07), transparent 70%),
-        repeating-linear-gradient(90deg,
-            rgba(226, 232, 240, 0.035) 0 3px,
-            transparent 3px 96px),
-        linear-gradient(180deg, #0a1120 0%, #101a2e 58%, #16203a 100%);
+    background: #05070d;
 }
-/* Ряд арок под потолком — глубина без единой картинки. */
+
+/* Задник лежит под всем: бойцами, вспышками, подписями. */
+.backdrop-layer { position: absolute; inset: 0; pointer-events: none; }
+.backdrop-layer .backdrop { width: 100%; height: 100%; display: block; }
+
+/* Свет от бойцов ложится поверх задника, а не вместо него. */
 .arena::before {
     content: '';
     position: absolute;
-    inset: 0 0 auto;
-    height: 34%;
+    inset: 0;
+    height: auto;
     background:
-        repeating-radial-gradient(circle at 48px 100%,
-            rgba(226, 232, 240, 0.05) 0 30px,
-            transparent 30px 32px,
-            transparent 0 96px);
-    mask-image: linear-gradient(180deg, #000 0%, transparent 88%);
-    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 88%);
+        radial-gradient(40% 46% at 78% 66%, var(--enemy-glow), transparent 70%),
+        radial-gradient(40% 46% at 22% 66%, var(--player-glow), transparent 70%);
+    mask-image: none;
+    -webkit-mask-image: none;
     pointer-events: none;
 }
 /* Линия пола. */
