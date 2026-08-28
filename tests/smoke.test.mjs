@@ -172,3 +172,25 @@ test("отказ в сессии не пропадает молча", async () =
     const attempt = submit.slice(0, submit.indexOf("\n}\n") + 2);
     assert.match(attempt, /leaderboardIssue/, "без токена игрок должен узнать причину");
 });
+
+test("чужой текст не попадает в разметку", async () => {
+    // Ник пишет один игрок, а рисует страница другого: и в таблице рекордов,
+    // и — скоро — в ссылке-приглашении. Через innerHTML это выполнение чужого
+    // скрипта на aka-gst.ru по ссылке, которая выглядит как приглашение от друга.
+    const files = (await readdir(new URL("src/", root))).filter((f) => f.endsWith(".js"));
+    const EXTERNAL = /nickname|leaderboard|payload|\bhash\b|searchParams|location\./i;
+
+    for (const file of files) {
+        const text = await readFile(new URL(`src/${file}`, root), "utf8");
+        for (const [line] of text.matchAll(/^.*\binnerHTML\b.*$/gm)) {
+            assert.ok(!EXTERNAL.test(line),
+                `${file}: в разметку уходит внешняя строка — только textContent\n  ${line.trim()}`);
+        }
+    }
+
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    const load = main.slice(main.indexOf("async function loadLeaderboard"));
+    const body = load.slice(0, load.indexOf("\n}\n") + 2);
+    assert.match(body, /textContent/, "имена из таблицы рекордов ставятся текстом");
+    assert.ok(!/innerHTML/.test(body), "и никогда разметкой");
+});
