@@ -60,9 +60,18 @@ if ! rsync -az --delete -e "$REMOTE_SHELL" "$STAGE/" "$SSH_HOST:$SITE_ROOT/$GAME
   exit 1
 fi
 
+# Одна сетевая осечка не повод объявлять выкладку неудачной: файлы уже на
+# сервере, и ложная «ОШИБКА» толкает перевыкладывать то, что и так на месте.
+check() {
+  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://aka-gst.ru$1" || echo "нет ответа")
+  [ "$code" = 200 ] && { echo "$code"; return; }
+  sleep 2
+  curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://aka-gst.ru$1" || echo "нет ответа"
+}
+
 failed=0
 for path in "/$GAME_PATH/" "/$GAME_PATH/src/main.js" "/$GAME_PATH/src/engine.js" "/$GAME_PATH/styles/game.css"; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://aka-gst.ru$path" || echo "нет ответа")
+  code=$(check "$path")
   printf "  %-28s %s\n" "$path" "$code"
   [ "$code" = 200 ] || failed=1
 done
