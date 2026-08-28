@@ -94,6 +94,7 @@ const app = {
 // хранилище, и менять его значило бы обнулить чужие результаты.
 const LEADERBOARD_GAME = 'knb-2';
 let leaderboardToken = '';
+let leaderboardIssue = '';
 
 async function loadLeaderboard() {
     try {
@@ -103,15 +104,36 @@ async function loadLeaderboard() {
     } catch { /* оффлайн — просто нет таблицы */ }
 }
 
+/**
+ * Заход за токеном на запись результата.
+ *
+ * Молчать про неудачу нельзя, но и говорить о ней сразу не стоит: игрок
+ * только начал бой, отправлять ещё нечего, и предупреждение выглядело бы
+ * шумом. Поэтому причину запоминаем и показываем в тот момент, когда
+ * результат действительно должен был уйти.
+ */
 async function beginLeaderboard() {
+    leaderboardToken = '';
+    leaderboardIssue = '';
     try {
-        const data = await fetch('/api/leaderboard/session', {
+        const response = await fetch('/api/leaderboard/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ game: LEADERBOARD_GAME }),
-        }).then((r) => r.json());
+        });
+        if (!response.ok) {
+            // 429 приходит на 12 сессий в минуту с адреса: быстрые рестарты
+            // выключали зачёт на весь заход, и об этом никто не узнавал.
+            leaderboardIssue = response.status === 429
+                ? 'СЛИШКОМ ЧАСТЫЕ ПЕРЕЗАПУСКИ — ЗАХОД НЕ ЗАСЧИТЫВАЕТСЯ. ПОДОЖДИ МИНУТУ'
+                : 'ТАБЛИЦА РЕКОРДОВ НЕДОСТУПНА — РЕЗУЛЬТАТ НЕ ЗАСЧИТАЕТСЯ';
+            return;
+        }
+        const data = await response.json();
         leaderboardToken = data.token || '';
-    } catch { leaderboardToken = ''; }
+    } catch {
+        leaderboardIssue = 'ТАБЛИЦА РЕКОРДОВ НЕДОСТУПНА — РЕЗУЛЬТАТ НЕ ЗАСЧИТАЕТСЯ';
+    }
 }
 
 const leaderboardDay = () => {
@@ -144,7 +166,12 @@ async function submitLeaderboard(score) {
     const dailyKey = `${LEADERBOARD_GAME}-daily-best:${leaderboardDay()}`;
     const dailyBest = Number(localStorage.getItem(dailyKey) || 0);
     if (score <= 0 || score <= dailyBest) { leaderboardToken = ''; return; }
-    if (!leaderboardToken) return;
+    if (!leaderboardToken) {
+        // Токена нет — либо заход уже отправил результат, либо его не выдали.
+        // Во втором случае игрок узнаёт причину здесь, а не остаётся ни с чем.
+        if (leaderboardIssue) showNotice(leaderboardIssue);
+        return;
+    }
     const token = leaderboardToken;
     try {
         const nickname = await resolvePlayerName();

@@ -156,3 +156,19 @@ test("отказ сервера различается по причине, а �
         assert.ok(!/ПОПРОБУЕТ СНОВА/.test(r.text), `${status}: повтора не будет, обещать его нельзя`);
     }
 });
+
+test("отказ в сессии не пропадает молча", async () => {
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    const begin = main.slice(main.indexOf("async function beginLeaderboard"));
+    const body = begin.slice(0, begin.indexOf("\n}\n") + 2);
+
+    assert.match(body, /response\.ok/, "ответ сервера должен проверяться");
+    assert.match(body, /429/, "ограничение по частоте — отдельная причина, её видно игроку");
+    assert.ok(!/catch\s*\{\s*leaderboardToken\s*=\s*''\s*;?\s*\}/.test(body),
+        "неудача выдачи токена не должна сводиться к молчаливому обнулению");
+
+    // Причина обязана всплыть там, где результат должен был уйти.
+    const submit = main.slice(main.indexOf("async function submitLeaderboard"));
+    const attempt = submit.slice(0, submit.indexOf("\n}\n") + 2);
+    assert.match(attempt, /leaderboardIssue/, "без токена игрок должен узнать причину");
+});
