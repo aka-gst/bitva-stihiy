@@ -1,0 +1,677 @@
+/**
+ * Сборка игры: экраны, сюжетная кампания и цикл боя.
+ *
+ * Здесь нет правил — они в engine.js и ai.js. Здесь нет анимации —
+ * она в arena.js. Этот модуль только связывает одно с другим.
+ */
+
+import { ELEMENT, ELEMENTS } from './rules.js';
+import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from './engine.js';
+import { planEnemyRound, isEnraged, masksFor } from './ai.js';
+import { makeRng, pick } from './rng.js';
+import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';
+import {
+    CAMPAIGN, EPILOGUE, PLAYER_MAX_HP, PROLOGUE,
+    campaignScore, healAfterWin, isFinalTier, opponentAt,
+} from './campaign.js';
+import { createArena } from './arena.js';
+import { mageSvg } from './mage.js';
+import { haptic, sweep, tone, wakeAudioOnInteraction } from './audio.js';
+import {
+    $, LEARN_STEPS, clearSlots, pushLog, renderCastRow, renderLearnStep, renderModes,
+    renderSlots, renderStats, renderStoryTrack, renderWheel, setCharge, setHp, setSlot, showScreen,
+} from './ui.js';
+
+/* ─────────────────────────── Ссылки на DOM ─────────────────────────── */
+
+const dom = {
+    menuWheel: $('menu-wheel'), battleWheel: $('battle-wheel'), leaders: $('leaders'),
+    modeGrid: $('mode-grid'),
+    learnCard: $('learn-card'), learnProgress: $('learn-progress'), learnPrev: $('learn-prev'), learnNext: $('learn-next'),
+    storyTier: $('story-tier'), storyName: $('story-name'), storyPortrait: $('story-portrait'),
+    storyText: $('story-text'), storyHint: $('story-hint'), storyTrack: $('story-track'), storyGo: $('story-go'),
+    playerName: $('player-name'), enemyName: $('enemy-name'),
+    playerHpBar: $('player-hp-bar'), playerHpNum: $('player-hp-num'),
+    enemyHpBar: $('enemy-hp-bar'), enemyHpNum: $('enemy-hp-num'),
+    hudTier: $('hud-tier'), hudRound: $('hud-round'),
+    arena: $('arena'), fxLayer: $('fx-layer'), caption: $('caption'), signatureTag: $('signature-tag'),
+    fighterPlayer: $('fighter-player'), fighterEnemy: $('fighter-enemy'),
+    board: document.querySelector('.board'),
+    playerSlots: $('player-slots'), enemySlots: $('enemy-slots'),
+    chargeFill: $('charge-fill'), chargeLabel: $('charge-label'), charge: document.querySelector('.charge'),
+    castRow: $('cast-row'), btnUndo: $('btn-undo'), btnGo: $('btn-go'), btnSuper: $('btn-super'),
+    timer: $('timer'), timerNum: $('timer-num'),
+    log: $('log'), stats: $('stats'),
+    overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'), overlayActions: $('overlay-actions'),
+    btnSpeed: $('btn-speed'), btnRules: $('btn-rules'), btnQuit: $('btn-quit'),
+};
+
+const arena = createArena({
+    root: dom.arena,
+    fxLayer: dom.fxLayer,
+    caption: dom.caption,
+    playerNode: dom.fighterPlayer,
+    enemyNode: dom.fighterEnemy,
+});
+
+/* ─────────────────────────── Состояние приложения ─────────────────────────── */
+
+const SPEEDS = [
+    { key: 'normal', mul: 1, label: 'НОРМА' },
+    { key: 'fast', mul: 2, label: 'БЫСТРО' },
+    { key: 'instant', mul: 0, label: 'БЕЗ АНИМАЦИИ' },
+];
+
+const app = {
+    mode: MODES.easy,
+    opponent: null,
+    battle: null,
+    seq: [],
+    playerSlots: [],
+    enemySlots: [],
+    running: false,
+    timerId: null,
+    timeLeft: 0,
+    rng: makeRng((Date.now() ^ 0x5f3a) >>> 0),
+    speedIndex: 0,
+    shownWins: null,
+    learnStep: 0,
+    learnReturn: 'menu',
+    story: null,
+    startedAt: 0,
+};
+
+/* ─────────────────────────── Таблица лидеров ─────────────────────────── */
+
+const LEADERBOARD_GAME = 'knb-2';
+let leaderboardToken = '';
+
+async function loadLeaderboard() {
+    try {
+        const data = await fetch(`/api/leaderboard/scores?game=${LEADERBOARD_GAME}&limit=3`).then((r) => r.json());
+        const top = data.scores?.map((e, i) => `${i + 1}. ${e.nickname} ${e.score}`).join(' · ');
+        dom.leaders.textContent = `ГЛОБАЛЬНЫЙ ТОП: ${top || '—'}`;
+    } catch { /* оффлайн — просто нет таблицы */ }
+}
+
+async function beginLeaderboard() {
+    try {
+        const data = await fetch('/api/leaderboard/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ game: LEADERBOARD_GAME }),
+        }).then((r) => r.json());
+        leaderboardToken = data.token || '';
+    } catch { leaderboardToken = ''; }
+}
+
+const leaderboardDay = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+};
+
+async function submitLeaderboard(score) {
+    const dailyKey = `${LEADERBOARD_GAME}-daily-best:${leaderboardDay()}`;
+    const dailyBest = Number(localStorage.getItem(dailyKey) || 0);
+    if (score <= 0 || score <= dailyBest) { leaderboardToken = ''; return; }
+    localStorage.setItem(dailyKey, String(score));
+    if (!leaderboardToken) return;
+    const token = leaderboardToken;
+    leaderboardToken = '';
+    try {
+        const nickname = await window.requestPlayerName();
+        await fetch('/api/leaderboard/scores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, nickname, score }),
+        });
+        await loadLeaderboard();
+    } catch { /* не критично */ }
+}
+
+/* ─────────────────────────── Скорость анимации ─────────────────────────── */
+
+function loadSpeed() {
+    const saved = localStorage.getItem('knb-speed');
+    const index = SPEEDS.findIndex((s) => s.key === saved);
+    app.speedIndex = index >= 0 ? index : 0;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches && index < 0) {
+        app.speedIndex = SPEEDS.length - 1;
+    }
+    applySpeed();
+}
+
+function applySpeed() {
+    const { mul, label } = SPEEDS[app.speedIndex];
+    dom.btnSpeed.textContent = `СКОРОСТЬ: ${label}`;
+    const boosted = mul === 0 ? 0 : app.mode?.reveal === 'instant' ? mul * 2.5 : mul;
+    arena.setSpeed(boosted);
+    document.documentElement.style.setProperty('--speed', String(boosted || 1));
+}
+
+function cycleSpeed() {
+    app.speedIndex = (app.speedIndex + 1) % SPEEDS.length;
+    localStorage.setItem('knb-speed', SPEEDS[app.speedIndex].key);
+    applySpeed();
+}
+
+/* ─────────────────────────── Навигация по экранам ─────────────────────────── */
+
+function goMenu() {
+    stopTimer();
+    arena.abort();
+    app.story = null;
+    hideOverlay();
+    showScreen('menu');
+}
+
+function goModes() { showScreen('modes'); }
+
+function goLearn(returnTo = 'menu') {
+    app.learnReturn = returnTo;
+    app.learnStep = 0;
+    paintLearn();
+    showScreen('learn');
+}
+
+function paintLearn() {
+    dom.learnCard = renderLearnStep(dom.learnCard, dom.learnProgress, app.learnStep);
+    dom.learnPrev.textContent = app.learnStep === 0 ? 'ЗАКРЫТЬ' : 'НАЗАД';
+    dom.learnNext.textContent = app.learnStep === LEARN_STEPS.length - 1 ? 'ПОНЯТНО' : 'ДАЛЬШЕ';
+}
+
+/* ─────────────────────────── Кампания ─────────────────────────── */
+
+function startStory() {
+    app.story = {
+        index: 0,
+        hp: PLAYER_MAX_HP,
+        charge: 0,
+        wins: { fire: 0, water: 0, wind: 0 },
+        prologueSeen: false,
+    };
+    void beginLeaderboard();
+    window.umami?.track('game-start', { game: LEADERBOARD_GAME, difficulty: 'story' });
+    showPrologue();
+}
+
+function showPrologue() {
+    dom.storyTier.textContent = 'БАШНЯ ТРЁХ СТИХИЙ';
+    dom.storyName.textContent = 'ПРОЛОГ';
+    dom.storyPortrait.innerHTML = mageSvg({ element: 'water', side: 'player' });
+    dom.storyText.textContent = PROLOGUE;
+    dom.storyHint.textContent = `Впереди ${CAMPAIGN.length} ярусов. Здоровье переносится между боями, после победы возвращается часть.`;
+    renderStoryTrack(dom.storyTrack, CAMPAIGN.length, 0);
+    dom.storyGo.textContent = 'НАЧАТЬ ВОСХОЖДЕНИЕ';
+    dom.storyGo.onclick = () => showTier(0);
+    showScreen('story');
+}
+
+function showTier(index) {
+    const opponent = opponentAt(index);
+    if (!opponent) { showEpilogue(); return; }
+    app.story.index = index;
+    dom.storyTier.textContent = opponent.tier;
+    dom.storyName.textContent = opponent.name;
+    dom.storyPortrait.innerHTML = mageSvg({ element: opponent.element, side: 'enemy' });
+    dom.storyText.textContent = `«${opponent.intro}»`;
+    dom.storyHint.textContent = opponent.teaches;
+    renderStoryTrack(dom.storyTrack, CAMPAIGN.length, index);
+    dom.storyGo.textContent = 'В БОЙ';
+    dom.storyGo.onclick = () => startBattle({
+        opponent,
+        mode: { ...STORY_MODE, slots: opponent.slots, timer: opponent.timer },
+        playerHp: app.story.hp,
+        charge: app.story.charge,
+        wins: app.story.wins,
+        tierLabel: `${opponent.tier} · ${opponent.title}`,
+    });
+    showScreen('story');
+}
+
+function showEpilogue() {
+    dom.storyTier.textContent = 'ВЕРШИНА';
+    dom.storyName.textContent = 'БАШНЯ ПРОЙДЕНА';
+    dom.storyPortrait.innerHTML = mageSvg({ element: 'wind', side: 'player' });
+    dom.storyText.textContent = EPILOGUE;
+    dom.storyHint.textContent = `Осталось здоровья: ${app.story.hp}/${PLAYER_MAX_HP}.`;
+    renderStoryTrack(dom.storyTrack, CAMPAIGN.length, CAMPAIGN.length);
+    dom.storyGo.textContent = 'В МЕНЮ';
+    dom.storyGo.onclick = goMenu;
+
+    window.umami?.track('game-finish', {
+        game: LEADERBOARD_GAME, difficulty: 'story', result: 'clear',
+        duration_seconds: Math.round((Date.now() - app.startedAt) / 1000),
+    });
+    void submitLeaderboard(campaignScore({
+        tierIndex: CAMPAIGN.length, cleared: true, hp: app.story.hp, wins: app.story.wins,
+    }));
+    sweep(240, 900, 620);
+    showScreen('story');
+}
+
+/* ─────────────────────────── Свободный бой ─────────────────────────── */
+
+function startFreeBattle(modeId) {
+    const mode = MODES[modeId];
+    const opponent = SPARRING[pick(ELEMENTS, app.rng)];
+    app.story = null;
+    void beginLeaderboard();
+    window.umami?.track('game-start', { game: LEADERBOARD_GAME, difficulty: modeId });
+    startBattle({
+        opponent,
+        mode,
+        playerHp: PLAYER_MAX_HP,
+        charge: 0,
+        wins: { fire: 0, water: 0, wind: 0 },
+        tierLabel: `СВОБОДНЫЙ БОЙ · ${mode.name}`,
+    });
+}
+
+/* ─────────────────────────── Бой ─────────────────────────── */
+
+function startBattle({ opponent, mode, playerHp, charge, wins, tierLabel }) {
+    app.mode = mode;
+    app.opponent = opponent;
+    app.battle = createBattle({
+        opponent,
+        slots: mode.slots ?? 5,
+        playerHp,
+        playerMaxHp: PLAYER_MAX_HP,
+        charge,
+    });
+    app.battle.wins = { ...wins };
+    app.startedAt = app.startedAt || Date.now();
+    if (!app.story) app.startedAt = Date.now();
+
+    dom.hudTier.textContent = tierLabel;
+    dom.playerName.textContent = 'ТЫ';
+    dom.enemyName.textContent = opponent.name;
+    dom.board.classList.toggle('duel', app.battle.slots === 1);
+
+    app.playerSlots = renderSlots(dom.playerSlots, app.battle.slots);
+    app.enemySlots = renderSlots(dom.enemySlots, app.battle.slots);
+    dom.log.replaceChildren();
+    arena.mount({ playerElement: 'water', enemyElement: opponent.element });
+    applySpeed();
+
+    pushLog(dom.log, `${opponent.name} — ${opponent.title}.`, 'system');
+    pushLog(dom.log, opponent.teaches ?? 'Побеждай стихией, которая гасит его выбор.', 'neutral');
+
+    hideOverlay();
+    showScreen('battle');
+    paintAll();
+    beginRound();
+}
+
+function beginRound() {
+    app.seq = [];
+    clearSlots(app.playerSlots);
+    clearSlots(app.enemySlots);
+    arena.resetPoses();
+    arena.hideCaption();
+    dom.hudRound.textContent = `РАУНД ${app.battle.round}`;
+    paintSignature();
+    setControlsEnabled(true);
+    startTimer(app.mode.timer ?? 15);
+}
+
+/** Постоянная подсказка над ареной: чем противник бьёт в этом раунде. */
+function paintSignature() {
+    const opponent = app.opponent;
+    const { lead, second, switchAt } = masksFor(opponent, app.battle);
+    const enraged = isEnraged(opponent, app.battle);
+
+    const label = (text) => Object.assign(document.createElement('span'), { textContent: text });
+    const glyph = (element) => Object.assign(document.createElement('span'), {
+        textContent: ELEMENT[element].glyph,
+        style: 'font-size:15px',
+    });
+
+    dom.signatureTag.replaceChildren(
+        label(enraged ? 'ЯРОСТЬ · КОРОНКА' : 'КОРОНКА'),
+        glyph(lead),
+    );
+    if (second) {
+        dom.signatureTag.append(label(`С ${switchAt + 1}-ГО`), glyph(second));
+    }
+    dom.signatureTag.classList.toggle('enraged', enraged);
+    arena.setOrb(dom.fighterEnemy, lead);
+}
+
+/**
+ * @param {{hp:object, charge:number}} [snapshot]
+ *   Во время анимации показываем состояние на момент удара — движок кладёт
+ *   его в каждое событие. Без снимка рисуем итоговое состояние боя.
+ */
+function paintAll(snapshot) {
+    const b = app.battle;
+    const hp = snapshot?.hp ?? b.hp;
+    const charge = snapshot?.charge ?? b.charge;
+    setHp(dom.playerHpBar, dom.playerHpNum, hp.player, b.maxHp.player);
+    setHp(dom.enemyHpBar, dom.enemyHpNum, hp.enemy, b.maxHp.enemy);
+    setCharge(dom.chargeFill, dom.chargeLabel, dom.charge, charge, CHARGE_COST);
+    renderStats(dom.stats, app.shownWins ?? b.wins);
+    dom.btnSuper.disabled = !canArmSuper(b) || app.running;
+    dom.btnSuper.classList.toggle('ready', canArmSuper(b) && !app.running);
+    if (b.superArmed) {
+        dom.btnSuper.textContent = 'ВЗВЕДЁН';
+        dom.btnSuper.classList.add('ready');
+    } else {
+        dom.btnSuper.textContent = 'СУПЕР';
+    }
+}
+
+/* ── Ввод ── */
+
+function castElement(id) {
+    if (app.running || app.battle.outcome) return;
+    if (app.seq.length >= app.battle.slots) return;
+    app.seq.push(id);
+    setSlot(app.playerSlots[app.seq.length - 1], { element: id, state: 'filled' });
+    arena.setPlayerElement(id);
+    tone(ELEMENT[id].tone, 55);
+    haptic(8);
+    if (app.seq.length === app.battle.slots) void runRound();
+}
+
+function undoCast() {
+    if (app.running || app.seq.length === 0) return;
+    app.seq.pop();
+    setSlot(app.playerSlots[app.seq.length], {});
+    haptic(6);
+}
+
+function useSuper() {
+    if (!canArmSuper(app.battle) || app.running) return;
+    app.battle = armSuper(app.battle);
+    sweep(200, 700, 260);
+    haptic([18, 22, 30]);
+    pushLog(dom.log, 'Суперудар взведён: первый обмен следующего раунда бьёт на 2.', 'system');
+    paintAll();
+}
+
+/* ── Таймер ── */
+
+function startTimer(seconds) {
+    stopTimer();
+    app.timeLeft = seconds;
+    paintTimer();
+    app.timerId = setInterval(() => {
+        app.timeLeft -= 1;
+        paintTimer();
+        if (app.timeLeft <= 0) { stopTimer(); void runRound(); }
+    }, 1000);
+}
+
+function stopTimer() {
+    if (app.timerId) clearInterval(app.timerId);
+    app.timerId = null;
+}
+
+function paintTimer() {
+    dom.timerNum.textContent = String(Math.max(0, app.timeLeft));
+    dom.timer.classList.toggle('urgent', app.timeLeft <= 5);
+}
+
+function setControlsEnabled(on) {
+    document.querySelectorAll('.cast').forEach((b) => { b.disabled = !on; });
+    dom.btnUndo.disabled = !on;
+    dom.btnGo.disabled = !on;
+    dom.btnSuper.disabled = !on || !canArmSuper(app.battle);
+}
+
+/* ── Раунд ── */
+
+async function runRound() {
+    if (app.running || !app.battle || app.battle.outcome) return;
+    app.running = true;
+    stopTimer();
+    setControlsEnabled(false);
+
+    // Пустые слоты добираются случайно — таймер не должен щадить.
+    while (app.seq.length < app.battle.slots) {
+        const id = pick(ELEMENTS, app.rng);
+        setSlot(app.playerSlots[app.seq.length], { element: id, state: 'filled' });
+        app.seq.push(id);
+    }
+
+    const { plan, counteredElement, punishing } = planEnemyRound(app.battle, app.rng);
+    if (counteredElement) {
+        pushLog(dom.log, `${app.opponent.name} разгадал узор: слишком много ${ELEMENT[counteredElement].genitive}. Часть слотов закрыта контр-стихией.`, 'system');
+    } else if (punishing) {
+        pushLog(dom.log, `${app.opponent.name} заметил, что ты бьёшь строго по коронке, и ставит приманки под твой ответ.`, 'system');
+    }
+
+    app.shownWins = { ...app.battle.wins };
+    const { state, events } = resolveRound(app.battle, [...app.seq], plan);
+    app.battle = state;
+
+    await playEvents(events, plan);
+    app.shownWins = null;
+    paintAll();
+
+    app.running = false;
+    if (app.battle.outcome) { finishBattle(app.battle.outcome); return; }
+    beginRound();
+}
+
+async function playEvents(events, plan) {
+    for (const event of events) {
+        if (event.type === 'clash') {
+            const pSlot = app.playerSlots[event.index];
+            const eSlot = app.enemySlots[event.index];
+            pSlot.classList.add('now');
+            eSlot.classList.add('now');
+            setSlot(eSlot, {
+                element: plan[event.index].element,
+                state: 'now',
+                signature: plan[event.index].signature,
+            });
+
+            await arena.playClash(event, { onImpact: applyImpact });
+
+            pSlot.classList.remove('now');
+            setSlot(pSlot, { element: event.player, state: slotStateFor(event, 'player') });
+            setSlot(eSlot, {
+                element: plan[event.index].element,
+                state: slotStateFor(event, 'enemy'),
+                signature: plan[event.index].signature,
+            });
+        } else if (event.type === 'ko') {
+            await arena.playKo(event.winner);
+        } else if (event.type === 'round-end') {
+            if (app.mode.log === 'summary') {
+                pushLog(dom.log, `Итог раунда: ты −${event.dealt.player}, ${app.opponent.name} −${event.dealt.enemy}.`, 'system');
+            }
+        }
+    }
+}
+
+const SLOT_STATE = {
+    win: ['win', 'lose'],
+    stun: ['stun', 'stun'],
+    'super-hit': ['super', 'lose'],
+    'super-fail': ['crit', 'super'],
+    crit: ['crit', 'win'],
+    lose: ['lose', 'win'],
+    draw: ['draw', 'draw'],
+};
+
+const slotStateFor = (event, side) =>
+    (SLOT_STATE[event.outcome] ?? ['draw', 'draw'])[side === 'player' ? 0 : 1];
+
+/** Момент, когда урон долетел: обновляем цифры и лог ровно в кадр удара. */
+function applyImpact(event) {
+    if (event.target === 'enemy' && app.shownWins) app.shownWins[event.player] += 1;
+    paintAll({ hp: event.hp, charge: event.charge });
+    if (app.mode.log === 'summary') return;
+    const kind = event.target === 'enemy' ? 'player' : event.target === 'player' ? 'enemy' : 'neutral';
+    const hidden = app.mode.log === 'muted';
+    const amount = hidden || !event.damage ? '' : ` −${event.damage}`;
+    pushLog(dom.log, `${event.phrase}${amount}`, event.outcome === 'stun' || event.parry ? 'system' : kind);
+}
+
+/* ── Конец боя ── */
+
+function finishBattle(winner) {
+    stopTimer();
+    setControlsEnabled(false);
+    const won = winner === 'player';
+
+    if (app.story) {
+        if (won) {
+            app.story.wins = { ...app.battle.wins };
+            app.story.charge = app.battle.charge;
+            const last = isFinalTier(app.story.index);
+            app.story.hp = last ? app.battle.hp.player : healAfterWin(app.battle.hp.player);
+            showOverlay({
+                title: 'ЯРУС ВЗЯТ',
+                color: 'var(--win)',
+                text: `«${app.opponent.defeat}»${last ? '' : `\nЗдоровье восстановлено до ${app.story.hp}.`}`,
+                actions: last
+                    ? [{ label: 'ФИНАЛ', primary: true, onClick: showEpilogue }]
+                    : [{ label: 'ДАЛЬШЕ', primary: true, onClick: () => showTier(app.story.index + 1) }],
+            });
+        } else {
+            window.umami?.track('game-finish', {
+                game: LEADERBOARD_GAME, difficulty: 'story', result: 'loss',
+                duration_seconds: Math.round((Date.now() - app.startedAt) / 1000),
+            });
+            void submitLeaderboard(campaignScore({
+                tierIndex: app.story.index, cleared: false, hp: 0, wins: app.battle.wins,
+            }));
+            const retryHp = app.story.hp;
+            showOverlay({
+                title: 'ПОРАЖЕНИЕ',
+                color: 'var(--lose)',
+                text: `${app.opponent.name} устоял. ${app.opponent.teaches}`,
+                actions: [
+                    { label: 'ПОВТОРИТЬ ЯРУС', primary: true, onClick: () => { app.story.hp = retryHp; showTier(app.story.index); } },
+                    { label: 'ПРАВИЛА', onClick: () => goLearn('story') },
+                    { label: 'В МЕНЮ', onClick: goMenu },
+                ],
+            });
+        }
+        return;
+    }
+
+    window.umami?.track('game-finish', {
+        game: LEADERBOARD_GAME, difficulty: app.mode.id, result: won ? 'win' : 'loss',
+        duration_seconds: Math.round((Date.now() - app.startedAt) / 1000),
+    });
+    if (won) {
+        const gestures = Object.values(app.battle.wins).reduce((a, b) => a + b, 0);
+        void submitLeaderboard(1000 + app.battle.hp.player * 100 + gestures * 10);
+    }
+    showOverlay({
+        title: won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ',
+        color: won ? 'var(--win)' : 'var(--lose)',
+        text: won
+            ? `${app.opponent.name} повержен. Осталось здоровья: ${app.battle.hp.player}.`
+            : `${app.opponent.name} оказался быстрее. Его коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`,
+        actions: [
+            { label: 'ЕЩЁ РАЗ', primary: true, onClick: () => startFreeBattle(app.mode.id) },
+            { label: 'В МЕНЮ', onClick: goMenu },
+        ],
+    });
+}
+
+function showOverlay({ title, text, color, actions }) {
+    dom.overlayTitle.textContent = title;
+    dom.overlayTitle.style.color = color ?? 'var(--text)';
+    dom.overlayText.textContent = text ?? '';
+    dom.overlayText.style.whiteSpace = 'pre-line';
+    dom.overlayActions.replaceChildren(
+        ...actions.map(({ label, primary, onClick }) => {
+            const button = document.createElement('button');
+            button.className = primary ? 'mbtn mbtn--primary' : 'mbtn';
+            button.type = 'button';
+            button.textContent = label;
+            button.addEventListener('click', () => { hideOverlay(); onClick(); });
+            return button;
+        }),
+    );
+    dom.overlay.hidden = false;
+}
+
+const hideOverlay = () => { dom.overlay.hidden = true; };
+
+/* ─────────────────────────── Клавиатура ─────────────────────────── */
+
+// Физические клавиши — чтобы раскладка не влияла на управление.
+const KEY_CODES = {
+    Digit1: 'fire', Digit2: 'water', Digit3: 'wind',
+    Numpad1: 'fire', Numpad2: 'water', Numpad3: 'wind',
+    KeyQ: 'fire', KeyW: 'water', KeyE: 'wind',
+};
+
+// Запасной путь для клавиатур, которые не сообщают code (в том числе экранных).
+const KEY_CHARS = {
+    1: 'fire', 2: 'water', 3: 'wind',
+    q: 'fire', w: 'water', e: 'wind',
+    й: 'fire', ц: 'water', у: 'wind',
+};
+
+const elementFromKey = (event) =>
+    KEY_CODES[event.code] ?? KEY_CHARS[event.key?.toLowerCase()] ?? null;
+
+const isKey = (event, code, key) => event.code === code || event.key === key;
+
+function onKeyDown(event) {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const battleVisible = !$('screen-battle').hidden && dom.overlay.hidden;
+    if (!battleVisible) return;
+
+    const element = elementFromKey(event);
+    if (element) { event.preventDefault(); castElement(element); return; }
+    if (isKey(event, 'Backspace', 'Backspace')) { event.preventDefault(); undoCast(); return; }
+    if (isKey(event, 'Enter', 'Enter')) { event.preventDefault(); void runRound(); return; }
+    if (isKey(event, 'Space', ' ')) { event.preventDefault(); useSuper(); }
+}
+
+/* ─────────────────────────── Запуск ─────────────────────────── */
+
+function boot() {
+    renderWheel(dom.menuWheel);
+    renderWheel(dom.battleWheel);
+    renderCastRow(dom.castRow, castElement);
+    renderModes(dom.modeGrid, MODES, MODE_ORDER, startFreeBattle);
+    renderStats(dom.stats, { fire: 0, water: 0, wind: 0 });
+    loadSpeed();
+    wakeAudioOnInteraction();
+
+    document.querySelectorAll('[data-goto]').forEach((node) => {
+        node.addEventListener('click', () => {
+            const target = node.dataset.goto;
+            if (target === 'menu') goMenu();
+            else if (target === 'modes') goModes();
+            else if (target === 'learn') goLearn('menu');
+            else if (target === 'story') startStory();
+        });
+    });
+
+    dom.learnPrev.addEventListener('click', () => {
+        if (app.learnStep === 0) { showScreen(app.learnReturn); return; }
+        app.learnStep -= 1;
+        paintLearn();
+    });
+    dom.learnNext.addEventListener('click', () => {
+        if (app.learnStep === LEARN_STEPS.length - 1) { showScreen(app.learnReturn); return; }
+        app.learnStep += 1;
+        paintLearn();
+    });
+
+    dom.btnUndo.addEventListener('click', undoCast);
+    dom.btnGo.addEventListener('click', () => void runRound());
+    dom.btnSuper.addEventListener('click', useSuper);
+    dom.btnSpeed.addEventListener('click', cycleSpeed);
+    dom.btnRules.addEventListener('click', () => goLearn('battle'));
+    dom.btnQuit.addEventListener('click', goMenu);
+    window.addEventListener('keydown', onKeyDown);
+
+    void loadLeaderboard();
+    showScreen('menu');
+}
+
+boot();
