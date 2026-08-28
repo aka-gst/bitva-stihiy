@@ -23,9 +23,19 @@ test("страница подключает модуль и стили отно�
 });
 
 test("сохранены интеграции с сайтом-хостом", () => {
-    for (const hook of ["/game-menu.css", "/player-name.js", "stats.aka-gst.ru"]) {
+    for (const hook of ["/game-menu.css", "/player-name.js", "/pulse/script.js"]) {
         assert.ok(html.includes(hook), `потеряна интеграция: ${hook}`);
     }
+});
+
+test("счётчик смотрит на сборщик, а не на приватную панель", () => {
+    // stats.aka-gst.ru — админская панель, она намеренно отдаёт 404 и открывается
+    // через SSH-туннель. Сбор проксирован сайтом на /pulse/. Разница невидима:
+    // тег грузится, ошибок в консоли нет, а события просто не доходят.
+    assert.ok(!html.includes("stats.aka-gst.ru"),
+        "тег аналитики указывает на приватную панель — сбор молча выключен");
+    assert.match(html, /src="\/pulse\/script\.js"/);
+    assert.match(html, /data-website-id="[0-9a-f-]{36}"/);
 });
 
 test("русские подписи на месте", () => {
