@@ -20,6 +20,26 @@ Then open `http://localhost:4189/`. No build step, no dependencies, and no
 backend — the server is a 60-line static file server used only for local
 development; deployment is plain static hosting.
 
+## Deployment
+
+The build is static, but it is no longer a single file: `index.html` loads
+`./src/main.js` as an ES module. Copying `index.html` alone serves a blank page.
+
+Upload these, keeping the directory structure:
+
+```
+index.html
+src/
+styles/
+```
+
+`tools/`, `tests/`, `docs/` and `package.json` are development-only and do not
+need to ship. Paths in the markup are relative, so the game works from a
+subdirectory such as `/knb`. The host page is expected to provide
+`/game-menu.css`, `/player-name.js` and the `/api/leaderboard/*` endpoints; when
+they are missing the game still runs, just without the site chrome and the
+scoreboard.
+
 ## Design idea
 
 Classic rock-paper-scissors has clear rules but almost no long-term tactical
