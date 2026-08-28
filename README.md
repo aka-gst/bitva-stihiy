@@ -33,13 +33,9 @@ sh tools/deploy.sh            # проверить сборку и показа�
 sh tools/deploy.sh --deploy   # и выложить в /stihii/
 ```
 
-The game moved from `/knb/` to `/stihii/` when it was renamed. Until a redirect
-exists on the server the old address is kept alive — links to it are already out
-there, and serving a stale build through them is worse than deploying twice:
-
-```bash
-GAME_PATH=knb sh tools/deploy.sh --deploy
-```
+The game moved from `/knb/` to `/stihii/` when it was renamed. The old address
+now redirects on the server, so it needs no separate deploy; `GAME_PATH` remains
+only for the rare case of putting a build somewhere else.
 
 The script runs the tests first, ships only what belongs on the server, and
 then checks that the live paths answer 200. Deployed by hand, the file set is:
