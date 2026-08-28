@@ -126,3 +126,33 @@ test("сюжетная воронка размечена по ярусам", asy
         if (event.includes("'story'")) assert.match(event, /tier:/, "исход сюжета без яруса не читается");
     }
 });
+
+test("отказ сервера различается по причине, а не сводится к «сети»", async () => {
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    const body = main.slice(main.indexOf("function submitFailure"));
+    // +2 захватывает и перевод строки, и саму закрывающую скобку — иначе
+    // выражение не компилируется.
+    const decide = body.slice(0, body.indexOf("\n}\n") + 2);
+    // eslint-disable-next-line no-new-func
+    const submitFailure = new Function(`${decide}; return submitFailure;`)();
+
+    // Сеть и 5xx — осечка: повтор имеет смысл, токен ещё годен.
+    for (const status of [undefined, 500, 503]) {
+        const r = submitFailure(status);
+        assert.equal(r.keepToken, true, `${status}: транзиентный отказ не должен гасить токен`);
+        assert.match(r.text, /СЕТЬ/);
+    }
+
+    // 422 — бой короче минимума. Он считается от начала захода, поэтому
+    // следующая попытка будет длиннее: токен беречь, но не врать про сеть.
+    const short = submitFailure(422);
+    assert.equal(short.keepToken, true);
+    assert.ok(!/СЕТЬ/.test(short.text), "короткий бой — не сетевая проблема");
+
+    // 409 и 400 окончательны: обещать повтор было бы враньём.
+    for (const status of [409, 400]) {
+        const r = submitFailure(status);
+        assert.equal(r.keepToken, false, `${status}: этим токеном уже ничего не добиться`);
+        assert.ok(!/ПОПРОБУЕТ СНОВА/.test(r.text), `${status}: повтора не будет, обещать его нельзя`);
+    }
+});
