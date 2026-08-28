@@ -5,6 +5,7 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 const html = await readFile(new URL("index.html", root), "utf8");
 const css = await readFile(new URL("styles/game.css", root), "utf8");
+const mage = await readFile(new URL("src/mage.js", root), "utf8");
 
 test("оболочка содержит все области интерфейса", () => {
     for (const id of [
@@ -201,4 +202,19 @@ test("чужой текст не попадает в разметку", async ()
         "main.js трогает внешние данные — сборка разметки должна жить в модуле отрисовки");
     assert.match(main.slice(main.indexOf("async function loadLeaderboard")), /textContent/,
         "имена из таблицы рекордов ставятся текстом");
+});
+
+test("боец ограничен и по высоте арены, а не только по ширине", () => {
+    // Высота выводится из ширины через aspect-ratio, поэтому в низком окне
+    // арена сжималась, а боец оставался прежним — и мага срезало сверху.
+    const fighter = css.slice(css.indexOf(".fighter {"));
+    const rule = fighter.slice(0, fighter.indexOf("}"));
+    assert.match(rule, /max-height/, "без потолка по высоте бойца срежет в низком окне");
+    assert.match(rule, /aspect-ratio/);
+});
+
+test("рисунок мага прижат к земле, а не к центру рамки", () => {
+    // Когда высота упирается в потолок, рамка становится ниже пропорций
+    // рисунка. По умолчанию svg центрируется — маг всплывал бы над полом.
+    assert.match(mage, /preserveAspectRatio="xMidYMax meet"/);
 });

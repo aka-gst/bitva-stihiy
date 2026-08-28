@@ -23,7 +23,7 @@ export function mageSvg({ element = 'fire', side = 'player' } = {}) {
     const glow = ELEMENT[element]?.color ?? '#94a3b8';
 
     return `
-<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" role="img">
+<svg viewBox="0 0 120 160" preserveAspectRatio="xMidYMax meet" xmlns="http://www.w3.org/2000/svg" role="img">
   <defs>
     <radialGradient id="aura-${uid}" cx="50%" cy="45%" r="52%">
       <stop offset="0%" stop-color="${glow}" stop-opacity=".34"/>
