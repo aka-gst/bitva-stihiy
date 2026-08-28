@@ -10,7 +10,7 @@ test("оболочка содержит все области интерфейс
     for (const id of [
         "screen-menu", "screen-modes", "screen-learn", "screen-story", "screen-battle",
         "arena", "fighter-player", "fighter-enemy", "fx-layer", "caption",
-        "player-slots", "enemy-slots", "cast-row", "log", "overlay", "timer",
+        "player-slots", "enemy-slots", "cast-row", "log", "overlay", "timer", "notice",
     ]) {
         assert.match(html, new RegExp(`id="${id}"`), `нет области ${id}`);
     }
@@ -94,4 +94,35 @@ test("вёрстка описывает арену и анимацию боя", 
         assert.ok(css.includes(rule), `в стилях нет ${rule}`);
     }
     assert.match(css, /prefers-reduced-motion/, "нужен режим без анимации");
+});
+
+test("рекорд дня отмечается только после подтверждения сервера", async () => {
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    const body = main.slice(main.indexOf("async function submitLeaderboard"));
+    const submit = body.slice(0, body.indexOf("\n}\n") + 1);
+    // Считаем от места, где токен взят в руки: сброс раньше него — это выход
+    // по «результат не рекорд», к отправке он отношения не имеет.
+    const attempt = submit.slice(submit.indexOf("const token = leaderboardToken"));
+
+    const confirmed = attempt.indexOf("response.ok");
+    const marked = attempt.indexOf("localStorage.setItem(dailyKey");
+    const dropped = attempt.indexOf("leaderboardToken = ''");
+    const sent = attempt.indexOf("fetch('/api/leaderboard/scores'");
+
+    assert.ok(confirmed > 0, "ответ сервера должен проверяться, иначе 500 пройдёт за успех");
+    assert.ok(marked > confirmed, "отметка «лучшее за сегодня» — только после подтверждения");
+    assert.ok(dropped > sent, "токен нельзя выбрасывать до отправки: он ещё годен для повтора");
+    assert.ok(!/catch\s*\{\s*\/\*[^*]*\*\/\s*\}/.test(attempt), "потерянный результат должен быть виден игроку");
+    // Строка глобального топа живёт в меню, а отправка случается на итоге боя:
+    // написанное туда игрок в нужный момент не увидит.
+    assert.ok(!/dom\.leaders/.test(attempt), "сообщение о потере не должно уходить в экран меню");
+    assert.match(attempt, /showNotice\(/, "сообщение показывается поверх текущего экрана");
+});
+
+test("сюжетная воронка размечена по ярусам", async () => {
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    assert.match(main, /track\('tier-cleared'/, "взятый ярус — отдельное событие");
+    for (const [, event] of main.matchAll(/track\('game-finish', \{([\s\S]*?)\}\)/g)) {
+        if (event.includes("'story'")) assert.match(event, /tier:/, "исход сюжета без яруса не читается");
+    }
 });
