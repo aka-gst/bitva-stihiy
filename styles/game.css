@@ -40,7 +40,18 @@ body {
     overflow: hidden;
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
+
+    /* Быстрые тапы по стихиям браузер принимает за двойное нажатие и зумит
+       страницу. Для игры это брак: manipulation убирает зум по двойному тапу,
+       но оставляет прокрутку живой. */
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
+
+/* Лог — единственное место, где текст хочется выделять и прокручивать. */
+.log { user-select: text; -webkit-user-select: text; touch-action: pan-y; }
 
 button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
 button:disabled { cursor: default; }

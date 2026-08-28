@@ -667,7 +667,22 @@ function onKeyDown(event) {
 
 /* ─────────────────────────── Запуск ─────────────────────────── */
 
+/**
+ * Safari на iOS игнорирует user-scalable=no, поэтому щипок гасим руками.
+ *
+ * Двойной тап здесь трогать нельзя: гасить его через preventDefault на
+ * touchend — значит убить и клик, а игрок бьёт по стихиям очередями, и каждый
+ * второй тап переставал доходить. За зум по двойному тапу отвечает
+ * touch-action: manipulation в стилях, и этого достаточно.
+ */
+function blockZoomGestures() {
+    for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+        document.addEventListener(type, (event) => event.preventDefault(), { passive: false });
+    }
+}
+
 function boot() {
+    blockZoomGestures();
     renderWheel(dom.menuWheel);
     renderWheel(dom.battleWheel);
     renderCastRow(dom.castRow, castElement);
