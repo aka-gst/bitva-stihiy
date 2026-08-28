@@ -118,23 +118,53 @@ const leaderboardDay = () => {
     return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
 };
 
+/**
+ * Имя для таблицы рекордов.
+ *
+ * Если человек уже вошёл на сайте — берём ник из общего сервиса аккаунтов и
+ * ничего не спрашиваем: на телефоне и на компьютере это будет один и тот же
+ * игрок. Если не вошёл — прежний диалог на шесть символов.
+ *
+ * Вход нигде не обязателен и ничего не загораживает: гость играет и попадает
+ * в таблицу ровно как раньше. Пустая строка означает, что имени взять негде
+ * (локальная разработка без обвязки сайта) — тогда отправки просто не будет.
+ */
+async function resolvePlayerName() {
+    try {
+        const me = await fetch('/api/auth/me').then((r) => r.json());
+        if (me.authenticated && me.nickname) return me.nickname;
+    } catch { /* сервис аккаунтов недоступен — спрашиваем имя как обычно */ }
+    if (typeof window.requestPlayerName !== 'function') return '';
+    return (await window.requestPlayerName()) || '';
+}
+
 async function submitLeaderboard(score) {
     const dailyKey = `${LEADERBOARD_GAME}-daily-best:${leaderboardDay()}`;
     const dailyBest = Number(localStorage.getItem(dailyKey) || 0);
     if (score <= 0 || score <= dailyBest) { leaderboardToken = ''; return; }
-    localStorage.setItem(dailyKey, String(score));
     if (!leaderboardToken) return;
     const token = leaderboardToken;
-    leaderboardToken = '';
     try {
-        const nickname = await window.requestPlayerName();
-        await fetch('/api/leaderboard/scores', {
+        const nickname = await resolvePlayerName();
+        if (!nickname) return;
+        const response = await fetch('/api/leaderboard/scores', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, nickname, score }),
         });
+        if (!response.ok) throw new Error(`leaderboard ${response.status}`);
+        // Отметка «лучшее за сегодня» ставится только после подтверждения сервера.
+        // Иначе одна сетевая осечка затыкала бы отправку до конца суток: результат
+        // уже считался бы рекордом дня, хотя в таблицу он не попал.
+        localStorage.setItem(dailyKey, String(score));
+        leaderboardToken = '';
         await loadLeaderboard();
-    } catch { /* не критично */ }
+    } catch {
+        // Токен не выбрасываем: сервер гасит сессию только при успешной записи,
+        // значит он ещё годен для следующей попытки в этом же заходе.
+        // И молчать здесь нельзя — потерянный результат должен быть виден.
+        dom.leaders.textContent = 'РЕЗУЛЬТАТ НЕ УШЁЛ В ТАБЛИЦУ: СЕТЬ. СЛЕДУЮЩАЯ ПОБЕДА ПОПРОБУЕТ СНОВА';
+    }
 }
 
 /* ─────────────────────────── Скорость анимации ─────────────────────────── */
@@ -249,6 +279,7 @@ function showEpilogue() {
 
     window.umami?.track('game-finish', {
         game: LEADERBOARD_GAME, difficulty: 'story', result: 'clear',
+        tier: CAMPAIGN.length, tier_id: 'summit',
         duration_seconds: Math.round((Date.now() - app.startedAt) / 1000),
     });
     void submitLeaderboard(campaignScore({
@@ -604,6 +635,12 @@ function finishBattle(winner) {
             app.story.charge = app.battle.charge;
             const last = isFinalTier(app.story.index);
             app.story.hp = last ? app.battle.hp.player : healAfterWin(app.battle.hp.player);
+            // Взятый ярус — отдельное событие, иначе воронка состоит из двух точек
+            // (начал и совсем закончил) и середина подъёма не видна вовсе.
+            window.umami?.track('tier-cleared', {
+                game: LEADERBOARD_GAME, tier: app.story.index + 1, tier_id: app.opponent.id,
+                hp_left: app.story.hp,
+            });
             showOverlay({
                 title: 'ЯРУС ВЗЯТ',
                 color: 'var(--win)',
@@ -613,8 +650,12 @@ function finishBattle(winner) {
                     : [{ label: 'ДАЛЬШЕ', primary: true, onClick: () => showTier(app.story.index + 1) }],
             });
         } else {
+            // Ярус обязателен: без него неизвестно, обо что игроки убиваются,
+            // и баланс пришлось бы править на ощущение. Победный ярус пишется
+            // тем же именем, чтобы обе стороны воронки сравнивались напрямую.
             window.umami?.track('game-finish', {
                 game: LEADERBOARD_GAME, difficulty: 'story', result: 'loss',
+                tier: app.story.index + 1, tier_id: app.opponent.id,
                 duration_seconds: Math.round((Date.now() - app.startedAt) / 1000),
             });
             void submitLeaderboard(campaignScore({
