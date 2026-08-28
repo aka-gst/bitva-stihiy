@@ -16,11 +16,10 @@ import {
     campaignScore, healAfterWin, isFinalTier, opponentAt,
 } from './campaign.js';
 import { createArena } from './arena.js';
-import { mageSvg } from './mage.js';
 import { haptic, sweep, tone, wakeAudioOnInteraction } from './audio.js';
 import {
     $, LEARN_STEPS, clearSlots, pushLog, renderCastRow, renderLearnStep, renderModes,
-    renderSeen, renderSlots, renderStats, renderStoryTrack, renderWheel,
+    renderPortrait, renderSeen, renderSlots, renderStats, renderStoryTrack, renderWheel,
     setCharge, setHp, setSlot, showScreen,
 } from './ui.js';
 
@@ -308,7 +307,7 @@ function startStory() {
 function showPrologue() {
     dom.storyTier.textContent = 'БАШНЯ ТРЁХ СТИХИЙ';
     dom.storyName.textContent = 'ПРОЛОГ';
-    dom.storyPortrait.innerHTML = mageSvg({ element: 'water', side: 'player' });
+    renderPortrait(dom.storyPortrait, 'water', 'player');
     dom.storyText.textContent = PROLOGUE;
     dom.storyHint.textContent = `Впереди ${CAMPAIGN.length} ярусов. Здоровье переносится между боями, после победы возвращается часть.`;
     renderStoryTrack(dom.storyTrack, CAMPAIGN.length, 0);
@@ -323,7 +322,7 @@ function showTier(index) {
     app.story.index = index;
     dom.storyTier.textContent = opponent.tier;
     dom.storyName.textContent = opponent.name;
-    dom.storyPortrait.innerHTML = mageSvg({ element: opponent.element, side: 'enemy' });
+    renderPortrait(dom.storyPortrait, opponent.element, 'enemy');
     dom.storyText.textContent = `«${opponent.intro}»`;
     dom.storyHint.textContent = opponent.teaches;
     renderStoryTrack(dom.storyTrack, CAMPAIGN.length, index);
@@ -342,7 +341,7 @@ function showTier(index) {
 function showEpilogue() {
     dom.storyTier.textContent = 'ВЕРШИНА';
     dom.storyName.textContent = 'БАШНЯ ПРОЙДЕНА';
-    dom.storyPortrait.innerHTML = mageSvg({ element: 'wind', side: 'player' });
+    renderPortrait(dom.storyPortrait, 'wind', 'player');
     dom.storyText.textContent = EPILOGUE;
     dom.storyHint.textContent = `Осталось здоровья: ${app.story.hp}/${PLAYER_MAX_HP}.`;
     renderStoryTrack(dom.storyTrack, CAMPAIGN.length, CAMPAIGN.length);

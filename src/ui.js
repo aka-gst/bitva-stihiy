@@ -2,6 +2,7 @@
 
 import { ELEMENT, ELEMENTS, WHEEL } from './rules.js';
 import { COMBO_LIST } from './combos.js';
+import { mageSvg } from './mage.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -353,6 +354,12 @@ export function renderModes(node, modes, order, onPick) {
             return button;
         }),
     );
+}
+
+/** Портрет мага на сюжетном экране. */
+export function renderPortrait(node, element, side) {
+    node.replaceChildren();
+    node.insertAdjacentHTML('afterbegin', mageSvg({ element, side }));
 }
 
 /* ─────────────── Сюжетный трек ─────────────── */

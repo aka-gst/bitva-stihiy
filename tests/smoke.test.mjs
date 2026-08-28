@@ -177,6 +177,12 @@ test("чужой текст не попадает в разметку", async ()
     // Ник пишет один игрок, а рисует страница другого: и в таблице рекордов,
     // и — скоро — в ссылке-приглашении. Через innerHTML это выполнение чужого
     // скрипта на aka-gst.ru по ссылке, которая выглядит как приглашение от друга.
+    //
+    // Проверка тут двухслойная, потому что первый слой — растяжка, а не
+    // доказательство: соседство innerHTML с подозрительным именем ловит ровно
+    // тот случай, который в него заложен, и слепнет после переименования
+    // переменной. Настоящая гарантия — второй слой: в модуле, который трогает
+    // сеть и URL, опасного вызова просто нет.
     const files = (await readdir(new URL("src/", root))).filter((f) => f.endsWith(".js"));
     const EXTERNAL = /nickname|leaderboard|payload|\bhash\b|searchParams|location\./i;
 
@@ -188,9 +194,11 @@ test("чужой текст не попадает в разметку", async ()
         }
     }
 
+    // Свойство, а не догадка: main.js разбирает ответы сервера и будет разбирать
+    // приглашения из адреса, поэтому разметку он не собирает вообще.
     const main = await readFile(new URL("src/main.js", root), "utf8");
-    const load = main.slice(main.indexOf("async function loadLeaderboard"));
-    const body = load.slice(0, load.indexOf("\n}\n") + 2);
-    assert.match(body, /textContent/, "имена из таблицы рекордов ставятся текстом");
-    assert.ok(!/innerHTML/.test(body), "и никогда разметкой");
+    assert.ok(!/innerHTML/.test(main),
+        "main.js трогает внешние данные — сборка разметки должна жить в модуле отрисовки");
+    assert.match(main.slice(main.indexOf("async function loadLeaderboard")), /textContent/,
+        "имена из таблицы рекордов ставятся текстом");
 });
