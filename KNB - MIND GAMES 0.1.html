@@ -4,16 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KNB: Tactical Evolution 2026</title>
-    <link rel="stylesheet" href="/game-menu.css?v=1">
-    <script defer src="/player-name.js?v=3"></script>
     <style>
         :root {
             --bg: #0f172a; --card: #1e293b; --accent: #3b82f6;
             --win: #22c55e; --lose: #ef4444; --stun: #fbbf24;
             --crit: #f43f5e; --special: #a855f7; --text: #f8fafc;
         }
-
-        *, *::before, *::after { box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text);
@@ -25,9 +21,6 @@
             position: fixed; inset: 0; background: var(--bg); z-index: 500;
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px;
         }
-        .home-menu { position: fixed; top: 14px; right: 14px; z-index: 900; }.home-menu summary { display:grid; place-items:center; width:31px; height:31px; border:1px solid #3b82f6; border-radius:8px; background:#172033; color:#f8fafc; cursor:pointer; list-style:none; }.home-menu summary::-webkit-details-marker{display:none}.home-menu a { display:block; margin-top:4px; padding:9px 10px; color:#f8fafc; background:#172033; border:1px solid #3b82f6; border-radius:8px; font-size:11px; text-decoration:none; white-space:nowrap; }
-        .alpha { color: #fbbf24; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
-        @media (max-height: 560px) and (orientation: landscape) { body{padding:7px}.header{margin-bottom:4px}.hp-value{font-size:32px}.main-layout{gap:8px}.game-zone{min-height:0;padding:9px}.battle-chat{height:140px}#start-menu{gap:6px}#start-menu h1{font-size:20px}.difficulty-card{width:260px;padding:7px}.home-menu{top:7px;right:7px} }
         .difficulty-card {
             background: var(--card); border: 2px solid #334155; padding: 15px;
             border-radius: 12px; width: 320px; cursor: pointer; transition: 0.3s; text-align: center;
@@ -38,16 +31,16 @@
         .header { text-align: center; width: 100%; max-width: 900px; margin-bottom: 10px; }
         .status-container { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-bottom: 20px; }
         .bar-row { display: flex; justify-content: space-between; width: 100%; }
-        
+
         .hp-section { width: 45%; text-align: center; }
         .hp-value { font-size: 56px; font-weight: 900; line-height: 1; margin-bottom: 5px; }
         .bar-bg { width: 100%; background: #334155; height: 12px; border-radius: 10px; overflow: hidden; }
         .fill { height: 100%; transition: width 0.4s ease; }
-        
+
         .main-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; width: 100%; max-width: 1000px; }
-        
-        .game-zone { 
-            background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid #334155; 
+
+        .game-zone {
+            background: var(--card); padding: 20px; border-radius: 15px; border: 1px solid #334155;
             position: relative; overflow: hidden; min-height: 400px; display: flex; flex-direction: column; justify-content: center;
         }
 
@@ -65,7 +58,6 @@
         }
         .stat-item { font-size: 12px; color: #94a3b8; }
         .stat-val { font-size: 18px; font-weight: bold; color: var(--text); }
-        .global-knb { grid-column: 1 / -1; padding-top: 5px; border-top: 1px solid #334155; color: #cbd5e1; font-size: 10px; }
 
         .msg { padding: 4px 8px; border-radius: 4px; border-left: 3px solid transparent; }
         .msg-p { border-color: var(--win); color: #86efac; }
@@ -74,9 +66,9 @@
 
         .slots-container { display: flex; flex-direction: column; gap: 10px; }
         .slots { display: flex; gap: 10px; justify-content: center; }
-        .slot { 
-            width: 60px; height: 80px; background: #0f172a; border: 2px dashed #475569; 
-            border-radius: 10px; display: flex; align-items: center; justify-content: center; 
+        .slot {
+            width: 60px; height: 80px; background: #0f172a; border: 2px dashed #475569;
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
             font-size: 28px; transition: 0.2s; position: relative;
         }
         .slot.active-slot { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); transform: scale(1.1); }
@@ -98,91 +90,22 @@
         .btn { padding: 15px; background: #334155; border: 1px solid #475569; color: white; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 20px; }
         .btn:hover:not(:disabled) { border-color: var(--accent); }
         .btn:disabled { opacity: 0.3; }
-        
-        #start-btn { background: var(--win); grid-column: span 2; font-size: 16px; text-transform: uppercase; }
-        .btn-grid > .btn { width: 100%; min-height: 54px; }
-        #super-btn { background: var(--special); display: block; visibility: hidden; min-height: 54px; padding: 15px; font-size: 14px !important; }
-        #super-btn.available { visibility: visible; }
 
-        #end-screen { 
-            position: absolute; inset: 0; background: rgba(2, 6, 23, 0.96); 
-            display: none; flex-direction: column; align-items: center; justify-content: center; 
+        #start-btn { background: var(--win); grid-column: span 2; font-size: 16px; text-transform: uppercase; }
+        #super-btn { background: var(--special); display: none; }
+        #super-btn.available { display: block; }
+
+        #end-screen {
+            position: absolute; inset: 0; background: rgba(2, 6, 23, 0.96);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
             z-index: 100; border-radius: 14px; text-align: center;
         }
-        @media (min-width: 901px) {
-            body { height: 100dvh; min-height: 0; padding: clamp(14px, 2vw, 28px); overflow: hidden; align-items: stretch; }
-            .header { max-width: none; flex: 0 0 auto; }
-            .status-container { margin-bottom: 12px; }
-            .main-layout { flex: 1; min-height: 0; max-width: none; grid-template-columns: minmax(0, 1fr) minmax(280px, 27vw); }
-            .game-zone { min-height: 0; height: 100%; }
-            .side-panel { min-height: 0; }
-            .battle-chat { flex: 1; min-height: 0; height: auto; }
-        }
-        @media (max-width: 900px) {
-            html, body { width: 100%; height: 100%; overscroll-behavior: none; }
-            body {
-                height: 100vh; height: 100dvh; min-height: 0;
-                padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
-                overflow: hidden; align-items: stretch;
-            }
-            #start-menu { padding: 8px; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-content: center; gap: 7px; }
-            #start-menu h1, #start-menu .alpha, #master-start { grid-column: 1 / -1; width: 100% !important; text-align: center; }
-            #start-menu h1 { margin: 0 !important; font-size: clamp(21px,7vw,34px); }
-            .difficulty-card { width: 100%; min-height: 70px; padding: 8px 5px; font-size: 12px; }
-            #master-start { padding: 12px; font-size: 16px; }
-            .header { flex: 0 0 auto; margin: 0 0 4px; }
-            .header > p { margin: 0 0 2px; line-height: 1; }
-            .status-container { gap: 3px; margin-bottom: 3px; }
-            .hp-value { margin: 0; font-size: 30px; }
-            .bar-bg { height: 7px; }
-            .status-container > div:last-child { margin-top: 3px !important; }
-            .main-layout { min-height: 0; height: 0; flex: 1 1 0; display: grid; grid-template: minmax(0,1fr) auto / 1fr; gap: 4px; }
-            .game-zone { min-height: 0; height: 100%; padding: 7px; border-radius: 9px; }
-            .slots-container { gap: 5px; }
-            .slots { gap: 4px; }
-            .slot { width: min(15vw,52px); height: min(18vw,62px); border-radius: 6px; font-size: 23px; }
-            .controls { gap: 5px; margin-top: 7px; }
-            .btn-grid { gap: 4px; }
-            .btn { min-height: 38px; padding: 6px; font-size: 17px; }
-            #timer-text { margin-top: 4px !important; font-size: 16px !important; }
-            .side-panel { min-height: 0; gap: 3px; }
-            .battle-chat { display: none; }
-            .stat-panel { padding: 4px; }
-            .stat-item { font-size: 9px; }
-            .stat-val { font-size: 14px; }
-            .global-knb { padding-top: 4px; font-size: clamp(8px, 2.6vw, 10px); line-height: 1.25; overflow-wrap: anywhere; }
-            .duel-mode .slots-container { gap: 20px; }
-            .duel-mode .slot { width: 85px; height: 110px; font-size: 44px; }
-        }
-        @media (max-height: 600px) and (orientation: landscape) {
-            body { height: 100vh; height: 100dvh; padding: 4px; overflow: hidden; }
-            #start-menu { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 5px; }
-            #start-menu h1, #start-menu .alpha, #master-start { grid-column: 1 / -1; }
-            .difficulty-card { min-height: 56px; padding: 5px 3px; font-size: 10px; }
-            #master-start { min-height: 34px; padding: 5px; }
-            .header { width: 32%; position: fixed; top: 4px; left: 4px; z-index: 5; }
-            .header > p { display: none; }
-            .hp-value { font-size: 23px; }
-            .main-layout { height: 100%; display: grid; grid-template: 1fr / minmax(0,1fr) 210px; gap: 5px; padding-top: 44px; }
-            .game-zone { padding: 5px; }
-            .slots-container { flex-direction: row; justify-content: center; gap: 10px; }
-            .slot { width: min(7vw,42px); height: min(9vw,53px); font-size: 19px; }
-            .controls { margin-top: 4px; }
-            .btn { min-height: 31px; padding: 3px; font-size: 14px; }
-            .side-panel { display: grid; grid-template-rows: minmax(0,1fr) auto; }
-            .battle-chat { display: flex; height: auto; min-height: 0; padding: 5px; font-size: 9px; }
-            .duel-mode .slot { width: 70px; height: 90px; font-size: 36px; }
-        }
     </style>
-    <script defer src="https://stats.aka-gst.ru/script.js" data-website-id="de024048-c4c3-4639-bbdf-808c558f6d71"></script>
 </head>
 <body>
 
-    <a class="game-home-menu" href="/">НА ГЛАВНУЮ</a>
-
     <div id="start-menu">
         <h1 style="color: var(--accent); margin-bottom: 5px;">KNB: TACTICAL EVOLUTION</h1>
-        <div class="alpha">АЛЬФА-ВЕРСИЯ</div>
         <div class="difficulty-card" onclick="selectDiff('easy')" id="diff-easy">
             <div style="color: var(--win); font-weight:bold">ЛЕГКИЙ</div>
             <div>5 слотов. Полный лог.</div>
@@ -203,7 +126,6 @@
     </div>
 
     <div class="header">
-        <p><span class="alpha">АЛЬФА-ВЕРСИЯ</span></p>
         <div class="status-container">
             <div class="bar-row">
                 <div class="hp-section"><div class="hp-value" id="p-hp-v" style="color: var(--win)">10</div><div class="bar-bg"><div id="p-hp-bar" class="fill" style="width: 100%; background: var(--win)"></div></div></div>
@@ -252,7 +174,6 @@
                 <div class="stat-item"><div class="stat-val" id="win-k">0</div>🧱</div>
                 <div class="stat-item"><div class="stat-val" id="win-b">0</div>📄</div>
                 <div class="stat-item"><div class="stat-val" id="win-n">0</div>✂️</div>
-                <div class="global-knb" id="global-knb">ГЛОБАЛЬНЫЙ ТОП: —</div>
             </div>
         </div>
     </div>
@@ -261,33 +182,11 @@
     const WIN_MAP = { '🧱': '✂️', '📄': '🧱', '✂️': '📄' };
     const CNTR = { '🧱': '📄', '📄': '✂️', '✂️': '🧱' };
     const BOSSES = [{n:'КАМЕНЩИК', c:'🧱'}, {n:'ПИСАРЬ', c:'📄'}, {n:'СТРИГАЛЬ', c:'✂️'}];
-    
+
     let pHP = 10, cHP = 10, sp = 0, diff = 'easy';
     let pSeq = [], history = [], winStats = {'🧱': 0, '📄': 0, '✂️': 0};
     let curBoss = null, superOn = false, running = false, stunNext = false;
     let t = 15, timer, isResting = false, maxSlots = 5;
-    let startedAt = 0;
-    let leaderboardToken = '';
-    async function loadLeaderboard() { try { const data = await fetch('/api/leaderboard/scores?game=knb-2&limit=3').then(r => r.json()); document.getElementById('global-knb').textContent = `ГЛОБАЛЬНЫЙ ТОП: ${data.scores?.map((e,i)=>`${i+1}. ${e.nickname} ${e.score}`).join(' · ') || '—'}`; } catch {} }
-    async function beginLeaderboard() { try { const data = await fetch('/api/leaderboard/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({game:'knb-2'})}).then(r=>r.json()); leaderboardToken=data.token||''; } catch { leaderboardToken=''; } }
-    const leaderboardDay = () => { const now = new Date(); return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`; };
-    async function submitLeaderboard(score) { const dailyKey=`knb-2-daily-best:${leaderboardDay()}`,dailyBest=Number(localStorage.getItem(dailyKey)||0); if(score<=0||score<=dailyBest){leaderboardToken='';return;} localStorage.setItem(dailyKey,String(score)); if (!leaderboardToken) return; const token=leaderboardToken; leaderboardToken=''; try { const nickname=await window.requestPlayerName(); await fetch('/api/leaderboard/scores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token,nickname,score})}); await loadLeaderboard(); } catch {} }
-    let audio;
-
-    function tone(frequency, duration = 80) {
-        const AudioEngine = window.AudioContext || window.webkitAudioContext;
-        if (!AudioEngine) return;
-        audio ||= new AudioEngine();
-        if (audio.state === 'suspended') void audio.resume();
-        const oscillator = audio.createOscillator(), gain = audio.createGain();
-        oscillator.frequency.value = frequency; oscillator.type = 'square';
-        gain.gain.setValueAtTime(0.035, audio.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + duration / 1000);
-        oscillator.connect(gain).connect(audio.destination); oscillator.start(); oscillator.stop(audio.currentTime + duration / 1000);
-    }
-    function haptic(pattern) { try { navigator.vibrate?.(pattern); } catch {} }
-    function resumeAudio(){if(audio?.state==='suspended')void audio.resume().catch(()=>{})}
-    ['pointerdown','touchstart','keydown','pageshow'].forEach(type=>window.addEventListener(type,resumeAudio,{passive:true}));document.addEventListener('visibilitychange',()=>{if(!document.hidden)resumeAudio()});
 
     function selectDiff(d) {
         diff = d;
@@ -297,11 +196,6 @@
     }
 
     function launchGame() {
-        haptic(18);
-        tone(440, 120);
-        startedAt = Date.now();
-        window.umami?.track('game-start', { game: 'knb-2', difficulty: diff });
-        void beginLeaderboard();
         document.getElementById('start-menu').style.display = 'none';
         curBoss = BOSSES[Math.floor(Math.random()*3)];
         if (diff === 'duel') {
@@ -338,8 +232,6 @@
     }
 
     function add(m) {
-        haptic(8);
-        tone(m === '🧱' ? 260 : m === '📄' ? 390 : 520, 60);
         if (isResting) { isResting = false; pSeq = []; updateSlots(); }
         if (pSeq.length < maxSlots) {
             pSeq.push(m); history.push(m);
@@ -361,7 +253,6 @@
     }
 
     function useSuper() {
-        haptic([20, 24, 35]);
         superOn = true; sp = 0; updateStatus();
         document.getElementById('super-btn').classList.remove('available');
         log("СУПЕРУДАР ЗАРЯЖЕН!", "sys");
@@ -375,7 +266,7 @@
 
         let counts = history.reduce((a,b)=>{a[b]=(a[b]||0)+1; return a},{});
         let counter = (history.length >= 6 && Object.values(counts).some(v=>v>=history.length*0.7)) ? CNTR[history[history.length-1]] : null;
-        
+
         let cSeq = [];
         for(let i=0; i<maxSlots; i++) {
             let m = counter || (Math.random() < 0.7 ? curBoss.c : ['🧱','📄','✂️'].filter(x=>x!==curBoss.c)[Math.floor(Math.random()*2)]);
@@ -416,7 +307,7 @@
         if (stunNext) { cHP--; stunNext = false; return 'stun'; }
         if (superOn && idx === 0) {
             superOn = false;
-            if (WIN_MAP[p] === cO.m) { cHP -= 2; return 's-hit'; } 
+            if (WIN_MAP[p] === cO.m) { cHP -= 2; return 's-hit'; }
             else { pHP -= 2; return 's-fail'; }
         }
         if (p === cO.m) return 'draw';
@@ -430,7 +321,7 @@
         if (res === 'stun' || res === 'win' || res === 's-hit') ps.classList.add(res==='s-hit'?'super-hit-slot':'res-win');
         else if (res === 'draw') ps.classList.add('res-draw');
         else ps.classList.add('res-lose');
-        
+
         if (res === 'stun') log("Удар (оглушение)", "p");
         else if (res === 's-hit') log("⚡ СУПЕРУДАР!", "sys");
         else if (res === 'win') log("Игрок нанес 1dmg", "p");
@@ -451,10 +342,6 @@
     function endRound() {
         running = false; isResting = true;
         if (pHP <= 0 || cHP <= 0) {
-            haptic(pHP > 0 ? [22, 25, 38] : [55, 38, 70]);
-            tone(pHP > 0 ? 720 : 170, 240);
-            window.umami?.track('game-finish', { game: 'knb-2', difficulty: diff, result: pHP > 0 ? 'win' : 'loss', duration_seconds: Math.round((Date.now() - startedAt) / 1000) });
-            if (pHP > 0) void submitLeaderboard(1000 + pHP * 100 + Object.values(winStats).reduce((a,b)=>a+b,0));
             document.getElementById('end-screen').style.display = 'flex';
             document.getElementById('end-res').innerText = pHP > 0 ? "ПОБЕДА" : "ПОТРАЧЕНО";
             document.getElementById('end-res').style.color = pHP > 0 ? "var(--win)" : "var(--lose)";
@@ -468,7 +355,6 @@
     }
 
     function toggleBtns(s) { ['bK','bB','bN','bDel','start-btn'].forEach(id => document.getElementById(id).disabled = s); }
-    void loadLeaderboard();
 </script>
 </body>
 </html>
