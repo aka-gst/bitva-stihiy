@@ -248,21 +248,66 @@ button:disabled { cursor: default; }
 
 /* ─────────────────────────── АРЕНА ─────────────────────────── */
 
+/* Зал башни: арки, колонны, пол — и рассеянный свет от каждого бойца. */
 .arena {
     position: relative;
     min-height: 0;
     border: 1px solid var(--line);
     border-radius: var(--r);
-    background:
-        radial-gradient(60% 80% at 50% 100%, rgba(96, 165, 250, 0.10), transparent 70%),
-        linear-gradient(180deg, #0d1526, #131d33);
     overflow: hidden;
+    --enemy-glow: rgba(148, 163, 184, 0.12);
+    --player-glow: rgba(96, 165, 250, 0.12);
+    background:
+        radial-gradient(42% 52% at 80% 62%, var(--enemy-glow), transparent 72%),
+        radial-gradient(42% 52% at 20% 62%, var(--player-glow), transparent 72%),
+        radial-gradient(70% 46% at 50% 104%, rgba(148, 163, 184, 0.07), transparent 70%),
+        repeating-linear-gradient(90deg,
+            rgba(226, 232, 240, 0.035) 0 3px,
+            transparent 3px 96px),
+        linear-gradient(180deg, #0a1120 0%, #101a2e 58%, #16203a 100%);
 }
+/* Ряд арок под потолком — глубина без единой картинки. */
+.arena::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 34%;
+    background:
+        repeating-radial-gradient(circle at 48px 100%,
+            rgba(226, 232, 240, 0.05) 0 30px,
+            transparent 30px 32px,
+            transparent 0 96px);
+    mask-image: linear-gradient(180deg, #000 0%, transparent 88%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 88%);
+    pointer-events: none;
+}
+/* Линия пола. */
 .arena::after {
     content: '';
-    position: absolute; left: 6%; right: 6%; bottom: 12%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--line), transparent);
+    position: absolute; left: 4%; right: 4%; bottom: 12%;
+    height: 24px;
+    background:
+        linear-gradient(180deg, rgba(226, 232, 240, 0.16), transparent 2px),
+        linear-gradient(180deg, rgba(148, 163, 184, 0.05), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+    pointer-events: none;
+}
+
+/* Пылинки в воздухе — арена перестаёт выглядеть пустой, пока игрок думает. */
+.mote {
+    position: absolute;
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: rgba(226, 232, 240, 0.5);
+    pointer-events: none;
+    animation: mote-drift linear infinite;
+}
+@keyframes mote-drift {
+    0% { transform: translateY(0) scale(0.6); opacity: 0; }
+    18% { opacity: 0.55; }
+    82% { opacity: 0.45; }
+    100% { transform: translateY(-120px) scale(1); opacity: 0; }
 }
 .arena.shake { animation: shake 0.32s ease; }
 .arena.shake-hard { animation: shake-hard 0.42s ease; }
@@ -274,10 +319,11 @@ button:disabled { cursor: default; }
     aspect-ratio: 3 / 4;
     transition: transform 0.24s ease, filter 0.24s ease;
 }
-.fighter svg { width: 100%; height: 100%; overflow: visible; }
+.fighter svg { width: 100%; height: 100%; overflow: visible; animation: idle-float 3.6s ease-in-out infinite; }
 .fighter--player { left: 6%; }
 .fighter--enemy { right: 6%; }
-.fighter--enemy svg { transform: scaleX(-1); }
+.fighter--enemy svg { transform: scaleX(-1); animation-name: idle-float-mirror; }
+.fighter.hurt svg, .fighter.down svg, .fighter.stunned svg { animation: none; }
 
 .fighter.casting { animation: cast-lunge calc(0.34s / var(--speed)) ease; }
 .fighter--enemy.casting { animation-name: cast-lunge-mirror; }
@@ -573,6 +619,14 @@ button:disabled { cursor: default; }
 @keyframes stunned {
     0%, 100% { transform: rotate(-4deg); }
     50% { transform: rotate(4deg); }
+}
+@keyframes idle-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2.2%); }
+}
+@keyframes idle-float-mirror {
+    0%, 100% { transform: scaleX(-1) translateY(0); }
+    50% { transform: scaleX(-1) translateY(-2.2%); }
 }
 @keyframes victor {
     0%, 100% { transform: translateY(0); }

@@ -21,6 +21,17 @@ const T = {
     ko: 700,
 };
 
+/**
+ * Как выглядит гашение одной стихии другой. Вспышка договаривает то же,
+ * что и подпись: вода даёт пар, ветер — брызги, огонь — вспышку с искрами.
+ */
+const IMPACT = {
+    'water:fire': 'steam',
+    'wind:water': 'spray',
+    'fire:wind': 'flare',
+};
+const impactStyle = (winner, loser) => IMPACT[`${winner}:${loser}`] ?? 'plain';
+
 const PLAYER_WINS = new Set(['win', 'stun', 'super-hit']);
 const ENEMY_WINS = new Set(['lose', 'crit', 'super-fail']);
 
@@ -44,9 +55,33 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         abort();
         playerNode.innerHTML = mageSvg({ element: playerElement, side: 'player' });
         enemyNode.innerHTML = mageSvg({ element: enemyElement, side: 'enemy' });
+        // Зал подсвечивается стихией противника — бой узнаётся с первого взгляда.
+        root.style.setProperty('--enemy-glow', tint(enemyElement, 0.16));
+        root.style.setProperty('--player-glow', tint(playerElement, 0.12));
         resetPoses();
         fxLayer.replaceChildren();
         hideCaption();
+        spawnMotes();
+    }
+
+    const tint = (element, alpha) => {
+        const hex = ELEMENT[element]?.color ?? '#94a3b8';
+        const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
+    /** Медленные пылинки в воздухе — арена не выглядит замершей. */
+    function spawnMotes() {
+        root.querySelectorAll('.mote').forEach((node) => node.remove());
+        for (let i = 0; i < 9; i += 1) {
+            const mote = document.createElement('div');
+            mote.className = 'mote';
+            mote.style.left = `${6 + Math.random() * 88}%`;
+            mote.style.bottom = `${4 + Math.random() * 30}%`;
+            mote.style.animationDuration = `${7 + Math.random() * 7}s`;
+            mote.style.animationDelay = `${-Math.random() * 10}s`;
+            root.prepend(mote);  // позади бойцов и подписей
+        }
     }
 
     function resetPoses() {
@@ -96,7 +131,26 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         return { node: bolt, done: anim.finished.catch(() => {}) };
     }
 
-    function burst(at, color, { size = 1, sparks = 8 } = {}) {
+    /** Разброс частиц под конкретный характер стихии. */
+    function particle(style, index, total) {
+        const spread = (Math.PI * 2 * index) / total;
+        switch (style) {
+            case 'steam': // пар поднимается вверх, медленно и широко
+                return { angle: -Math.PI / 2 + (Math.random() - 0.5) * 1.7, reach: 34 + Math.random() * 40,
+                    duration: 620 + Math.random() * 320, size: 5, color: '#e2e8f0' };
+            case 'spray': // брызги разлетаются вбок и быстро
+                return { angle: (index % 2 ? 0 : Math.PI) + (Math.random() - 0.5) * 1.1, reach: 46 + Math.random() * 44,
+                    duration: 300 + Math.random() * 180, size: 3, color: null };
+            case 'flare': // угли выстреливают во все стороны и тянутся вверх
+                return { angle: spread - Math.PI / 6 + Math.random() * 0.5, reach: 38 + Math.random() * 40,
+                    duration: 380 + Math.random() * 260, size: 4, color: null };
+            default:
+                return { angle: spread + Math.random() * 0.4, reach: 28 + Math.random() * 34,
+                    duration: 360 + Math.random() * 220, size: 3, color: null };
+        }
+    }
+
+    function burst(at, color, { size = 1, sparks = 8, style = 'plain' } = {}) {
         const ring = document.createElement('div');
         ring.className = 'burst';
         ring.style.setProperty('--burst-color', color);
@@ -111,18 +165,22 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         ).finished.catch(() => {}).then(() => ring.remove());
 
         for (let i = 0; i < sparks; i += 1) {
-            const angle = (Math.PI * 2 * i) / sparks + Math.random() * 0.4;
-            const reach = (28 + Math.random() * 34) * size;
+            const p = particle(style, i, sparks);
+            const reach = p.reach * size;
             const spark = document.createElement('div');
             spark.className = 'spark';
-            spark.style.setProperty('--burst-color', color);
+            spark.style.setProperty('--burst-color', p.color ?? color);
+            spark.style.width = `${p.size}px`;
+            spark.style.height = `${p.size}px`;
+            spark.style.margin = `${-p.size / 2}px 0 0 ${-p.size / 2}px`;
+            if (style === 'steam') spark.style.filter = 'blur(1.5px)';
             fxLayer.appendChild(spark);
             spark.animate(
                 [
-                    { transform: `translate(${at.x}px, ${at.y}px) scale(1)`, opacity: 1 },
-                    { transform: `translate(${at.x + Math.cos(angle) * reach}px, ${at.y + Math.sin(angle) * reach}px) scale(.2)`, opacity: 0 },
+                    { transform: `translate(${at.x}px, ${at.y}px) scale(1)`, opacity: style === 'steam' ? 0.75 : 1 },
+                    { transform: `translate(${at.x + Math.cos(p.angle) * reach}px, ${at.y + Math.sin(p.angle) * reach}px) scale(${style === 'steam' ? 1.8 : 0.2})`, opacity: 0 },
                 ],
-                { duration: (360 + Math.random() * 220) / rate(), easing: 'ease-out' },
+                { duration: p.duration / rate(), easing: 'ease-out' },
             ).finished.catch(() => {}).then(() => spark.remove());
         }
     }
@@ -209,7 +267,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             await bolt.done;
             if (stale(mine)) return;
             bolt.node.remove();
-            burst(bodyPoint(enemyNode), ELEMENT[event.player].color, { size: 1.1 });
+            burst(bodyPoint(enemyNode), ELEMENT[event.player].color, { size: 1.1, sparks: 10 });
             enemyNode.classList.add('hurt');
             shake(false);
             land();
@@ -248,7 +306,13 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         const loserBolt = victim === enemyNode ? enemyBolt : playerBolt;
         const winnerElement = victim === enemyNode ? event.player : event.enemy;
 
-        burst(meet, ELEMENT[winnerElement].color, { size: isSuper ? 1.4 : 1 });
+        const loserElement = victim === enemyNode ? event.enemy : event.player;
+        const style = impactStyle(winnerElement, loserElement);
+        burst(meet, ELEMENT[winnerElement].color, {
+            size: isSuper ? 1.4 : 1,
+            sparks: style === 'steam' ? 12 : 10,
+            style,
+        });
         loserBolt.node.remove();
         tone(ELEMENT[winnerElement].tone * 1.5, 80);
         await wait(T.meet);
@@ -269,7 +333,11 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         if (stale(mine)) return;
         winnerBolt.node.remove();
 
-        burst(target, ELEMENT[winnerElement].color, { size: critical ? 1.5 : 1.1, sparks: critical ? 14 : 8 });
+        burst(target, ELEMENT[winnerElement].color, {
+            size: critical ? 1.5 : 1.1,
+            sparks: critical ? 14 : 8,
+            style,
+        });
         victim.classList.add('hurt');
         shake(critical);
         land();

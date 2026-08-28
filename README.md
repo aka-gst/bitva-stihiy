@@ -83,7 +83,7 @@ a list of events; the animation simply replays that list.
 | `src/ai.js` | Opponent behaviour: signature, baits, pattern and rhythm reading |
 | `src/campaign.js` | Five tower tiers and their text |
 | `src/modes.js` | Free-fight modes |
-| `src/arena.js` | Mages and the spell-exchange animation |
+| `src/arena.js` | Mages, arena atmosphere, and the spell-exchange animation |
 | `src/mage.js` | Mage artwork (SVG) |
 | `src/ui.js` | Interface rendering and the tutorial screen |
 | `src/main.js` | Wiring: screens, story flow, battle loop |
@@ -134,7 +134,7 @@ This is a playable prototype, not a finished commercial game.
 
 - asynchronous link-based multiplayer on top of the now-stable rules;
 - live playtests to validate the balance model;
-- richer arena art and per-element impact effects.
+- character progression and cosmetic variety between fighters.
 
 ## License
 
