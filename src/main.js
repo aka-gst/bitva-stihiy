@@ -416,8 +416,12 @@ function paintCombo() {
     const found = findCombo(app.seq);
     dom.comboTag.classList.toggle('armed', Boolean(found));
     if (!found) {
-        dom.comboTag.textContent = app.seq.length >= 3 ? '' : '';
-        dom.comboTag.replaceChildren();
+        // Пустая подсказка означала, что об узорах игрок узнаёт только случайно.
+        const hint = document.createElement('i');
+        hint.textContent = app.seq.length < 3
+            ? 'три подряд складываются в узор'
+            : 'узора нет — три подряд дают ВАЛ, ПРОБОЙ или ПРИЗМУ';
+        dom.comboTag.replaceChildren(hint);
         return;
     }
     found.slots.forEach((i) => app.playerSlots[i]?.classList.add('in-combo'));
