@@ -231,7 +231,16 @@ button:disabled { cursor: default; }
              max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
 }
 
-.hud { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+/* Сайт кладёт поверх игры фиксированную кнопку «НА ГЛАВНУЮ» в правом верхнем
+   углу (~96×34 плюс отступ). Без запаса она накрывает имя и здоровье
+   противника — держим для неё место. */
+.hud {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    padding-right: 108px;
+}
 .hud-side { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: center; }
 .hud-side--enemy { direction: rtl; }
 .hud-side--enemy > * { direction: ltr; }
@@ -326,7 +335,7 @@ button:disabled { cursor: default; }
 .fighter {
     position: absolute;
     bottom: 8%;
-    width: clamp(108px, 24%, 208px);
+    width: clamp(108px, 24%, 300px);
     aspect-ratio: 3 / 4;
     transition: transform 0.24s ease, filter 0.24s ease;
 }
@@ -727,11 +736,14 @@ button:disabled { cursor: default; }
     .battle-layout { grid-template-columns: minmax(0, 1fr); }
     .side { display: none; }
     .stage { grid-template-rows: minmax(120px, 1fr) auto; }
-    /* На телефоне центральный блок съедал полоски здоровья — разносим по строкам. */
+    /* На телефоне центральный блок съедал полоски здоровья — разносим по строкам.
+       Кнопку сайта здесь обходим сверху, а не сбоку: ширины и так мало. */
     .hud {
         grid-template-columns: 1fr 1fr;
         grid-template-areas: 'center center' 'player enemy';
         gap: 4px 10px;
+        padding-right: 0;
+        padding-top: 38px;
     }
     .hud-center { grid-area: center; }
     .hud-side--player { grid-area: player; }
@@ -763,6 +775,7 @@ button:disabled { cursor: default; }
 
 @media (max-height: 620px) and (orientation: landscape) {
     .screen--battle { gap: 6px; padding: 6px; }
+    .hud { padding-right: 92px; padding-top: 0; }
     .hud-name, .hud-tier { font-size: 9px; }
     .hp-num { font-size: 22px; }
     .fighter { width: clamp(70px, 15%, 110px); }
