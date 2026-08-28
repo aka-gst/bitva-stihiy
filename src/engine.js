@@ -7,7 +7,7 @@
  */
 
 import { ELEMENTS, beats, clashPhrase, roleOf } from './rules.js';
-import { findCombo } from './combos.js';
+import { findCombo, overheatOf } from './combos.js';
 
 export const DEFAULT_HP = 10;
 export const DEFAULT_SLOTS = 5;
@@ -109,6 +109,7 @@ export function resolveRound(state, playerSeq, enemySeq) {
 
     // Комбо известно до раунда: это форма цепочки, которую игрок собрал сам.
     const combo = findCombo(playerSeq);
+    const overheat = overheatOf(playerSeq);
     let comboWins = 0;
     if (combo) next.comboSlots = [...state.comboSlots, combo.slots].slice(-SUPER_MEMORY);
 
@@ -194,6 +195,25 @@ export function resolveRound(state, playerSeq, enemySeq) {
 
     if (next.hp.enemy <= 0) next.outcome = 'player';
     else if (next.hp.player <= 0) next.outcome = 'enemy';
+
+    // Перегрев считается по всей цепочке и бьёт после обменов: сначала игрок
+    // видит, что его ходы сделали, потом получает отдачу за жадность.
+    if (overheat && !next.outcome && next.hp.player > 0) {
+        next.hp.player = Math.max(0, next.hp.player - overheat.damage);
+        dealt.player += overheat.damage;
+        events.push({
+            type: 'overheat',
+            element: overheat.element,
+            count: overheat.count,
+            damage: overheat.damage,
+            hp: { ...next.hp },
+            phrase: `Перегрев: ${overheat.count} одинаковых в цепочке — отдача бьёт по тебе`,
+        });
+        if (next.hp.player <= 0) {
+            next.outcome = 'enemy';
+            events.push({ type: 'ko', winner: 'enemy', hp: { ...next.hp } });
+        }
+    }
 
     delete next.stunBudget;
     if (enemyShown.some(Boolean)) {

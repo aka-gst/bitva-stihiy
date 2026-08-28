@@ -12,7 +12,7 @@
 import { armSuper, canArmSuper, createBattle, resolveRound } from '../src/engine.js';
 import { planEnemyRound, signatureAt } from '../src/ai.js';
 import { counterTo, elementForRole, ELEMENTS } from '../src/rules.js';
-import { findCombo } from '../src/combos.js';
+import { findCombo, overheatOf } from '../src/combos.js';
 import { makeRng } from '../src/rng.js';
 import { CAMPAIGN, healAfterWin, PLAYER_MAX_HP } from '../src/campaign.js';
 
@@ -128,10 +128,12 @@ function fight(opponent, name, rng, { playerHp = PLAYER_MAX_HP, charge = 0, useS
     let supers = 0;
     let combos = 0;
     let fired = 0;
+    let overheats = 0;
 
     while (!st.outcome && rounds < 40) {
         const chain = strategy.chain(st, rng);
         if (findCombo(chain)) combos += 1;
+        if (overheatOf(chain)) overheats += 1;
         // Заряд тратится до планирования противника: он видит пылающий посох.
         if (useSuper && canArmSuper(st)) {
             const slot = strategy.superSlot(st, rng, chain);
@@ -142,7 +144,7 @@ function fight(opponent, name, rng, { playerHp = PLAYER_MAX_HP, charge = 0, useS
         st = out.state;
         rounds += 1;
     }
-    return { won: st.outcome === 'player', hp: st.hp.player, charge: st.charge, rounds, supers, combos, fired };
+    return { won: st.outcome === 'player', hp: st.hp.player, charge: st.charge, rounds, supers, combos, fired, overheats };
 }
 
 const RUNS = 3000;
@@ -152,20 +154,22 @@ for (const name of Object.keys(STRATEGIES)) {
     console.log(`\n=== ${name} ===`);
     for (const opponent of CAMPAIGN) {
         const rng = makeRng(1234);
-        let wins = 0, hpSum = 0, roundSum = 0, comboSum = 0, firedSum = 0;
+        let wins = 0, hpSum = 0, roundSum = 0, comboSum = 0, firedSum = 0, hotSum = 0;
         for (let i = 0; i < RUNS; i += 1) {
             const r = fight(opponent, name, rng);
             if (r.won) { wins += 1; hpSum += r.hp; }
             roundSum += r.rounds;
             comboSum += r.combos;
             firedSum += r.fired;
+            hotSum += r.overheats;
         }
         console.log(
             `${opponent.tier.padEnd(8)} ${opponent.name.padEnd(16)} победа ${pct(wins / RUNS)}` +
             ` · HP при победе ${wins ? (hpSum / wins).toFixed(1) : '—'}` +
             ` · раундов ${(roundSum / RUNS).toFixed(1)}` +
             ` · узоров ${(comboSum / RUNS).toFixed(1)}` +
-            ` · сработало ${comboSum ? pct(firedSum / comboSum) : '—'}`,
+            ` · сработало ${comboSum ? pct(firedSum / comboSum) : '—'}` +
+            ` · перегревов ${(hotSum / RUNS).toFixed(2)}`,
         );
     }
 }

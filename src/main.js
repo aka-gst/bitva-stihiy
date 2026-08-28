@@ -8,7 +8,7 @@
 import { ELEMENT, ELEMENTS } from './rules.js';
 import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from './engine.js';
 import { planEnemyRound } from './ai.js';
-import { COMBO_LIST, findCombo } from './combos.js';
+import { COMBO_LIST, findCombo, overheatOf } from './combos.js';
 import { makeRng, pick } from './rng.js';
 import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';
 import {
@@ -469,6 +469,12 @@ function castElement(id) {
         paintAll();
     }
     paintCombo();
+    // Вспышка стихии на самой кнопке: удар должен чувствоваться в пальце,
+    // а не только на арене.
+    const button = document.querySelector(`.cast[data-element="${id}"]`);
+    button?.classList.remove('struck');
+    void button?.offsetWidth;
+    button?.classList.add('struck');
     arena.setPlayerElement(id);
     tone(ELEMENT[id].tone, 55);
     haptic(8);
@@ -518,8 +524,26 @@ function useSuper() {
  * цепочку: узор — это решение, а не сюрприз по итогам раунда.
  */
 function paintCombo() {
-    app.playerSlots.forEach((slot) => slot.classList.remove('in-combo'));
+    app.playerSlots.forEach((slot) => slot.classList.remove('in-combo', 'overheating'));
     const found = findCombo(app.seq);
+    const hot = overheatOf(app.seq);
+
+    // Перегрев важнее узора: он уже случится, а узор ещё надо выиграть.
+    if (hot) {
+        app.seq.forEach((element, i) => {
+            if (element === hot.element) app.playerSlots[i]?.classList.add('overheating');
+        });
+        dom.comboTag.classList.remove('armed');
+        dom.comboTag.classList.add('hot');
+        const name = document.createElement('b');
+        name.textContent = 'ПЕРЕГРЕВ';
+        const why = document.createElement('i');
+        why.textContent = `${hot.count} одинаковых — отдача ${hot.damage} по тебе`;
+        dom.comboTag.replaceChildren(name, why);
+        return;
+    }
+    dom.comboTag.classList.remove('hot');
+
     dom.comboTag.classList.toggle('armed', Boolean(found));
     if (!found) {
         // Пустая подсказка означала, что об узорах игрок узнаёт только случайно.
@@ -663,6 +687,13 @@ async function playEvents(events, plan) {
                 paintAll({ hp: event.hp, charge: app.battle.charge });
                 await arena.playCombo(event);
             }
+        } else if (event.type === 'overheat') {
+            for (const [i, element] of app.seq.entries()) {
+                if (element === event.element) app.playerSlots[i]?.classList.add('overheating');
+            }
+            pushLog(dom.log, `${event.phrase} −${event.damage}`, 'enemy');
+            paintAll({ hp: event.hp, charge: app.battle.charge });
+            await arena.playOverheat(event);
         } else if (event.type === 'ko') {
             await arena.playKo(event.winner);
         } else if (event.type === 'round-end') {

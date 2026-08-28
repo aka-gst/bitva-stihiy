@@ -30,8 +30,14 @@ test("объяснения соответствуют заявленным пр�
     assert.equal(reasonFor("fire", "wind"), "Огонь раздувается на ветру");
 });
 
+// Пять одинаковых теперь перегревают цепочку, поэтому в проверках, где
+// перегрев ни при чём, берём не больше трёх одинаковых.
+const cool = (a, b) => [a, a, a, b, b];
+
 test("одинаковые стихии гасят друг друга без урона", () => {
-    const { state, events } = resolveRound(battle(), seq("fire"), plan("fire"));
+    const chain = cool("fire", "water");
+    const enemy = chain.map((element) => cast(element));
+    const { state, events } = resolveRound(battle(), chain, enemy);
     assert.deepEqual(state.hp, { player: 10, enemy: 10 });
     assert.ok(clashes(events).every((c) => c.outcome === "draw" && c.damage === 0));
 });
@@ -104,9 +110,10 @@ test("суперудар тратится на назначенном слоте
 
 test("сорванный суперудар бьёт по игроку", () => {
     const armed = armSuper({ ...battle(), charge: CHARGE_COST });
-    const { state, events } = resolveRound(armed, seq("fire"), plan("water"));
+    const { state, events } = resolveRound(armed, cool("fire", "water"), plan("water"));
     assert.equal(clashes(events)[0].outcome, "super-fail");
-    assert.equal(state.hp.player, 10 - 2 - 4, "сорванный супер стоит 2, остальные четыре хода — по 1");
+    // Супер −2, два проигранных огня по −1, две ничьи водой.
+    assert.equal(state.hp.player, 10 - 2 - 2);
 });
 
 test("суперудар нельзя взвести без полного заряда", () => {
@@ -160,8 +167,9 @@ test("режим фехтования разыгрывает ровно один
 });
 
 test("итог раунда содержит суммарный урон по обеим сторонам", () => {
-    const enemy = [cast("fire"), cast("wind"), cast("fire"), cast("wind"), cast("fire")];
-    const { events } = resolveRound(battle(), seq("water"), enemy);
+    const chain = ["water", "water", "wind", "wind", "water"];
+    const enemy = [cast("fire"), cast("fire"), cast("water"), cast("fire"), cast("wind")];
+    const { events } = resolveRound(battle(), chain, enemy);
     const end = events.at(-1);
     assert.equal(end.type, "round-end");
     assert.deepEqual(end.dealt, { player: 2, enemy: 3 });
@@ -209,11 +217,52 @@ test("оглушённый противник не попадает в набл�
 
 test("суперудар против такой же стихии гаснет, а не бьёт по игроку", () => {
     const armed = armSuper({ ...battle(), charge: CHARGE_COST }, 0);
-    const { state, events } = resolveRound(armed, seq("fire"), plan("fire"));
+    const chain = cool("fire", "water");
+    const { state, events } = resolveRound(armed, chain, chain.map((e) => cast(e)));
     const first = clashes(events)[0];
     assert.equal(first.outcome, "super-fizzle");
     assert.equal(first.damage, 0);
     assert.equal(first.target, null);
     assert.equal(state.hp.player, 10, "верная догадка не должна наказываться");
     assert.equal(state.hp.enemy, 10);
+});
+
+test("больше трёх одинаковых в цепочке бьют по самому игроку", () => {
+    const enemy = Array(5).fill(null).map(() => cast("wind"));
+
+    // Ровно три — это ВАЛ, сильнейший узор. Отдачи нет.
+    const three = resolveRound(battle(), ["fire", "fire", "fire", "water", "wind"], enemy);
+    assert.equal(three.events.filter((e) => e.type === "overheat").length, 0);
+
+    // Четвёртая такая же в той же пятёрке превращает жадность в отдачу.
+    const four = resolveRound(battle(), ["fire", "fire", "fire", "fire", "water"], enemy);
+    const hot = four.events.find((e) => e.type === "overheat");
+    assert.ok(hot, "четыре одинаковых должны перегревать");
+    assert.equal(hot.element, "fire");
+    assert.equal(hot.count, 4);
+    assert.ok(hot.damage > 0);
+
+    // Пять одинаковых стоят дороже четырёх.
+    const five = resolveRound(battle(), Array(5).fill("fire"), enemy);
+    assert.ok(five.events.find((e) => e.type === "overheat").damage > hot.damage);
+});
+
+test("перегрев считается по всей цепочке, а не только подряд", () => {
+    const enemy = Array(5).fill(null).map(() => cast("wind"));
+    const scattered = resolveRound(battle(), ["fire", "water", "fire", "water", "fire"], enemy);
+    assert.equal(scattered.events.filter((e) => e.type === "overheat").length, 0,
+        "три вразбивку — ещё не перегрев");
+
+    const four = resolveRound(battle(), ["fire", "water", "fire", "fire", "fire"], enemy);
+    assert.ok(four.events.find((e) => e.type === "overheat"), "четыре вразбивку — уже перегрев");
+});
+
+test("перегрев может добить и засчитывается в урон раунда", () => {
+    const low = { ...battle(), hp: { player: 2, enemy: 10 }, maxHp: { player: 14, enemy: 10 } };
+    const enemy = Array(5).fill(null).map(() => cast("wind"));
+    const { state, events } = resolveRound(low, Array(5).fill("fire"), enemy);
+    assert.equal(state.hp.player, 0);
+    assert.equal(state.outcome, "enemy");
+    assert.equal(events.at(-1).type, "round-end");
+    assert.ok(events.at(-1).dealt.player >= 4, "отдача попадает в итог раунда");
 });

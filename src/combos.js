@@ -88,3 +88,29 @@ export function previewCombo(chain, slots) {
     if (filled.length < COMBO_LENGTH) return null;
     return findCombo(chain.slice(0, Math.min(chain.length, slots)));
 }
+
+/**
+ * Перегрев: больше трёх одинаковых стихий в цепочке бьют по самому магу.
+ *
+ * Это граница, а не наказание за повтор вообще. Ровно три одинаковых подряд —
+ * это ВАЛ, самый сильный узор в игре. Четвёртая такая же в той же пятёрке
+ * превращает его в отдачу. Так у жадности появляется точная цена, а у
+ * «поставлю все пять одинаковых» — предел, который виден заранее.
+ */
+export const OVERHEAT_FROM = 4;
+
+const OVERHEAT_DAMAGE = { 4: 2, 5: 4 };
+
+/**
+ * @param {string[]} chain
+ * @returns {{element: string, count: number, damage: number}|null}
+ */
+export function overheatOf(chain) {
+    const counts = {};
+    for (const move of chain) {
+        if (move) counts[move] = (counts[move] ?? 0) + 1;
+    }
+    const [element, count] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? [];
+    if (!element || count < OVERHEAT_FROM) return null;
+    return { element, count, damage: OVERHEAT_DAMAGE[count] ?? OVERHEAT_DAMAGE[5] };
+}

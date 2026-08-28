@@ -61,7 +61,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         resetPoses();
         fxLayer.replaceChildren();
         hideCaption();
-        spawnMotes();
+        spawnMotes(enemyElement);
     }
 
     const tint = (element, alpha) => {
@@ -70,16 +70,24 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     };
 
-    /** Медленные пылинки в воздухе — арена не выглядит замершей. */
-    function spawnMotes() {
+    /**
+     * Воздух арены под стихию противника: угли поднимаются рывками, капли
+     * оседают ровно, ветер тянет поперёк. Одни и те же пылинки для всех
+     * противников делали арену безразличной к тому, кто в ней дерётся.
+     */
+    function spawnMotes(element) {
         root.querySelectorAll('.mote').forEach((node) => node.remove());
-        for (let i = 0; i < 9; i += 1) {
+        root.dataset.air = element;
+        const count = element === 'wind' ? 14 : 10;
+        for (let i = 0; i < count; i += 1) {
             const mote = document.createElement('div');
             mote.className = 'mote';
-            mote.style.left = `${6 + Math.random() * 88}%`;
-            mote.style.bottom = `${4 + Math.random() * 30}%`;
-            mote.style.animationDuration = `${7 + Math.random() * 7}s`;
-            mote.style.animationDelay = `${-Math.random() * 10}s`;
+            mote.style.left = `${4 + Math.random() * 92}%`;
+            mote.style.bottom = `${2 + Math.random() * 34}%`;
+            const base = element === 'fire' ? 4 : element === 'wind' ? 3 : 9;
+            mote.style.animationDuration = `${base + Math.random() * base}s`;
+            mote.style.animationDelay = `${-Math.random() * 12}s`;
+            mote.style.setProperty('--drift', `${(Math.random() - 0.5) * 60}px`);
             root.prepend(mote);  // позади бойцов и подписей
         }
     }
@@ -201,6 +209,12 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         ).finished.catch(() => {}).then(() => pop.remove());
     }
 
+    /**
+     * Тряска — знак события, а не украшение удара. Раньше она случалась на
+     * каждом обмене, то есть пять раз за раунд плюс ничьи: экран не
+     * останавливался, и сильные моменты переставали читаться как сильные.
+     * Теперь трясёт только там, где произошло что-то весомое.
+     */
     function shake(hard) {
         const cls = hard ? 'shake-hard' : 'shake';
         root.classList.remove('shake', 'shake-hard');
@@ -269,7 +283,6 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             bolt.node.remove();
             burst(bodyPoint(enemyNode), ELEMENT[event.player].color, { size: 1.1, sparks: 10 });
             enemyNode.classList.add('hurt');
-            shake(false);
             land();
             damagePop(bodyPoint(enemyNode), event.damage, false);
             showCaption(event.phrase);
@@ -294,7 +307,6 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             playerBolt.node.remove();
             enemyBolt.node.remove();
             tone(150, 90, { type: 'triangle' });
-            shake(false);
             land();
             await wait(T.meet + T.recover);
             if (stale(mine)) return;
@@ -339,7 +351,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             style,
         });
         victim.classList.add('hurt');
-        shake(critical);
+        if (critical) shake(false);
         land();
         damagePop(target, event.damage, critical);
         haptic(critical ? [22, 20, 34] : 14);
@@ -371,13 +383,35 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         if (event.damage) {
             enemyNode.classList.add('hurt');
             damagePop(target, event.damage, true);
-            shake(true);
+            shake(false);
         }
         sweep(260, 900, 380);
         haptic([24, 18, 34]);
         await wait(T.meet + T.recover);
         if (stale(mine)) return;
         enemyNode.classList.remove('hurt');
+        hideCaption();
+    }
+
+    /** Отдача за перегрев: бьёт по своему магу его же стихией. */
+    async function playOverheat(event) {
+        speed = pendingSpeed;
+        const mine = generation;
+        if (instant()) return;
+
+        showCaption(event.phrase);
+        const at = bodyPoint(playerNode);
+        burst(at, ELEMENT[event.element]?.color ?? '#f87171', {
+            size: 1.6, sparks: 14, style: impactStyle(event.element, 'wind'),
+        });
+        playerNode.classList.add('hurt');
+        damagePop(at, event.damage, true);
+        shake(false);
+        sweep(520, 120, 320);
+        haptic([30, 20, 40]);
+        await wait(T.meet + T.recover);
+        if (stale(mine)) return;
+        playerNode.classList.remove('hurt');
         hideCaption();
     }
 
@@ -407,6 +441,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         abort,
         playClash,
         playCombo,
+        playOverheat,
         playKo,
         hideCaption,
     };
