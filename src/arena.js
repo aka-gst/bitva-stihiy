@@ -9,7 +9,7 @@
 
 import { ELEMENT } from './rules.js';
 import { haptic, sweep, tone } from './audio.js';
-import { mageSvg } from './mage.js';
+import { applyPose, fighterSvg, pickAttack } from './fighter.js';
 
 /** Длительности при нормальной скорости, мс. */
 const T = {
@@ -38,6 +38,8 @@ const ENEMY_WINS = new Set(['lose', 'crit', 'super-fail']);
 export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
     // Скорость фиксируется на время одного столкновения: смена настройки
     // посреди анимации иначе делит длительность на ноль и подвешивает бой.
+    // Помним последний удар каждого, чтобы следующий был другим.
+    let lastAttack = { player: null, enemy: null };
     let speed = 1;
     let pendingSpeed = 1;
     let busy = false;
@@ -53,8 +55,11 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
 
     function mount({ playerElement = 'water', enemyElement = 'fire' } = {}) {
         abort();
-        playerNode.innerHTML = mageSvg({ element: playerElement, side: 'player' });
-        enemyNode.innerHTML = mageSvg({ element: enemyElement, side: 'enemy' });
+        playerNode.innerHTML = fighterSvg({ element: playerElement, side: 'player' });
+        enemyNode.innerHTML = fighterSvg({ element: enemyElement, side: 'enemy' });
+        applyPose(playerNode, 'idle');
+        applyPose(enemyNode, 'idle');
+        lastAttack = { player: null, enemy: null };
         // Зал подсвечивается стихией противника — бой узнаётся с первого взгляда.
         root.style.setProperty('--enemy-glow', tint(enemyElement, 0.16));
         root.style.setProperty('--player-glow', tint(playerElement, 0.12));
@@ -94,15 +99,32 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
 
     function resetPoses() {
         for (const node of [playerNode, enemyNode]) {
-            node.classList.remove('casting', 'hurt', 'stunned', 'down', 'victor');
+            node.classList.remove('casting', 'hurt', 'stunned', 'down', 'victor', 'striking');
+            applyPose(node, 'idle');
         }
     }
 
-    /** Орб на посохе показывает стихию, которую маг держит наготове. */
+    /** Разный удар на одно и то же действие: повтор позы утомляет глаз. */
+    function strike(node, who) {
+        const pose = pickAttack(lastAttack[who]);
+        lastAttack[who] = pose;
+        node.classList.add('striking');
+        applyPose(node, pose);
+        return pose;
+    }
+
+    const settle = (node, pose) => {
+        node.classList.remove('striking');
+        applyPose(node, pose);
+    };
+
+    /** Глаза и пояс горят стихией, которую боец держит наготове. */
     function setOrb(node, element) {
         const color = ELEMENT[element]?.color;
         if (!color) return;
-        node.querySelectorAll('.staff-orb, .eye').forEach((el) => { el.style.fill = color; });
+        node.querySelectorAll('.eye, .belt, .band, .band-tail').forEach((el) => {
+            el.style[el.tagName === 'path' ? 'stroke' : 'fill'] = color;
+        });
     }
 
     const point = (el, yShare = 0.5) => {
@@ -114,9 +136,10 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         };
     };
 
+    // Заклинание вылетает из кулака передней руки — оттуда, где удар.
     const orbPoint = (node) => {
-        const orb = node.querySelector('.staff-orb');
-        return orb ? point(orb) : point(node, 0.2);
+        const fist = node.querySelector('.arm-front .fist');
+        return fist ? point(fist) : point(node, 0.35);
     };
     const bodyPoint = (node) => point(node, 0.42);
 
@@ -259,16 +282,20 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         // 1. Замах: оба поднимают посохи, орбы загораются выбранной стихией.
         setOrb(playerNode, event.player);
         playerNode.classList.add('casting');
+        strike(playerNode, 'player');
         tone(ELEMENT[event.player].tone, 70);
         if (event.enemy) {
             setOrb(enemyNode, event.enemy);
             enemyNode.classList.add('casting');
+            strike(enemyNode, 'enemy');
         }
         if (isSuper) sweep(220, 720, 240);
         await wait(T.windup);
         if (stale(mine)) return;
         playerNode.classList.remove('casting');
         enemyNode.classList.remove('casting');
+        settle(playerNode, 'guard');
+        settle(enemyNode, 'guard');
 
         const from = orbPoint(playerNode);
         const enemyFrom = orbPoint(enemyNode);
@@ -283,6 +310,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             bolt.node.remove();
             burst(bodyPoint(enemyNode), ELEMENT[event.player].color, { size: 1.1, sparks: 10 });
             enemyNode.classList.add('hurt');
+            applyPose(enemyNode, 'hurt');
             land();
             damagePop(bodyPoint(enemyNode), event.damage, false);
             showCaption(event.phrase);
@@ -291,6 +319,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             await wait(T.meet + T.recover);
             if (stale(mine)) return;
             enemyNode.classList.remove('hurt', 'stunned');
+            applyPose(enemyNode, 'guard');
             hideCaption();
             return;
         }
@@ -351,6 +380,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             style,
         });
         victim.classList.add('hurt');
+        applyPose(victim, 'hurt');
         if (critical) shake(false);
         land();
         damagePop(target, event.damage, critical);
@@ -364,6 +394,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         await wait(T.recover);
         if (stale(mine)) return;
         victim.classList.remove('hurt');
+        applyPose(victim, 'guard');
         hideCaption();
     }
 
@@ -405,6 +436,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             size: 1.6, sparks: 14, style: impactStyle(event.element, 'wind'),
         });
         playerNode.classList.add('hurt');
+        applyPose(playerNode, 'hurt');
         damagePop(at, event.damage, true);
         shake(false);
         sweep(520, 120, 320);
@@ -412,6 +444,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         await wait(T.meet + T.recover);
         if (stale(mine)) return;
         playerNode.classList.remove('hurt');
+        applyPose(playerNode, 'guard');
         hideCaption();
     }
 
@@ -423,6 +456,8 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         loser.classList.remove('hurt', 'stunned');
         loser.classList.add('down');
         victor.classList.add('victor');
+        applyPose(loser, 'down');
+        applyPose(victor, 'win');
         burst(bodyPoint(loser), winner === 'player' ? '#34d399' : '#f87171', { size: 2, sparks: 18 });
         shake(true);
         sweep(winner === 'player' ? 260 : 420, winner === 'player' ? 880 : 130, 420);

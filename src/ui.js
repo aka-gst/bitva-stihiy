@@ -2,7 +2,8 @@
 
 import { ELEMENT, ELEMENTS, WHEEL } from './rules.js';
 import { COMBO_LIST } from './combos.js';
-import { mageSvg } from './mage.js';
+import { elementGlyph } from './glyphs.js';
+import { fighterSvg, applyPose } from './fighter.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -50,8 +51,10 @@ export function renderCastRow(node, onCast) {
             const button = el('button', 'cast');
             button.dataset.element = id;
             button.type = 'button';
+            const glyph = el('span', 'cast-glyph');
+            glyph.insertAdjacentHTML('afterbegin', elementGlyph(id));
             button.append(
-                el('span', 'cast-glyph', info.glyph),
+                glyph,
                 (() => {
                     const text = el('span', 'cast-text');
                     text.append(
@@ -356,10 +359,11 @@ export function renderModes(node, modes, order, onPick) {
     );
 }
 
-/** Портрет мага на сюжетном экране. */
+/** Портрет бойца на сюжетном экране — в боевой стойке, а не столбом. */
 export function renderPortrait(node, element, side) {
     node.replaceChildren();
-    node.insertAdjacentHTML('afterbegin', mageSvg({ element, side }));
+    node.insertAdjacentHTML('afterbegin', fighterSvg({ element, side }));
+    applyPose(node, 'guard');
 }
 
 /* ─────────────── Сюжетный трек ─────────────── */

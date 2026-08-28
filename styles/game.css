@@ -202,8 +202,19 @@ button:disabled { cursor: default; }
 
 .story { gap: 10px; }
 .story-tier { font-size: 11px; letter-spacing: 0.22em; color: var(--dim); font-weight: 700; }
-.story-portrait { width: 128px; height: 168px; }
-.story-portrait svg { width: 100%; height: 100%; }
+.story-portrait { width: 148px; height: 190px; }
+.story-portrait svg { width: 100%; height: 100%; overflow: visible; }
+.story-portrait .fig g { transform-box: view-box; }
+.story-portrait .torso { transform-origin: 58px 98px; transform: rotate(var(--torso, 0deg)); }
+.story-portrait .head { transform-origin: 58px 58px; transform: rotate(var(--head, 0deg)); }
+.story-portrait .arm-back { transform-origin: 58px 62px; transform: rotate(var(--armBack, 0deg)); }
+.story-portrait .fore-back { transform-origin: 58px 88px; transform: rotate(var(--foreBack, 0deg)); }
+.story-portrait .arm-front { transform-origin: 58px 62px; transform: rotate(var(--armFront, 0deg)); }
+.story-portrait .fore-front { transform-origin: 58px 88px; transform: rotate(var(--foreFront, 0deg)); }
+.story-portrait .leg-back { transform-origin: 58px 96px; transform: rotate(var(--legBack, 0deg)); }
+.story-portrait .shin-back { transform-origin: 58px 128px; transform: rotate(var(--shinBack, 0deg)); }
+.story-portrait .leg-front { transform-origin: 58px 96px; transform: rotate(var(--legFront, 0deg)); }
+.story-portrait .shin-front { transform-origin: 58px 128px; transform: rotate(var(--shinFront, 0deg)); }
 .story-text {
     margin: 0; max-width: 44ch; color: var(--text); font-size: 15px; line-height: 1.6;
     font-style: italic;
@@ -489,6 +500,33 @@ button:disabled { cursor: default; }
     background: #0c1424; border: 1px solid var(--line-soft); border-radius: 4px;
 }
 
+
+/* ─────────────────────────── БОЕЦ: СУСТАВЫ ─────────────────────────── */
+
+/* Скелет: каждая группа поворачивается на свой угол из переменной, а переход
+   между позами делает браузер. Поза задаётся десятью числами, а не новой
+   графикой, поэтому одно действие можно показать разными ударами. */
+.fighter .fig g {
+    transform-box: view-box;
+    transition: transform 0.17s cubic-bezier(.3, .8, .4, 1);
+}
+.fighter .torso { transform-origin: 58px 98px; transform: rotate(var(--torso, 0deg)); }
+.fighter .head { transform-origin: 58px 58px; transform: rotate(var(--head, 0deg)); }
+.fighter .arm-back { transform-origin: 58px 62px; transform: rotate(var(--armBack, 0deg)); }
+.fighter .fore-back { transform-origin: 58px 88px; transform: rotate(var(--foreBack, 0deg)); }
+.fighter .arm-front { transform-origin: 58px 62px; transform: rotate(var(--armFront, 0deg)); }
+.fighter .fore-front { transform-origin: 58px 88px; transform: rotate(var(--foreFront, 0deg)); }
+.fighter .leg-back { transform-origin: 58px 96px; transform: rotate(var(--legBack, 0deg)); }
+.fighter .shin-back { transform-origin: 58px 128px; transform: rotate(var(--shinBack, 0deg)); }
+.fighter .leg-front { transform-origin: 58px 96px; transform: rotate(var(--legFront, 0deg)); }
+.fighter .shin-front { transform-origin: 58px 128px; transform: rotate(var(--shinFront, 0deg)); }
+
+/* Удар должен доходить быстрее, чем возврат: так он читается как удар. */
+.fighter.striking .fig g { transition-duration: 0.09s; }
+
+.fighter .eye { filter: drop-shadow(0 0 5px currentColor); }
+.fighter .fig { transition: transform 0.18s ease; }
+
 /* ─────────────────────────── ДОСКА, СЛОТЫ, КНОПКИ ─────────────────────────── */
 
 .board {
@@ -628,7 +666,30 @@ button:disabled { cursor: default; }
     border-radius: 10px;
     transition: transform 0.12s, border-color 0.18s, background 0.18s;
 }
-.cast-glyph { position: relative; font-size: 30px; line-height: 1; }
+/* Знак сидит в тёмной шайбе с сотами — как неоновая вывеска в корпусе. */
+.cast-glyph {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background:
+        repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.03) 0deg 6deg, transparent 6deg 12deg),
+        radial-gradient(circle at 50% 40%, #171d29, #05070c 72%);
+    border: 2px solid #0a0e16;
+    box-shadow:
+        inset 0 0 12px rgba(0, 0, 0, 0.9),
+        0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 4px 10px rgba(0, 0, 0, 0.5);
+}
+.cast-glyph .glyph { width: 76%; height: 76%; overflow: visible; }
+.cast:hover:not(:disabled) .cast-glyph { box-shadow: inset 0 0 12px rgba(0,0,0,.9), 0 0 18px var(--el), 0 4px 10px rgba(0,0,0,.5); }
+.cast.struck .cast-glyph { animation: glyph-flash 0.42s ease-out; }
+@keyframes glyph-flash {
+    0% { box-shadow: inset 0 0 12px rgba(0,0,0,.9), 0 0 34px var(--el); }
+    100% { box-shadow: inset 0 0 12px rgba(0,0,0,.9), 0 0 0 var(--el); }
+}
 .cast-text { position: relative; display: grid; text-align: left; gap: 1px; min-width: 0; }
 .cast-name { font-size: 14px; font-weight: 800; letter-spacing: 0.06em; }
 .cast-beats { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -907,9 +968,7 @@ button:disabled { cursor: default; }
     78% { transform: translate(-3px, -2px); }
 }
 
-/* Орб посоха дышит и подсвечивается выбранной стихией */
-.orb { transform-box: fill-box; transform-origin: center; animation: orb-breathe 2.6s ease-in-out infinite; }
-@keyframes orb-breathe { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+
 
 /* ─────────────────────────── АДАПТИВ ─────────────────────────── */
 
@@ -945,7 +1004,8 @@ button:disabled { cursor: default; }
     .lane-label { flex-basis: 68px; }
     .lane-label { font-size: 8px; letter-spacing: 0.04em; }
     .slot { width: clamp(46px, 13vw, 60px); }
-    .cast { grid-template-columns: 1fr; justify-items: center; gap: 3px; padding: 8px 4px; text-align: center; }
+    .cast { grid-template-columns: 1fr; justify-items: center; gap: 5px; padding: 9px 4px; text-align: center; }
+    .cast-glyph { width: 44px; height: 44px; }
     .cast-text { text-align: center; justify-items: center; }
     .cast-beats { font-size: 9px; }
     .action-row { grid-template-columns: 1fr 1.3fr 1fr; }
@@ -972,18 +1032,4 @@ button:disabled { cursor: default; }
     *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
 }
 
-/* ─────────────────────────── ПОСОХ И РУКА МАГА ─────────────────────────── */
 
-.arm { transform-box: view-box; transform-origin: 76px 58px; }
-.fighter.casting .arm { animation: arm-cast calc(0.34s / var(--speed)) ease; }
-@keyframes arm-cast {
-    0%, 100% { transform: none; }
-    45% { transform: rotate(-27deg); }
-}
-.eye { filter: drop-shadow(0 0 4px currentColor); }
-.staff-orb { transition: fill 0.25s ease; }
-.fighter.casting .staff-orb { animation: orb-flare calc(0.34s / var(--speed)) ease; }
-@keyframes orb-flare {
-    0%, 100% { r: 11; }
-    50% { r: 15; }
-}

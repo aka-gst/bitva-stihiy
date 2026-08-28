@@ -5,7 +5,7 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 const html = await readFile(new URL("index.html", root), "utf8");
 const css = await readFile(new URL("styles/game.css", root), "utf8");
-const mage = await readFile(new URL("src/mage.js", root), "utf8");
+const fighter = await readFile(new URL("src/fighter.js", root), "utf8");
 
 test("оболочка содержит все области интерфейса", () => {
     for (const id of [
@@ -213,8 +213,19 @@ test("боец ограничен и по высоте арены, а не то�
     assert.match(rule, /aspect-ratio/);
 });
 
-test("рисунок мага прижат к земле, а не к центру рамки", () => {
+test("рисунок бойца прижат к земле, а не к центру рамки", () => {
     // Когда высота упирается в потолок, рамка становится ниже пропорций
-    // рисунка. По умолчанию svg центрируется — маг всплывал бы над полом.
-    assert.match(mage, /preserveAspectRatio="xMidYMax meet"/);
+    // рисунка. По умолчанию svg центрируется — боец всплывал бы над полом.
+    assert.match(fighter, /preserveAspectRatio="xMidYMax meet"/);
+});
+
+test("у бойца есть разные удары на одно действие", async () => {
+    const { POSES, ATTACK_POSES, JOINTS } = await import(new URL("src/fighter.js", root));
+    assert.ok(ATTACK_POSES.length >= 4, "одинаковые удары подряд утомляют глаз");
+    for (const name of [...ATTACK_POSES, "idle", "guard", "hurt", "down", "win"]) {
+        assert.ok(POSES[name], `нет позы ${name}`);
+        for (const joint of Object.keys(JOINTS)) {
+            assert.equal(typeof POSES[name][joint], "number", `${name}: сустав ${joint} не задан`);
+        }
+    }
 });
