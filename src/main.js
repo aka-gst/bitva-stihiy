@@ -8,6 +8,7 @@
 import { ELEMENT, ELEMENTS } from './rules.js';
 import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from './engine.js';
 import { planEnemyRound } from './ai.js';
+import { COMBO_LIST, findCombo } from './combos.js';
 import { makeRng, pick } from './rng.js';
 import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';
 import {
@@ -40,6 +41,7 @@ const dom = {
     board: document.querySelector('.board'),
     playerSlots: $('player-slots'), enemySlots: $('enemy-slots'),
     chargeFill: $('charge-fill'), chargeLabel: $('charge-label'), charge: document.querySelector('.charge'),
+    comboTag: $('combo-tag'),
     castRow: $('cast-row'), btnUndo: $('btn-undo'), btnGo: $('btn-go'), btnSuper: $('btn-super'),
     timer: $('timer'), timerNum: $('timer-num'),
     log: $('log'), stats: $('stats'),
@@ -314,6 +316,7 @@ function beginRound() {
     clearSlots(app.enemySlots);
     arena.resetPoses();
     arena.hideCaption();
+    paintCombo();
     dom.hudRound.textContent = `РАУНД ${app.battle.round}`;
     paintIntel();
     setControlsEnabled(true);
@@ -359,6 +362,7 @@ function castElement(id) {
         markSuperSlot();
         paintAll();
     }
+    paintCombo();
     arena.setPlayerElement(id);
     tone(ELEMENT[id].tone, 55);
     haptic(8);
@@ -376,6 +380,7 @@ function undoCast() {
         paintAll();
     }
     markSuperSlot();
+    paintCombo();
     haptic(6);
 }
 
@@ -400,6 +405,28 @@ function useSuper() {
     haptic([18, 22, 30]);
     pushLog(dom.log, 'Заряд готов. Следующий выбранный жест станет суперударом — реши, в какой момент цепочки он ударит.', 'system');
     paintAll();
+}
+
+/**
+ * Подсветка складывающегося узора. Игрок должен видеть его, пока набирает
+ * цепочку: узор — это решение, а не сюрприз по итогам раунда.
+ */
+function paintCombo() {
+    app.playerSlots.forEach((slot) => slot.classList.remove('in-combo'));
+    const found = findCombo(app.seq);
+    dom.comboTag.classList.toggle('armed', Boolean(found));
+    if (!found) {
+        dom.comboTag.textContent = app.seq.length >= 3 ? '' : '';
+        dom.comboTag.replaceChildren();
+        return;
+    }
+    found.slots.forEach((i) => app.playerSlots[i]?.classList.add('in-combo'));
+    const { combo } = found;
+    const need = document.createElement('i');
+    need.textContent = `нужно побед: ${combo.needs} из 3`;
+    const name = document.createElement('b');
+    name.textContent = combo.name;
+    dom.comboTag.replaceChildren(name, need);
 }
 
 function clearSuperMark() {
@@ -512,6 +539,16 @@ async function playEvents(events, plan) {
                 state: slotStateFor(event, 'enemy'),
                 signature: plan[event.index].signature,
             });
+        } else if (event.type === 'combo') {
+            for (const i of event.slots) {
+                app.playerSlots[i]?.classList.toggle('in-combo', !event.fired);
+                if (event.fired) app.playerSlots[i]?.classList.add('combo-fired');
+            }
+            pushLog(dom.log, event.phrase, event.fired ? 'system' : 'neutral');
+            if (event.fired) {
+                paintAll({ hp: event.hp, charge: app.battle.charge });
+                await arena.playCombo(event);
+            }
         } else if (event.type === 'ko') {
             await arena.playKo(event.winner);
         } else if (event.type === 'round-end') {

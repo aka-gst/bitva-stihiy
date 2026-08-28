@@ -1,6 +1,7 @@
 /** Отрисовка интерфейса. Ничего не решает — только показывает переданные данные. */
 
 import { ELEMENT, ELEMENTS, WHEEL } from './rules.js';
+import { COMBO_LIST } from './combos.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -220,6 +221,35 @@ export const LEARN_STEPS = [
             bad.append(demoCell('fire', 'lose'), el('span', 'demo-verdict', '⚔'), demoCell('water', 'win'),
                 el('span', 'demo-verdict', 'проигрыш коронке → −2'));
             box.append(bad);
+            return box;
+        },
+    },
+    {
+        title: 'УЗОРЫ ВНУТРИ ЦЕПОЧКИ',
+        body: 'Три подряд идущих слота могут сложиться в <b>узор</b>. Он подсвечивается, пока ты набираешь, — сюрпризом не будет. Но узор срабатывает только если ты выиграл нужное число обменов внутри него: это усиление успеха, а не замена ему. Противник ломает узор одним точным ударом внутрь, а не заливкой всей цепочки.',
+        build: () => {
+            const box = el('div', 'demo-row');
+            box.style.flexDirection = 'column';
+            box.style.gap = '8px';
+            const shapes = {
+                surge: ['fire', 'fire', 'fire'],
+                pierce: ['water', 'fire', 'water'],
+                prism: ['fire', 'water', 'wind'],
+            };
+            for (const combo of COMBO_LIST) {
+                const row = el('div', 'demo-row');
+                for (const id of shapes[combo.id]) {
+                    const slot = el('div', 'slot filled in-combo', ELEMENT[id].glyph);
+                    slot.style.flex = '0 0 38px';
+                    row.append(slot);
+                }
+                const text = el('span', 'demo-verdict');
+                text.innerHTML = `<b>${combo.name}</b> — ${combo.hint}. `
+                    + (combo.damage ? `+${combo.damage} урона` : `+${combo.charge} заряда`)
+                    + `, нужно ${combo.needs} победы из 3`;
+                row.append(text);
+                box.append(row);
+            }
             return box;
         },
     },

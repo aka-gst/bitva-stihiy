@@ -148,6 +148,28 @@ export function detectSuperSlot(state, opponent) {
 }
 
 /**
+ * Где игрок привычно собирает узоры. Ломать комбо надо точечно — один сбитый
+ * обмен внутри узора, — а не заливать контр-стихией всю цепочку: второе
+ * наказывает дважды за одну ошибку и делает комбо непригодными.
+ *
+ * @returns {number|null} слот, по которому противник будет бить
+ */
+export function detectComboSlot(state, opponent) {
+    if (!opponent?.breaksCombos) return null;
+
+    const rounds = state.comboSlots ?? [];
+    if (rounds.length < (opponent.comboRounds ?? 2)) return null;
+
+    const counts = {};
+    for (const slots of rounds) {
+        for (const slot of slots) counts[slot] = (counts[slot] ?? 0) + 1;
+    }
+    const [slot, hits] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? [];
+    if (slot === undefined) return null;
+    return hits / rounds.length >= (opponent.comboThreshold ?? 0.6) ? Number(slot) : null;
+}
+
+/**
  * Замечает, что игрок методично бьёт по коронке.
  *
  * Это главный сигнал для противника: «всегда контри коронку» — очевидная
@@ -201,6 +223,10 @@ export function planEnemyRound(state, rng) {
     const defended = detectSuperSlot(state, opponent);
     if (defended !== null && defended < state.slots) punishAt.add(defended);
 
+    // Узор ломается одним точным ударом внутрь него, а не заливкой всей цепочки.
+    const broken = detectComboSlot(state, opponent);
+    if (broken !== null && broken < state.slots) punishAt.add(broken);
+
     const plan = [];
     for (let i = 0; i < state.slots; i += 1) {
         const signature = signatureAt(opponent, state, i);
@@ -233,5 +259,6 @@ export function planEnemyRound(state, rng) {
         punishing,
         rhythmSlots: [...rhythm.keys()],
         defendedSlot: defended,
+        brokenSlot: broken,
     };
 }

@@ -7,6 +7,7 @@
  */
 
 import { ELEMENTS, beats, clashPhrase, roleOf } from './rules.js';
+import { findCombo } from './combos.js';
 
 export const DEFAULT_HP = 10;
 export const DEFAULT_SLOTS = 5;
@@ -61,6 +62,9 @@ export function createBattle({
         enemyRounds: [],
         // В какие слоты игрок ставил суперудар: противник учится их защищать.
         superSlots: [],
+        // Где игрок собирал узоры: противник учится ломать их точечно,
+        // а не заливать контр-стихией всю цепочку.
+        comboSlots: [],
         superSlot: null,
         outcome: null,
     };
@@ -103,7 +107,17 @@ export function resolveRound(state, playerSeq, enemySeq) {
     const roundRoles = [];
     const enemyShown = [];
 
-    const events = [{ type: 'round-start', round: state.round, slots: state.slots }];
+    // Комбо известно до раунда: это форма цепочки, которую игрок собрал сам.
+    const combo = findCombo(playerSeq);
+    let comboWins = 0;
+    if (combo) next.comboSlots = [...state.comboSlots, combo.slots].slice(-SUPER_MEMORY);
+
+    const events = [{
+        type: 'round-start',
+        round: state.round,
+        slots: state.slots,
+        combo: combo && { id: combo.combo.id, name: combo.combo.name, slots: combo.slots, element: combo.element },
+    }];
     const dealt = { player: 0, enemy: 0 };
     next.stunBudget = MAX_STUNS_PER_ROUND;
 
@@ -143,6 +157,39 @@ export function resolveRound(state, playerSeq, enemySeq) {
         });
 
         if (next.hp.player <= 0 || next.hp.enemy <= 0) break;
+
+        // Комбо считается собранным, если игрок не потерял внутри него
+        // больше обменов, чем этот узор переживает.
+        if (combo && combo.slots.includes(index)) {
+            if (clash.target === 'enemy') comboWins += 1;
+            if (index === combo.slots.at(-1)) {
+                const fired = comboWins >= combo.combo.needs;
+                if (fired && combo.combo.damage) {
+                    next.hp.enemy = Math.max(0, next.hp.enemy - combo.combo.damage);
+                    dealt.enemy += combo.combo.damage;
+                }
+                if (fired && combo.combo.charge) {
+                    next.charge = Math.min(CHARGE_COST, next.charge + combo.combo.charge);
+                }
+                events.push({
+                    type: 'combo',
+                    id: combo.combo.id,
+                    name: combo.combo.name,
+                    element: combo.element,
+                    slots: combo.slots,
+                    fired,
+                    wins: comboWins,
+                    needs: combo.combo.needs,
+                    damage: fired ? combo.combo.damage : 0,
+                    charge: fired ? combo.combo.charge : 0,
+                    phrase: fired
+                        ? combo.combo.describe(combo.element)
+                        : `${combo.combo.name} рассыпался: нужно ${combo.combo.needs} победы внутри узора, было ${comboWins}`,
+                    hp: { ...next.hp },
+                });
+                if (next.hp.enemy <= 0) break;
+            }
+        }
     }
 
     if (next.hp.enemy <= 0) next.outcome = 'player';

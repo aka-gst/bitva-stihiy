@@ -37,8 +37,12 @@ test("одинаковые стихии гасят друг друга без у
 });
 
 test("победа над обычным жестом снимает 1 здоровья", () => {
-    const { state } = resolveRound(battle(), seq("water"), plan("fire", false));
-    assert.equal(state.hp.enemy, 5);
+    // Любая тройка подряд складывается в узор и добавит бонус, поэтому берём
+    // цепочку, где каждая тройка имеет вид AAB или ABB — такие узором не считаются.
+    const chain = ["water", "water", "wind", "wind", "water"];
+    const enemy = [cast("fire"), cast("fire"), cast("water"), cast("water"), cast("fire")];
+    const { state } = resolveRound(battle(), chain, enemy);
+    assert.equal(state.hp.enemy, 10 - 5, "каждая победа стоит ровно 1");
     assert.equal(state.hp.player, 10);
 });
 

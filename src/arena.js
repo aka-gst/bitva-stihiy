@@ -355,6 +355,32 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         hideCaption();
     }
 
+    /** Узор сложился: отдельный удар поверх обмена, чтобы его было видно. */
+    async function playCombo(event) {
+        speed = pendingSpeed;
+        const mine = generation;
+        if (instant()) return;
+
+        showCaption(event.phrase);
+        const target = event.damage ? bodyPoint(enemyNode) : bodyPoint(playerNode);
+        const color = event.damage
+            ? (ELEMENT[event.element]?.color ?? '#fbbf24')
+            : '#c084fc';
+
+        burst(target, color, { size: 1.8, sparks: 16, style: impactStyle(event.element, 'wind') });
+        if (event.damage) {
+            enemyNode.classList.add('hurt');
+            damagePop(target, event.damage, true);
+            shake(true);
+        }
+        sweep(260, 900, 380);
+        haptic([24, 18, 34]);
+        await wait(T.meet + T.recover);
+        if (stale(mine)) return;
+        enemyNode.classList.remove('hurt');
+        hideCaption();
+    }
+
     async function playKo(winner) {
         speed = pendingSpeed;
         const mine = generation;
@@ -380,6 +406,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         getSpeed: () => pendingSpeed,
         abort,
         playClash,
+        playCombo,
         playKo,
         hideCaption,
     };

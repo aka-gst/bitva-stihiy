@@ -72,6 +72,15 @@ are revealed and resolved slot by slot.
   notices. They start mixing in the element that beats your expected answer. The
   counter-play is to sometimes cast their own signature: it draws against the
   signature and burns the bait.
+- **Combos.** Three consecutive slots can form a pattern, highlighted while you
+  build the chain rather than revealed afterwards. `AAA` is a **surge** — three
+  wins required, three damage. `ABA` is a **pierce** — two wins, one damage, and
+  it holds even when one exchange is broken. `ABC` is a **prism** — two wins, two
+  charge, paid for not being readable. A combo amplifies success rather than
+  replacing it: exchanges must be won, not merely survived. The tension is
+  deliberate — the strongest pattern needs repetition, and repetition is what the
+  opponent reads. Higher tiers answer a habitual combo with one precise strike
+  inside it instead of blanket-countering the whole chain.
 - **Special.** Charge comes from beating a signature and from calling an element
   exactly right (matching elements cancel, and the collision charges you). Three
   charges arm a strike worth 2 damage — and **you** choose which slot in the chain
@@ -116,6 +125,7 @@ a list of events; the animation simply replays that list.
 | `index.html` | Shell: screen markup |
 | `styles/game.css` | Styling, arena, and animation keyframes |
 | `src/rules.js` | Elements and the reason each one beats another |
+| `src/combos.js` | Chain patterns: what they are and what they cost |
 | `src/engine.js` | Round resolution as an event stream, DOM-free |
 | `src/ai.js` | Opponent behaviour: signature, baits, pattern and rhythm reading |
 | `src/campaign.js` | Five tower tiers and their text |
@@ -136,7 +146,7 @@ a list of events; the animation simply replays that list.
 npm test
 ```
 
-68 tests: the element wheel is a closed cycle, round resolution (draw, crit,
+Tests cover: the element wheel is a closed cycle, round resolution (draw, crit,
 parry, stun cap, special placement and fizzle, knockout), observation bookkeeping,
 the engine never touches the DOM, AI behaviour (signature frequency, baits,
 pattern reading, rhythm detection, punishment budget, mask switching), campaign

@@ -12,6 +12,7 @@
 import { armSuper, canArmSuper, createBattle, resolveRound } from '../src/engine.js';
 import { planEnemyRound, signatureAt } from '../src/ai.js';
 import { counterTo, elementForRole, ELEMENTS } from '../src/rules.js';
+import { findCombo } from '../src/combos.js';
 import { makeRng } from '../src/rng.js';
 import { CAMPAIGN, healAfterWin, PLAYER_MAX_HP } from '../src/campaign.js';
 
@@ -49,6 +50,24 @@ function confidentSlot(state, rng, chain) {
     return attacking[Math.floor(rng() * attacking.length) % attacking.length];
 }
 
+/**
+ * Достраивает цепочку до нужного узора, не ломая догадку о коронке там,
+ * где это не обязательно. Так играл бы человек, который решил собрать комбо.
+ */
+function buildCombo(state, rng, shape) {
+    const answer = (i) => counterTo(guessSignatureAt(state, i, rng));
+    const chain = Array.from({ length: state.slots }, (_, i) => answer(i));
+    const a = answer(0);
+    if (shape === 'surge') {                       // AAA — три одинаковые
+        for (let i = 0; i < 3; i += 1) chain[i] = a;
+    } else if (shape === 'pierce') {               // ABA
+        chain[0] = a; chain[1] = counterTo(a); chain[2] = a;
+    } else if (shape === 'prism') {                // ABC
+        chain[0] = a; chain[1] = counterTo(a); chain[2] = counterTo(counterTo(a));
+    }
+    return chain;
+}
+
 const STRATEGIES = {
     // Верхняя граница: игрок каким-то образом знает коронку каждого слота.
     oracle: {
@@ -77,6 +96,24 @@ const STRATEGIES = {
             elementForRole(rng() < 0.5 ? 'answer' : 'mirror', guessSignatureAt(st, i, rng))),
         superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
     },
+    // Игроки, которые всегда собирают один и тот же узор.
+    surge: {
+        chain: (st, rng) => buildCombo(st, rng, 'surge'),
+        superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
+    },
+    pierce: {
+        chain: (st, rng) => buildCombo(st, rng, 'pierce'),
+        superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
+    },
+    prism: {
+        chain: (st, rng) => buildCombo(st, rng, 'prism'),
+        superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
+    },
+    // Собирает разные узоры вперемешку — узор предсказать нельзя.
+    mixedCombo: {
+        chain: (st, rng) => buildCombo(st, rng, ['surge', 'pierce', 'prism'][Math.floor(rng() * 3) % 3]),
+        superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
+    },
     // Полный хаос: никакого вывода о противнике.
     random: {
         chain: (st, rng) => Array.from({ length: st.slots }, () => ELEMENTS[Math.floor(rng() * 3) % 3]),
@@ -89,18 +126,23 @@ function fight(opponent, name, rng, { playerHp = PLAYER_MAX_HP, charge = 0, useS
     let st = createBattle({ opponent, slots: opponent.slots ?? 5, playerHp, playerMaxHp: PLAYER_MAX_HP, charge });
     let rounds = 0;
     let supers = 0;
+    let combos = 0;
+    let fired = 0;
 
     while (!st.outcome && rounds < 40) {
         const chain = strategy.chain(st, rng);
+        if (findCombo(chain)) combos += 1;
         // Заряд тратится до планирования противника: он видит пылающий посох.
         if (useSuper && canArmSuper(st)) {
             const slot = strategy.superSlot(st, rng, chain);
             if (slot !== null) { st = armSuper(st, slot); supers += 1; }
         }
-        st = resolveRound(st, chain, planEnemyRound(st, rng).plan).state;
+        const out = resolveRound(st, chain, planEnemyRound(st, rng).plan);
+        if (out.events.some((e) => e.type === 'combo' && e.fired)) fired += 1;
+        st = out.state;
         rounds += 1;
     }
-    return { won: st.outcome === 'player', hp: st.hp.player, charge: st.charge, rounds, supers };
+    return { won: st.outcome === 'player', hp: st.hp.player, charge: st.charge, rounds, supers, combos, fired };
 }
 
 const RUNS = 3000;
@@ -110,18 +152,20 @@ for (const name of Object.keys(STRATEGIES)) {
     console.log(`\n=== ${name} ===`);
     for (const opponent of CAMPAIGN) {
         const rng = makeRng(1234);
-        let wins = 0, hpSum = 0, roundSum = 0, superSum = 0;
+        let wins = 0, hpSum = 0, roundSum = 0, comboSum = 0, firedSum = 0;
         for (let i = 0; i < RUNS; i += 1) {
             const r = fight(opponent, name, rng);
             if (r.won) { wins += 1; hpSum += r.hp; }
             roundSum += r.rounds;
-            superSum += r.supers;
+            comboSum += r.combos;
+            firedSum += r.fired;
         }
         console.log(
             `${opponent.tier.padEnd(8)} ${opponent.name.padEnd(16)} победа ${pct(wins / RUNS)}` +
             ` · HP при победе ${wins ? (hpSum / wins).toFixed(1) : '—'}` +
             ` · раундов ${(roundSum / RUNS).toFixed(1)}` +
-            ` · суперов ${(superSum / RUNS).toFixed(2)}`,
+            ` · узоров ${(comboSum / RUNS).toFixed(1)}` +
+            ` · сработало ${comboSum ? pct(firedSum / comboSum) : '—'}`,
         );
     }
 }
