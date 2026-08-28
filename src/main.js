@@ -42,7 +42,7 @@ const dom = {
     chargeFill: $('charge-fill'), chargeLabel: $('charge-label'), charge: document.querySelector('.charge'),
     comboTag: $('combo-tag'),
     castRow: $('cast-row'), btnUndo: $('btn-undo'), btnGo: $('btn-go'), btnSuper: $('btn-super'),
-    timer: $('timer'), timerNum: $('timer-num'),
+    timer: $('timer'), timerNum: $('timer-num'), timerFill: $('timer-fill'),
     log: $('log'), stats: $('stats'),
     overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'), overlayActions: $('overlay-actions'),
     btnSpeed: $('btn-speed'), btnRules: $('btn-rules'), btnQuit: $('btn-quit'),
@@ -569,8 +569,12 @@ function stopTimer() {
 }
 
 function paintTimer() {
-    dom.timerNum.textContent = String(Math.max(0, app.timeLeft));
-    dom.timer.classList.toggle('urgent', app.timeLeft <= 5);
+    const left = Math.max(0, app.timeLeft);
+    dom.timerNum.textContent = String(left);
+    // Полоса показывает остаток целиком: цифру надо прочитать, полосу — нет.
+    const total = app.mode?.timer ?? 15;
+    dom.timerFill.style.width = `${Math.min(100, (left / total) * 100)}%`;
+    dom.timer.classList.toggle('urgent', left <= 5);
 }
 
 function setControlsEnabled(on) {

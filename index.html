@@ -92,7 +92,7 @@
         </div>
         <div class="hud-center">
             <div class="hud-tier" id="hud-tier">СВОБОДНЫЙ БОЙ</div>
-            <div class="hud-round" id="hud-round">РАУНД 1</div>
+            <div class="hud-round"><span id="hud-round">РАУНД 1</span> · <span id="timer-num">15</span> с</div>
             <div class="battle-tools">
                 <button class="tool" id="btn-speed" title="Скорость анимации">СКОРОСТЬ: НОРМА</button>
                 <button class="tool" id="btn-rules" title="Правила боя">?</button>
@@ -117,6 +117,10 @@
             </div>
 
             <div class="board">
+                <div class="timer" id="timer" aria-label="Время на ход">
+                    <div class="timer-fill" id="timer-fill"></div>
+                </div>
+
                 <div class="lane lane--enemy">
                     <span class="lane-label">ПРОТИВНИК</span>
                     <div class="slots" id="enemy-slots"></div>
@@ -136,8 +140,7 @@
                 <div class="controls">
                     <div class="cast-row" id="cast-row"></div>
                     <div class="action-row">
-                        <button class="btn btn--del" id="btn-undo" title="Убрать последний">⌫</button>
-                        <div class="timer" id="timer"><span id="timer-num">15</span><small>с</small></div>
+                        <button class="btn btn--del" id="btn-undo">СТЕРЕТЬ</button>
                         <button class="btn btn--go" id="btn-go">В БОЙ</button>
                         <button class="btn btn--super" id="btn-super" disabled>СУПЕР</button>
                     </div>
