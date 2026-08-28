@@ -47,6 +47,7 @@ const dom = {
     log: $('log'), stats: $('stats'),
     overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'), overlayActions: $('overlay-actions'),
     btnSpeed: $('btn-speed'), btnRules: $('btn-rules'), btnQuit: $('btn-quit'),
+    notice: $('notice'),
 };
 
 const arena = createArena({
@@ -139,6 +140,7 @@ async function resolvePlayerName() {
 }
 
 async function submitLeaderboard(score) {
+    hideNotice();
     const dailyKey = `${LEADERBOARD_GAME}-daily-best:${leaderboardDay()}`;
     const dailyBest = Number(localStorage.getItem(dailyKey) || 0);
     if (score <= 0 || score <= dailyBest) { leaderboardToken = ''; return; }
@@ -162,10 +164,25 @@ async function submitLeaderboard(score) {
     } catch {
         // Токен не выбрасываем: сервер гасит сессию только при успешной записи,
         // значит он ещё годен для следующей попытки в этом же заходе.
-        // И молчать здесь нельзя — потерянный результат должен быть виден.
-        dom.leaders.textContent = 'РЕЗУЛЬТАТ НЕ УШЁЛ В ТАБЛИЦУ: СЕТЬ. СЛЕДУЮЩАЯ ПОБЕДА ПОПРОБУЕТ СНОВА';
+        // И молчать здесь нельзя — потерянный результат должен быть виден
+        // там, где игрок в этот момент смотрит: на итоге боя, а не в меню.
+        showNotice('РЕЗУЛЬТАТ НЕ УШЁЛ В ТАБЛИЦУ: СЕТЬ. СЛЕДУЮЩАЯ ПОБЕДА ПОПРОБУЕТ СНОВА');
     }
 }
+
+/**
+ * Сообщение поверх любого экрана.
+ *
+ * Строка глобального топа для этого не годится: она живёт в меню, а отправка
+ * результата случается в конце боя, когда на экране итог. Написанное туда
+ * игрок не увидит вовсе или увидит спустя время и не поймёт, к чему это.
+ */
+function showNotice(text) {
+    dom.notice.textContent = text;
+    dom.notice.hidden = false;
+}
+
+const hideNotice = () => { dom.notice.hidden = true; };
 
 /* ─────────────────────────── Скорость анимации ─────────────────────────── */
 
@@ -338,6 +355,7 @@ function startBattle({ opponent, mode, playerHp, charge, wins, tierLabel }) {
     pushLog(dom.log, opponent.teaches ?? 'Коронку противника придётся вычислить по бою.', 'neutral');
     pushLog(dom.log, 'Полоса над ареной помнит за тебя: сколько раз какую стихию он выбросил и чем бил в прошлом раунде.', 'neutral');
 
+    hideNotice();
     hideOverlay();
     showScreen('battle');
     paintAll();

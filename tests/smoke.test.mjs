@@ -10,7 +10,7 @@ test("оболочка содержит все области интерфейс
     for (const id of [
         "screen-menu", "screen-modes", "screen-learn", "screen-story", "screen-battle",
         "arena", "fighter-player", "fighter-enemy", "fx-layer", "caption",
-        "player-slots", "enemy-slots", "cast-row", "log", "overlay", "timer",
+        "player-slots", "enemy-slots", "cast-row", "log", "overlay", "timer", "notice",
     ]) {
         assert.match(html, new RegExp(`id="${id}"`), `нет области ${id}`);
     }
@@ -113,6 +113,10 @@ test("рекорд дня отмечается только после подт�
     assert.ok(marked > confirmed, "отметка «лучшее за сегодня» — только после подтверждения");
     assert.ok(dropped > sent, "токен нельзя выбрасывать до отправки: он ещё годен для повтора");
     assert.ok(!/catch\s*\{\s*\/\*[^*]*\*\/\s*\}/.test(attempt), "потерянный результат должен быть виден игроку");
+    // Строка глобального топа живёт в меню, а отправка случается на итоге боя:
+    // написанное туда игрок в нужный момент не увидит.
+    assert.ok(!/dom\.leaders/.test(attempt), "сообщение о потере не должно уходить в экран меню");
+    assert.match(attempt, /showNotice\(/, "сообщение показывается поверх текущего экрана");
 });
 
 test("сюжетная воронка размечена по ярусам", async () => {
