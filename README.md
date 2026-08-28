@@ -25,7 +25,13 @@ development; deployment is plain static hosting.
 The build is static, but it is no longer a single file: `index.html` loads
 `./src/main.js` as an ES module. Copying `index.html` alone serves a blank page.
 
-Upload these, keeping the directory structure:
+```bash
+sh tools/deploy.sh            # проверить сборку и показать, что уедет
+sh tools/deploy.sh --deploy   # и выложить
+```
+
+The script runs the tests first, ships only what belongs on the server, and
+then checks that the live paths answer 200. Deployed by hand, the file set is:
 
 ```
 index.html
@@ -119,6 +125,7 @@ a list of events; the animation simply replays that list.
 | `src/ui.js` | Interface rendering and the tutorial screen |
 | `src/main.js` | Wiring: screens, story flow, battle loop |
 | `tools/serve.mjs` | Local static server for development |
+| `tools/deploy.sh` | Ships the build to aka-gst.ru/knb/ |
 | `tools/balance.mjs` | Balance simulator for tuning opponents |
 | `tests/` | Rules, AI, campaign, and build-structure tests |
 | `docs/` | Early design document and concept art |
