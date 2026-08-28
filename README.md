@@ -13,11 +13,12 @@ The game is built from ES modules, so it needs to be served over HTTP rather
 than opened directly from the filesystem:
 
 ```bash
-python3 -m http.server 4189
+npm start
 ```
 
-Then open `http://localhost:4189/`. No build step and no backend are required —
-everything else is static.
+Then open `http://localhost:4189/`. No build step, no dependencies, and no
+backend — the server is a 60-line static file server used only for local
+development; deployment is plain static hosting.
 
 ## Design idea
 
@@ -82,6 +83,7 @@ a list of events; the animation simply replays that list.
 | `src/mage.js` | Mage artwork (SVG) |
 | `src/ui.js` | Interface rendering and the tutorial screen |
 | `src/main.js` | Wiring: screens, story flow, battle loop |
+| `tools/serve.mjs` | Local static server for development |
 | `tools/balance.mjs` | Balance simulator for tuning opponents |
 | `tests/` | Rules, AI, campaign, and build-structure tests |
 | `docs/` | Early design document and concept art |
