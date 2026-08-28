@@ -55,8 +55,29 @@ export const STORY_MODE = {
 export const MODE_ORDER = ['easy', 'medium', 'hard', 'duel'];
 
 /** Свободный бой: случайный противник среднего уровня. */
+/**
+ * Спарринг-партнёры. Имена намеренно нейтральные: коронку игрок вычисляет
+ * по бою, а не читает с таблички.
+ */
+const sparring = (id, name, element) => ({
+    id: `spar-${element}`,
+    name,
+    title: 'странствующий маг',
+    element,
+    hp: 13,
+    signatureChance: 0.7,
+    baitWeight: 0.6,
+    readsPatterns: true,
+    readsSuper: true,
+    superRounds: 2,
+    superThreshold: 0.6,
+    counterSlots: 2,
+    punishSlots: 2,
+    reveal: 'Его коронку ты уже видел в бою.',
+});
+
 export const SPARRING = {
-    fire: { id: 'spar-fire', name: 'ПИРОМАНТ', title: 'мастер огня', element: 'fire', hp: 10, signatureChance: 0.7, readsPatterns: true, counterSlots: 3 },
-    water: { id: 'spar-water', name: 'ГИДРОМАНТ', title: 'мастер воды', element: 'water', hp: 10, signatureChance: 0.7, readsPatterns: true, counterSlots: 3 },
-    wind: { id: 'spar-wind', name: 'АЭРОМАНТ', title: 'мастер ветра', element: 'wind', hp: 10, signatureChance: 0.7, readsPatterns: true, counterSlots: 3 },
+    fire: sparring('spar-fire', 'БАГРОВЫЙ', 'fire'),
+    water: sparring('spar-water', 'ГЛУБИННЫЙ', 'water'),
+    wind: sparring('spar-wind', 'НЕСОМЫЙ', 'wind'),
 };

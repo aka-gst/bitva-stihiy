@@ -240,7 +240,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         const victim = PLAYER_WINS.has(event.outcome) ? enemyNode
             : ENEMY_WINS.has(event.outcome) ? playerNode : null;
         const critical = event.outcome === 'crit' || event.outcome === 'super-fail' || event.damage > 1;
-        const isSuper = event.outcome === 'super-hit' || event.outcome === 'super-fail';
+        const isSuper = event.outcome.startsWith('super');
 
         // 1. Замах: оба поднимают посохи, орбы загораются выбранной стихией.
         setOrb(playerNode, event.player);

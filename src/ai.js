@@ -105,10 +105,12 @@ export function detectRhythm(state, opponent) {
     if (!opponent?.readsRhythm) return found;
 
     const rounds = state.roleRounds ?? [];
-    const need = opponent.rhythmRounds ?? 2;
+    // Двух наблюдений мало: случайная игра совпадёт дважды в половине случаев,
+    // и противник начнёт «ловить ритм» там, где его нет.
+    const need = Math.max(3, opponent.rhythmRounds ?? 3);
     if (rounds.length < need) return found;
 
-    const threshold = opponent.rhythmThreshold ?? 0.75;
+    const threshold = opponent.rhythmThreshold ?? 0.8;
     for (let slot = 0; slot < state.slots; slot += 1) {
         const seen = rounds.map((round) => round[slot]).filter(Boolean);
         if (seen.length < need) continue;
@@ -121,6 +123,28 @@ export function detectRhythm(state, opponent) {
         if (hits / seen.length >= threshold) found.set(slot, role);
     }
     return found;
+}
+
+/**
+ * Заряженный посох видно — противник знает, что суперудар взведён.
+ * Неизвестно только, в какой слот он придёт, и это единственное, что мешает
+ * ему защититься. Игрок, который бьёт всегда в одно место, лишается и этого.
+ *
+ * @returns {number|null} слот, который противник будет защищать
+ */
+export function detectSuperSlot(state, opponent) {
+    if (!opponent?.readsSuper || !state.superArmed) return null;
+
+    const history = state.superSlots ?? [];
+    const need = opponent.superRounds ?? 2;
+    if (history.length < need) return null;
+
+    const counts = history.reduce((acc, slot) => {
+        acc[slot] = (acc[slot] ?? 0) + 1;
+        return acc;
+    }, {});
+    const [slot, hits] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return hits / history.length >= (opponent.superThreshold ?? 0.6) ? Number(slot) : null;
 }
 
 /**
@@ -172,6 +196,11 @@ export function planEnemyRound(state, rng) {
     );
     const punishAt = chooseSlots(punishCount, state.slots, rng);
 
+    // Привычный слот для суперудара закрывается сверх бюджета: пылающий посох
+    // противник видит, и не воспользоваться этим было бы странно.
+    const defended = detectSuperSlot(state, opponent);
+    if (defended !== null && defended < state.slots) punishAt.add(defended);
+
     const plan = [];
     for (let i = 0; i < state.slots; i += 1) {
         const signature = signatureAt(opponent, state, i);
@@ -203,5 +232,6 @@ export function planEnemyRound(state, rng) {
         counteredElement: spam,
         punishing,
         rhythmSlots: [...rhythm.keys()],
+        defendedSlot: defended,
     };
 }

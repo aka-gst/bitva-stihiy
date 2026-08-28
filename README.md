@@ -36,27 +36,38 @@ explanation:
 A round is five clashes. Both sides fill their chain in secret, then the chains
 are revealed and resolved slot by slot.
 
-- **Signature.** Every mage favours one element, shown above the arena. Beat the
-  signature and you gain charge — and once per round you also stun the opponent,
-  who then skips the next slot. Lose to the signature and you take double damage.
+- **Signature.** Every mage favours one element — and nothing on screen names it.
+  A strip above the arena keeps only what you actually saw: how often each
+  element has come at you, and the opponent's previous chain in full. The
+  conclusion is yours to draw. Beat the signature and you gain charge — and once
+  per round you also stun the opponent, who then skips the next slot. Lose to the
+  signature and you take double damage.
 - **Bait.** Answering the signature every time is obvious, and the opponent
   notices. They start mixing in the element that beats your expected answer. The
   counter-play is to sometimes cast their own signature: it draws against the
   signature and burns the bait.
-- **Special.** Three charges arm a strike that deals 2 in the first slot of the
-  round — but if that slot is not won, the same 2 come back at you.
+- **Special.** Charge comes from beating a signature and from calling an element
+  exactly right (matching elements cancel, and the collision charges you). Three
+  charges arm a strike worth 2 damage — and **you** choose which slot in the chain
+  carries it. That choice matters: a blazing staff is visible, so an opponent who
+  has seen you strike from the same slot twice will close it. Lose that exchange
+  and the 2 come back at you; run into the same element and both simply cancel.
 - **Pattern reading.** Opponents past the first tier remember recent moves and
   lock part of their chain to a hard counter when one element dominates.
 - **Rhythm reading.** The top tiers remember by *position*: if slot three gets
   the same kind of answer round after round, that slot gets a precise reply.
-  Even a clean alternation is a pattern. The strongest play is to have no
-  readable habit at all — which is the point the whole campaign builds toward.
+  Even a clean alternation is a pattern — though three consistent rounds are
+  required before an opponent will claim to see one, so ordinary variance is not
+  mistaken for a habit. The strongest play is to have no readable habit at all —
+  which is the point the whole campaign builds toward.
 
 ## Modes
 
 **Story** — the Tower of Three Elements: five opponents in ascending order.
 Health and charge carry between fights, and part of the health is restored after
-each win. Each tier introduces exactly one new idea: the signature, pattern
+each win. The player starts with more health than the early opponents on purpose:
+with the signature hidden, the first round of any fight is a guess, and a guess
+should cost you dearly without ending the run. Each tier introduces exactly one new idea: the signature, pattern
 reading, stunning, a mask that switches mid-chain, and a second boss phase.
 
 **Free fight** — four variants against a random mage: full log, hidden damage,
@@ -98,10 +109,11 @@ a list of events; the animation simply replays that list.
 npm test
 ```
 
-61 tests: the element wheel is a closed cycle, round resolution (draw, crit,
-parry, stun cap, special, knockout), the engine never touches the DOM, AI
-behaviour (signature frequency, baits, pattern reading, rhythm detection,
-punishment budget, mask switching), campaign structure, and shell integrity.
+68 tests: the element wheel is a closed cycle, round resolution (draw, crit,
+parry, stun cap, special placement and fizzle, knockout), observation bookkeeping,
+the engine never touches the DOM, AI behaviour (signature frequency, baits,
+pattern reading, rhythm detection, punishment budget, mask switching), campaign
+structure, and shell integrity.
 
 Balance is tuned against a simulation rather than by feel:
 
@@ -120,14 +132,16 @@ kept the prototype aligned with the design goals.
 
 This is a playable prototype, not a finished commercial game.
 
-- Balance is derived from simulation, not from feel. Against a player who
-  simply counters the signature the five tiers give a descending win rate of
-  ≈100 / 88 / 77 / 68 / 60 %. Simulated strategies rank the way the design
-  intends — an unreadable player beats a methodical one beats a random one —
-  but this is a model, and it has not been validated by live playtesting.
+- Balance is derived from simulation, not from feel, and the simulated players
+  infer the signature from what they have seen — the same information a human
+  gets. A player who mixes their answers descends ≈91 / 84 / 74 / 64 / 53 %
+  across the five tiers; random flailing stays far below at every tier. Purely
+  mechanical countering is comfortable through tier four and then falls behind
+  at the finale, which is the intended arc rather than an oversight.
 - The AI reads three things: a dominant element, methodical signature
   countering, and a per-slot habit. It still has no model of the player beyond
   those, so a human who deliberately mixes will stay ahead of it.
+- None of this has been validated by live playtesting at scale.
 - There is no network multiplayer yet.
 
 ## Next steps

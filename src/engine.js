@@ -15,10 +15,16 @@ export const CHARGE_COST = 3;
 export const MAX_STUNS_PER_ROUND = 1;
 /** Сколько последних раундов противник помнит по позициям в цепочке. */
 export const RHYTHM_MEMORY = 4;
+/** Сколько последних суперударов противник помнит по месту в цепочке. */
+export const SUPER_MEMORY = 4;
+/** Сколько прошлых цепочек противника игрок держит перед глазами. */
+export const ENEMY_MEMORY = 2;
 
 /** Урон по умолчанию. Профиль противника может усилить только коронку. */
 const HIT = 1;
+/** Удавшийся суперудар бьёт вдвое, проигранный возвращает столько же. */
 const SUPER_HIT = 2;
+const SUPER_FAIL = 2;
 
 const emptyWins = () => ({ fire: 0, water: 0, wind: 0 });
 
@@ -47,6 +53,15 @@ export function createBattle({
         sigParried: 0,
         // Роли ходов игрока по позициям в цепочке — сырьё для чтения ритма.
         roleRounds: [],
+        // Что противник показал в бою. Коронку игрок вычисляет отсюда сам —
+        // движок её не подсказывает.
+        seen: emptyWins(),
+        // Прошлые цепочки противника: без них смену маски посреди раунда
+        // и подмену стихии в ярости вывести не из чего.
+        enemyRounds: [],
+        // В какие слоты игрок ставил суперудар: противник учится их защищать.
+        superSlots: [],
+        superSlot: null,
         outcome: null,
     };
 }
@@ -56,10 +71,15 @@ export const isOver = (state) => state.outcome !== null;
 export const canArmSuper = (state) =>
     !state.superArmed && state.charge >= CHARGE_COST && !isOver(state);
 
-/** Игрок тратит заряд: следующий ход раунда станет суперударом. */
-export function armSuper(state) {
+/**
+ * Игрок тратит заряд и назначает суперудар на конкретный слот цепочки.
+ * Слот выбирает сам игрок — иначе суперудар превращается в один и тот же
+ * ритуал на первом обмене, который противнику нечего разгадывать.
+ */
+export function armSuper(state, slot = 0) {
     if (!canArmSuper(state)) return state;
-    return { ...state, superArmed: true, charge: 0 };
+    if (!Number.isInteger(slot) || slot < 0 || slot >= state.slots) return state;
+    return { ...state, superArmed: true, superSlot: slot, charge: 0 };
 }
 
 /**
@@ -77,9 +97,11 @@ export function resolveRound(state, playerSeq, enemySeq) {
         ...state,
         hp: { ...state.hp },
         wins: { ...state.wins },
+        seen: { ...state.seen },
         history: [...state.history, ...playerSeq].slice(-10),
     };
     const roundRoles = [];
+    const enemyShown = [];
 
     const events = [{ type: 'round-start', round: state.round, slots: state.slots }];
     const dealt = { player: 0, enemy: 0 };
@@ -88,8 +110,13 @@ export function resolveRound(state, playerSeq, enemySeq) {
     for (let index = 0; index < state.slots; index += 1) {
         const player = playerSeq[index];
         const planned = enemySeq[index] ?? { element: ELEMENTS[0], signature: false };
+        const superHere = next.superArmed && next.superSlot === index;
         const clash = resolveClash(next, player, planned, index);
         roundRoles[index] = planned.sig ? roleOf(player, planned.sig) : null;
+        if (superHere) next.superSlots = [...next.superSlots, index].slice(-SUPER_MEMORY);
+        // Игрок видит только то, что противник действительно выбросил.
+        enemyShown[index] = clash.enemyCasts ? planned.element : null;
+        if (clash.enemyCasts) next.seen[planned.element] += 1;
 
         if (clash.target) {
             next.hp[clash.target] = Math.max(0, next.hp[clash.target] - clash.damage);
@@ -122,6 +149,9 @@ export function resolveRound(state, playerSeq, enemySeq) {
     else if (next.hp.player <= 0) next.outcome = 'enemy';
 
     delete next.stunBudget;
+    if (enemyShown.some(Boolean)) {
+        next.enemyRounds = [...state.enemyRounds, enemyShown].slice(-ENEMY_MEMORY);
+    }
     if (roundRoles.some(Boolean)) {
         next.roleRounds = [...state.roleRounds, roundRoles].slice(-RHYTHM_MEMORY);
     }
@@ -156,9 +186,10 @@ function resolveClash(state, player, planned, index) {
         };
     }
 
-    // Суперудар тратится на первом столкновении раунда: риск ради двойного урона.
-    if (state.superArmed && index === 0) {
+    // Суперудар тратится на выбранном игроком слоте: риск ради двойного урона.
+    if (state.superArmed && index === state.superSlot) {
         state.superArmed = false;
+        state.superSlot = null;
         if (beats(player, planned.element)) {
             return {
                 outcome: 'super-hit',
@@ -169,24 +200,42 @@ function resolveClash(state, player, planned, index) {
                 phrase: `Суперудар! ${clashPhrase(player, planned.element)}`,
             };
         }
+        // Одинаковые стихии гасят друг друга и в усиленном виде: заряд сгорел,
+        // но бить самого себя за верную догадку было бы странно.
+        if (player === planned.element) {
+            return {
+                outcome: 'super-fizzle',
+                damage: 0,
+                target: null,
+                parry: false,
+                enemyCasts: true,
+                phrase: 'Суперудар налетел на такую же стихию — обе погасли',
+            };
+        }
         return {
             outcome: 'super-fail',
-            damage: SUPER_HIT,
+            damage: SUPER_FAIL,
             target: 'player',
             parry: false,
             enemyCasts: true,
-            phrase: 'Суперудар сорвался и ударил в ответ',
+            phrase: 'Суперудар не прошёл и ударил в ответ',
         };
     }
 
     if (player === planned.element) {
+        // Угадать стихию противника в точности — тоже чтение, и оно должно
+        // окупаться: иначе безопасный зеркальный ход остаётся чистой потерей темпа.
+        const charged = state.charge < CHARGE_COST;
+        if (charged) state.charge += 1;
         return {
             outcome: 'draw',
             damage: 0,
             target: null,
             parry: false,
             enemyCasts: true,
-            phrase: 'Одинаковые стихии гасят друг друга',
+            phrase: charged
+                ? 'Одинаковые стихии гасят друг друга — удар в удар, +заряд'
+                : 'Одинаковые стихии гасят друг друга',
         };
     }
 

@@ -86,7 +86,7 @@ test("движок считает, как часто игрок пробивае
     assert.ok(state.sigParried <= state.sigSeen);
 });
 
-test("суперудар тратится на первом столкновении раунда", () => {
+test("суперудар тратится на назначенном слоте раунда", () => {
     const armed = armSuper({ ...battle(), charge: CHARGE_COST });
     assert.ok(armed.superArmed);
     assert.equal(armed.charge, 0);
@@ -94,7 +94,7 @@ test("суперудар тратится на первом столкновен
     const { state, events } = resolveRound(armed, seq("water"), plan("fire"));
     const first = clashes(events)[0];
     assert.equal(first.outcome, "super-hit");
-    assert.equal(first.damage, 2);
+    assert.equal(first.damage, 2, "удавшийся суперудар бьёт вдвое");
     assert.equal(state.superArmed, false, "суперудар не переносится на следующий раунд");
 });
 
@@ -102,7 +102,7 @@ test("сорванный суперудар бьёт по игроку", () => {
     const armed = armSuper({ ...battle(), charge: CHARGE_COST });
     const { state, events } = resolveRound(armed, seq("fire"), plan("water"));
     assert.equal(clashes(events)[0].outcome, "super-fail");
-    assert.equal(state.hp.player, 10 - 2 - 4, "супер стоит 2, остальные четыре хода — по 1");
+    assert.equal(state.hp.player, 10 - 2 - 4, "сорванный супер стоит 2, остальные четыре хода — по 1");
 });
 
 test("суперудар нельзя взвести без полного заряда", () => {
@@ -161,4 +161,55 @@ test("итог раунда содержит суммарный урон по о
     const end = events.at(-1);
     assert.equal(end.type, "round-end");
     assert.deepEqual(end.dealt, { player: 2, enemy: 3 });
+});
+
+test("суперудар бьёт в слот, который выбрал игрок", () => {
+    const armed = armSuper({ ...battle(), charge: CHARGE_COST }, 3);
+    assert.equal(armed.superSlot, 3);
+    const { events } = resolveRound(armed, seq("water"), plan("fire"));
+    const list = clashes(events);
+    assert.notEqual(list[0].outcome, "super-hit", "первый обмен больше не назначается сам собой");
+    assert.equal(list[3].outcome, "super-hit");
+    assert.equal(list[3].damage, 2);
+});
+
+test("слот суперудара обязан существовать", () => {
+    const ready = { ...battle(), charge: CHARGE_COST };
+    assert.equal(armSuper(ready, -1).superArmed, false);
+    assert.equal(armSuper(ready, ready.slots).superArmed, false);
+    assert.equal(armSuper(ready, 1.5).superArmed, false);
+});
+
+test("точное совпадение стихий копит заряд", () => {
+    const { state, events } = resolveRound(battle(), seq("fire"), plan("fire"));
+    assert.ok(clashes(events).every((c) => c.outcome === "draw" && c.damage === 0));
+    assert.equal(state.charge, CHARGE_COST, "заряд растёт, но не выше потолка");
+});
+
+test("движок запоминает, чем противник бил на глазах у игрока", () => {
+    const enemy = [cast("fire"), cast("fire"), cast("water"), cast("wind"), cast("fire")];
+    const { state } = resolveRound(battle(), seq("water"), enemy);
+    assert.equal(state.seen.fire, 3);
+    assert.equal(state.seen.water, 1);
+    assert.equal(state.seen.wind, 1);
+    assert.deepEqual(state.enemyRounds.at(-1), ["fire", "fire", "water", "wind", "fire"]);
+});
+
+test("оглушённый противник не попадает в наблюдения — игрок его хода не видел", () => {
+    const enemy = Array(5).fill(null).map(() => cast("fire", true));
+    const { state } = resolveRound(battle(), seq("water"), enemy);
+    const total = state.seen.fire + state.seen.water + state.seen.wind;
+    assert.equal(total, 4, "один из пяти обменов противник пропустил в оглушении");
+    assert.equal(state.enemyRounds.at(-1)[1], null);
+});
+
+test("суперудар против такой же стихии гаснет, а не бьёт по игроку", () => {
+    const armed = armSuper({ ...battle(), charge: CHARGE_COST }, 0);
+    const { state, events } = resolveRound(armed, seq("fire"), plan("fire"));
+    const first = clashes(events)[0];
+    assert.equal(first.outcome, "super-fizzle");
+    assert.equal(first.damage, 0);
+    assert.equal(first.target, null);
+    assert.equal(state.hp.player, 10, "верная догадка не должна наказываться");
+    assert.equal(state.hp.enemy, 10);
 });

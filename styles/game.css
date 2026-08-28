@@ -379,7 +379,7 @@ button:disabled { cursor: default; }
 
 .caption {
     position: absolute;
-    left: 50%; top: 8%;
+    left: 50%; top: 17%;
     transform: translateX(-50%);
     max-width: 86%;
     padding: 6px 14px;
@@ -395,21 +395,33 @@ button:disabled { cursor: default; }
 }
 .caption.on { opacity: 1; }
 
-.signature-tag {
+/* Разведка: только то, что игрок видел своими глазами. Коронку он выводит сам.
+   Полосой поверху, чтобы не закрывать бойцов. */
+.intel {
     position: absolute;
-    right: 6%; top: 6%;
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    background: rgba(8, 13, 26, 0.85);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    padding: 3px 9px;
+    left: 0; right: 0; top: 0;
     display: flex;
     align-items: center;
-    gap: 5px;
+    justify-content: center;
+    gap: clamp(10px, 2.4vw, 22px);
+    padding: 7px 12px 12px;
+    background: linear-gradient(180deg, rgba(8, 13, 26, 0.92) 40%, rgba(8, 13, 26, 0));
+    pointer-events: none;
 }
-.signature-tag.enraged { color: var(--crit); border-color: var(--crit); animation: pulse 1s ease-in-out infinite; }
+.seen-row { display: grid; grid-template-columns: auto clamp(30px, 6vw, 54px) auto; align-items: center; gap: 5px; }
+.seen-glyph { font-size: 13px; line-height: 1; }
+.seen-track { height: 5px; border-radius: 3px; background: #0a1020; overflow: hidden; }
+.seen-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.35s ease; }
+.seen-count { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 10px; }
+.seen-hint { display: none; }
+.seen-last { display: flex; align-items: center; gap: 4px; padding-left: clamp(4px, 1vw, 10px); border-left: 1px solid var(--line); }
+.seen-last-label { font-size: 8px; letter-spacing: 0.1em; color: var(--dim); margin-right: 2px; }
+.seen-cell {
+    display: grid; place-items: center;
+    width: 17px; height: 17px;
+    font-size: 11px; line-height: 1;
+    background: #0c1424; border: 1px solid var(--line-soft); border-radius: 4px;
+}
 
 /* ─────────────────────────── ДОСКА, СЛОТЫ, КНОПКИ ─────────────────────────── */
 
@@ -451,6 +463,26 @@ button:disabled { cursor: default; }
 .slot.super { border-color: var(--super); background: rgba(192, 132, 252, 0.18); }
 .slot.crit { border-color: var(--crit); background: rgba(251, 113, 133, 0.18); }
 .slot .sig { position: absolute; top: -6px; right: -4px; font-size: 9px; color: var(--crit); }
+/* Слот, на который игрок назначил суперудар. */
+.slot.super-armed {
+    border-color: var(--super);
+    box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.35), 0 0 16px rgba(192, 132, 252, 0.45);
+}
+.slot.super-armed::after {
+    content: '⚡';
+    position: absolute; top: -8px; left: -4px;
+    font-size: 11px;
+}
+/* Слот, на который игрок назначил суперудар. */
+.slot.super-armed {
+    border-color: var(--super);
+    box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.35), 0 0 16px rgba(192, 132, 252, 0.45);
+}
+.slot.super-armed::after {
+    content: '⚡';
+    position: absolute; top: -8px; left: -4px;
+    font-size: 11px;
+}
 
 /* Фехтование: один крупный слот на сторону */
 .board.duel .slots { justify-content: center; }
@@ -514,6 +546,7 @@ button:disabled { cursor: default; }
 .btn--super { background: linear-gradient(96deg, #6d28d9, #a855f7); border-color: #7c3aed; }
 .btn--super:disabled { background: #253251; }
 .btn--super.ready { animation: pulse 1.1s ease-in-out infinite; }
+.btn--super.picking { animation: pulse 0.45s ease-in-out infinite; background: linear-gradient(96deg, #7e22ce, #d8b4fe); }
 
 .timer { display: grid; place-items: center; background: #0c1424; border: 1px solid var(--line); border-radius: 10px; font-weight: 900; font-size: 20px; line-height: 1; }
 .timer small { font-size: 9px; color: var(--dim); font-weight: 600; }
@@ -671,6 +704,10 @@ button:disabled { cursor: default; }
 
     /* Арена занимает свободную высоту, маги крупнее — иначе теряются в пустоте. */
     .arena { max-height: 56vh; }
+    .intel { gap: 8px; padding: 5px 6px 10px; }
+    .seen-row { grid-template-columns: auto 22px auto; gap: 3px; }
+    .seen-last-label { display: none; }
+    .seen-cell { width: 15px; height: 15px; font-size: 10px; }
     .fighter { width: clamp(128px, 38%, 190px); bottom: 16%; }
     .arena::after { bottom: 19%; }
     .lane { grid-template-columns: 66px minmax(0, 1fr); }

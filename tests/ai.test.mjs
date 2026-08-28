@@ -86,11 +86,11 @@ test("противник видит только завершённые раун
     assert.equal(after.history.length, 5, "история пополняется только по итогам раунда");
 });
 
-test("двуликий сдвигает коронку каждый раунд", () => {
+test("двуликий держит маску весь бой — иначе наблюдение вводит в заблуждение", () => {
     const twoface = CAMPAIGN.find((o) => o.id === "twoface");
     const state = createBattle({ opponent: twoface });
     const seen = [1, 2, 3, 4].map((round) => signatureFor(twoface, { ...state, round }));
-    assert.deepEqual(seen, ["fire", "water", "wind", "fire"]);
+    assert.deepEqual(seen, ["fire", "fire", "fire", "fire"]);
 });
 
 test("архимаг в ярости меняет стихию и почти не промахивается", () => {
@@ -199,29 +199,29 @@ test("коронка первого яруса не зависит от того
 });
 
 const rhythmReader = (over = {}) => reader({
-    readsRhythm: true, rhythmRounds: 2, rhythmThreshold: 0.75, rhythmSlots: 2, ...over,
+    readsRhythm: true, rhythmRounds: 3, rhythmThreshold: 0.8, rhythmSlots: 2, ...over,
 });
+const repeat = (roles, times) => Array.from({ length: times }, () => [...roles]);
 
-test("ритм не читается, пока противник не умеет и пока мало раундов", () => {
-    const rounds = [["answer", "mirror", "answer", "mirror", "answer"],
-                    ["answer", "mirror", "answer", "mirror", "answer"]];
+test("ритм не читается, пока противник не умеет и пока мало наблюдений", () => {
+    const rounds = repeat(["answer", "mirror", "answer", "mirror", "answer"], 3);
 
     const deaf = { ...createBattle({ opponent: reader() }), roleRounds: rounds };
     assert.equal(detectRhythm(deaf, deaf.opponent).size, 0, "обычный противник ритм не слышит");
 
     const opponent = rhythmReader();
-    const early = { ...createBattle({ opponent }), roleRounds: rounds.slice(0, 1) };
-    assert.equal(detectRhythm(early, opponent).size, 0, "одного раунда мало для вывода");
+    for (const known of [1, 2]) {
+        const early = { ...createBattle({ opponent }), roleRounds: rounds.slice(0, known) };
+        assert.equal(detectRhythm(early, opponent).size, 0,
+            `${known} наблюдений мало: случайная игра совпала бы по случайности`);
+    }
 });
 
 test("устойчивая привычка по слотам распознаётся как ритм", () => {
     const opponent = rhythmReader();
     const state = {
         ...createBattle({ opponent }),
-        roleRounds: [
-            ["answer", "mirror", "answer", "mirror", "answer"],
-            ["answer", "mirror", "answer", "mirror", "answer"],
-        ],
+        roleRounds: repeat(["answer", "mirror", "answer", "mirror", "answer"], 3),
     };
     const rhythm = detectRhythm(state, opponent);
     assert.equal(rhythm.size, 5);
@@ -250,7 +250,7 @@ test("пойманный ритм превращается в точный ко�
     const opponent = rhythmReader({ element: "fire", signatureChance: 0, rhythmSlots: 5 });
     const state = {
         ...createBattle({ opponent }),
-        roleRounds: [Array(5).fill("mirror"), Array(5).fill("mirror")],
+        roleRounds: repeat(Array(5).fill("mirror"), 3),
     };
     const { plan, rhythmSlots } = planEnemyRound(state, makeRng(4));
     assert.equal(rhythmSlots.length, 5);
@@ -275,7 +275,7 @@ test("бюджет наказания — максимум по сработав
         history: Array(8).fill("water"),
         sigSeen: 10,
         sigParried: 10,
-        roleRounds: [Array(5).fill("answer"), Array(5).fill("answer")],
+        roleRounds: repeat(Array(5).fill("answer"), 3),
     };
     const { plan } = planEnemyRound(state, makeRng(12));
     assert.equal(plan.length, 5);

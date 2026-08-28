@@ -7,7 +7,7 @@
 
 import { ELEMENT, ELEMENTS } from './rules.js';
 import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from './engine.js';
-import { planEnemyRound, isEnraged, masksFor } from './ai.js';
+import { planEnemyRound } from './ai.js';
 import { makeRng, pick } from './rng.js';
 import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';
 import {
@@ -19,7 +19,8 @@ import { mageSvg } from './mage.js';
 import { haptic, sweep, tone, wakeAudioOnInteraction } from './audio.js';
 import {
     $, LEARN_STEPS, clearSlots, pushLog, renderCastRow, renderLearnStep, renderModes,
-    renderSlots, renderStats, renderStoryTrack, renderWheel, setCharge, setHp, setSlot, showScreen,
+    renderSeen, renderSlots, renderStats, renderStoryTrack, renderWheel,
+    setCharge, setHp, setSlot, showScreen,
 } from './ui.js';
 
 /* ─────────────────────────── Ссылки на DOM ─────────────────────────── */
@@ -34,7 +35,7 @@ const dom = {
     playerHpBar: $('player-hp-bar'), playerHpNum: $('player-hp-num'),
     enemyHpBar: $('enemy-hp-bar'), enemyHpNum: $('enemy-hp-num'),
     hudTier: $('hud-tier'), hudRound: $('hud-round'),
-    arena: $('arena'), fxLayer: $('fx-layer'), caption: $('caption'), signatureTag: $('signature-tag'),
+    arena: $('arena'), fxLayer: $('fx-layer'), caption: $('caption'), intel: $('intel'),
     fighterPlayer: $('fighter-player'), fighterEnemy: $('fighter-enemy'),
     board: document.querySelector('.board'),
     playerSlots: $('player-slots'), enemySlots: $('enemy-slots'),
@@ -75,6 +76,8 @@ const app = {
     rng: makeRng((Date.now() ^ 0x5f3a) >>> 0),
     speedIndex: 0,
     shownWins: null,
+    superPending: false,
+    superSlotIndex: null,
     learnStep: 0,
     learnReturn: 'menu',
     story: null,
@@ -296,7 +299,8 @@ function startBattle({ opponent, mode, playerHp, charge, wins, tierLabel }) {
     applySpeed();
 
     pushLog(dom.log, `${opponent.name} — ${opponent.title}.`, 'system');
-    pushLog(dom.log, opponent.teaches ?? 'Побеждай стихией, которая гасит его выбор.', 'neutral');
+    pushLog(dom.log, opponent.teaches ?? 'Коронку противника придётся вычислить по бою.', 'neutral');
+    pushLog(dom.log, 'Полоса над ареной помнит за тебя: сколько раз какую стихию он выбросил и чем бил в прошлом раунде.', 'neutral');
 
     hideOverlay();
     showScreen('battle');
@@ -311,39 +315,16 @@ function beginRound() {
     arena.resetPoses();
     arena.hideCaption();
     dom.hudRound.textContent = `РАУНД ${app.battle.round}`;
-    paintSignature();
+    paintIntel();
     setControlsEnabled(true);
     startTimer(app.mode.timer ?? 15);
 }
 
-/** Постоянная подсказка над ареной: чем противник бьёт в этом раунде. */
-function paintSignature() {
-    const opponent = app.opponent;
-    const { lead, second, switchAt } = masksFor(opponent, app.battle);
-    const enraged = isEnraged(opponent, app.battle);
-
-    const label = (text) => Object.assign(document.createElement('span'), { textContent: text });
-    const glyph = (element) => Object.assign(document.createElement('span'), {
-        textContent: ELEMENT[element].glyph,
-        style: 'font-size:15px',
-    });
-
-    dom.signatureTag.replaceChildren(
-        label(enraged ? 'ЯРОСТЬ · КОРОНКА' : 'КОРОНКА'),
-        glyph(lead),
-    );
-    if (second) {
-        dom.signatureTag.append(label(`С ${switchAt + 1}-ГО`), glyph(second));
-    }
-    dom.signatureTag.classList.toggle('enraged', enraged);
-    arena.setOrb(dom.fighterEnemy, lead);
+/** Разведка: только то, что противник показал на глазах у игрока. */
+function paintIntel() {
+    renderSeen(dom.intel, app.battle.seen, app.battle.enemyRounds);
 }
 
-/**
- * @param {{hp:object, charge:number}} [snapshot]
- *   Во время анимации показываем состояние на момент удара — движок кладёт
- *   его в каждое событие. Без снимка рисуем итоговое состояние боя.
- */
 function paintAll(snapshot) {
     const b = app.battle;
     const hp = snapshot?.hp ?? b.hp;
@@ -352,14 +333,16 @@ function paintAll(snapshot) {
     setHp(dom.enemyHpBar, dom.enemyHpNum, hp.enemy, b.maxHp.enemy);
     setCharge(dom.chargeFill, dom.chargeLabel, dom.charge, charge, CHARGE_COST);
     renderStats(dom.stats, app.shownWins ?? b.wins);
-    dom.btnSuper.disabled = !canArmSuper(b) || app.running;
-    dom.btnSuper.classList.toggle('ready', canArmSuper(b) && !app.running);
-    if (b.superArmed) {
-        dom.btnSuper.textContent = 'ВЗВЕДЁН';
-        dom.btnSuper.classList.add('ready');
-    } else {
-        dom.btnSuper.textContent = 'СУПЕР';
-    }
+    renderSeen(dom.intel, b.seen, b.enemyRounds);
+
+    // Три состояния кнопки: заряд готов, ждём выбора слота, слот назначен.
+    const ready = canArmSuper(b) && !app.running;
+    dom.btnSuper.disabled = !ready;
+    dom.btnSuper.classList.toggle('ready', ready);
+    dom.btnSuper.classList.toggle('picking', app.superPending);
+    dom.btnSuper.textContent = app.superPending ? 'ВЫБЕРИ ЖЕСТ'
+        : app.superSlotIndex !== null ? `СУПЕР → ${app.superSlotIndex + 1}`
+            : 'СУПЕР';
 }
 
 /* ── Ввод ── */
@@ -368,7 +351,14 @@ function castElement(id) {
     if (app.running || app.battle.outcome) return;
     if (app.seq.length >= app.battle.slots) return;
     app.seq.push(id);
-    setSlot(app.playerSlots[app.seq.length - 1], { element: id, state: 'filled' });
+    const index = app.seq.length - 1;
+    setSlot(app.playerSlots[index], { element: id, state: 'filled' });
+    if (app.superPending) {
+        app.superPending = false;
+        app.superSlotIndex = index;
+        markSuperSlot();
+        paintAll();
+    }
     arena.setPlayerElement(id);
     tone(ELEMENT[id].tone, 55);
     haptic(8);
@@ -379,16 +369,48 @@ function undoCast() {
     if (app.running || app.seq.length === 0) return;
     app.seq.pop();
     setSlot(app.playerSlots[app.seq.length], {});
+    if (app.superSlotIndex === app.seq.length) {
+        // Заряд ещё не потрачен — возвращаем возможность выбрать другой слот.
+        app.superSlotIndex = null;
+        app.superPending = true;
+        paintAll();
+    }
+    markSuperSlot();
     haptic(6);
 }
 
+/**
+ * Суперудар взводится не на первый обмен, а на слот по выбору игрока:
+ * пылающий посох противник видит, и один и тот же слот он выучит.
+ */
 function useSuper() {
-    if (!canArmSuper(app.battle) || app.running) return;
-    app.battle = armSuper(app.battle);
+    if (app.running || !canArmSuper(app.battle)) return;
+
+    if (app.superPending || app.superSlotIndex !== null) {
+        app.superPending = false;
+        clearSuperMark();
+        app.superSlotIndex = null;
+        pushLog(dom.log, 'Суперудар снят.', 'system');
+        paintAll();
+        return;
+    }
+
+    app.superPending = true;
     sweep(200, 700, 260);
     haptic([18, 22, 30]);
-    pushLog(dom.log, 'Суперудар взведён: первый обмен следующего раунда бьёт на 2.', 'system');
+    pushLog(dom.log, 'Заряд готов. Следующий выбранный жест станет суперударом — реши, в какой момент цепочки он ударит.', 'system');
     paintAll();
+}
+
+function clearSuperMark() {
+    app.playerSlots.forEach((slot) => slot.classList.remove('super-armed'));
+}
+
+function markSuperSlot() {
+    clearSuperMark();
+    if (app.superSlotIndex !== null) {
+        app.playerSlots[app.superSlotIndex]?.classList.add('super-armed');
+    }
 }
 
 /* ── Таймер ── */
@@ -436,7 +458,14 @@ async function runRound() {
         app.seq.push(id);
     }
 
-    const { plan, counteredElement, punishing, rhythmSlots } = planEnemyRound(app.battle, app.rng);
+    // Заряд тратится только сейчас: до броска отмена ничего не стоит.
+    if (app.superSlotIndex !== null) app.battle = armSuper(app.battle, app.superSlotIndex);
+    app.superPending = false;
+
+    const { plan, counteredElement, punishing, rhythmSlots, defendedSlot } = planEnemyRound(app.battle, app.rng);
+    if (defendedSlot !== null) {
+        pushLog(dom.log, `${app.opponent.name} видит заряженный посох и ждёт удара в слот ${defendedSlot + 1}.`, 'system');
+    }
     // Игрок должен понимать, почему его вдруг начали ловить, — иначе
     // адаптивный ИИ читается как «рандом стал злее».
     if (rhythmSlots.length) {
@@ -498,6 +527,7 @@ const SLOT_STATE = {
     stun: ['stun', 'stun'],
     'super-hit': ['super', 'lose'],
     'super-fail': ['crit', 'super'],
+    'super-fizzle': ['super', 'draw'],
     crit: ['crit', 'win'],
     lose: ['lose', 'win'],
     draw: ['draw', 'draw'],
@@ -533,7 +563,7 @@ function finishBattle(winner) {
             showOverlay({
                 title: 'ЯРУС ВЗЯТ',
                 color: 'var(--win)',
-                text: `«${app.opponent.defeat}»${last ? '' : `\nЗдоровье восстановлено до ${app.story.hp}.`}`,
+                text: `«${app.opponent.defeat}»\n${app.opponent.reveal ?? ''}${last ? '' : `\nЗдоровье восстановлено до ${app.story.hp}.`}`,
                 actions: last
                     ? [{ label: 'ФИНАЛ', primary: true, onClick: showEpilogue }]
                     : [{ label: 'ДАЛЬШЕ', primary: true, onClick: () => showTier(app.story.index + 1) }],
@@ -550,7 +580,7 @@ function finishBattle(winner) {
             showOverlay({
                 title: 'ПОРАЖЕНИЕ',
                 color: 'var(--lose)',
-                text: `${app.opponent.name} устоял. ${app.opponent.teaches}`,
+                text: `${app.opponent.name} устоял.\n${app.opponent.reveal ?? ''}\n${app.opponent.teaches}`,
                 actions: [
                     { label: 'ПОВТОРИТЬ ЯРУС', primary: true, onClick: () => { app.story.hp = retryHp; showTier(app.story.index); } },
                     { label: 'ПРАВИЛА', onClick: () => goLearn('story') },
@@ -573,8 +603,8 @@ function finishBattle(winner) {
         title: won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ',
         color: won ? 'var(--win)' : 'var(--lose)',
         text: won
-            ? `${app.opponent.name} повержен. Осталось здоровья: ${app.battle.hp.player}.`
-            : `${app.opponent.name} оказался быстрее. Его коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`,
+            ? `${app.opponent.name} повержен. Осталось здоровья: ${app.battle.hp.player}.\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`
+            : `${app.opponent.name} оказался быстрее.\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`,
         actions: [
             { label: 'ЕЩЁ РАЗ', primary: true, onClick: () => startFreeBattle(app.mode.id) },
             { label: 'В МЕНЮ', onClick: goMenu },

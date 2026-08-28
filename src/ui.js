@@ -97,6 +97,41 @@ export function pushLog(node, text, kind = 'neutral') {
     node.scrollTop = node.scrollHeight;
 }
 
+/* ─────────────── Разведка: что противник уже показал ─────────────── */
+
+/**
+ * Коронку игрок вычисляет сам. Здесь только честные наблюдения — сколько раз
+ * какую стихию противник действительно выбросил на глазах у игрока.
+ */
+export function renderSeen(node, seen, enemyRounds = []) {
+    const total = ELEMENTS.reduce((sum, id) => sum + (seen[id] ?? 0), 0);
+
+    const meters = ELEMENTS.map((id) => {
+        const count = seen[id] ?? 0;
+        const row = el('div', 'seen-row');
+        const track = el('span', 'seen-track');
+        const fill = el('span', 'seen-fill');
+        fill.style.width = `${total ? ((count / total) * 100).toFixed(0) : 0}%`;
+        fill.style.background = ELEMENT[id].color;
+        track.append(fill);
+        row.append(el('span', 'seen-glyph', ELEMENT[id].glyph), track, el('span', 'seen-count', String(count)));
+        return row;
+    });
+
+    // Прошлый раунд целиком: без него не увидеть ни смену маски посреди
+    // цепочки, ни подмену стихии в ярости.
+    const last = enemyRounds.at(-1);
+    const history = el('div', 'seen-last');
+    if (last) {
+        history.append(el('span', 'seen-last-label', 'ПРОШЛЫЙ РАУНД'));
+        for (const element of last) {
+            history.append(el('span', 'seen-cell', element ? ELEMENT[element].glyph : '·'));
+        }
+    }
+
+    node.replaceChildren(...meters, ...(last ? [history] : []));
+}
+
 /* ─────────────── Статистика ─────────────── */
 
 export function renderStats(node, wins) {
@@ -175,7 +210,7 @@ export const LEARN_STEPS = [
     },
     {
         title: 'У ПРОТИВНИКА ЕСТЬ КОРОНКА',
-        body: 'Каждый маг чаще всего бьёт своей стихией — это <b>коронка</b>, она показана над ареной и помечена звёздочкой. Побьёшь коронку — получишь заряд, а один раз за раунд ещё и <b>оглушишь</b> противника: следующий слот он пропустит. Проиграешь коронке — <b>двойной урон</b>.',
+        body: 'Каждый маг чаще всего бьёт одной стихией — это его <b>коронка</b>. Никто её не назовёт: справа от арены копится разведка — сколько раз какую стихию он выбросил, — и вывод делаешь ты. Побьёшь коронку — получишь заряд, а раз за раунд ещё и <b>оглушишь</b> противника. Проиграешь коронке — <b>двойной урон</b>.',
         build: () => {
             const box = el('div', 'demo-row');
             box.style.flexDirection = 'column';
@@ -214,7 +249,7 @@ export const LEARN_STEPS = [
     },
     {
         title: 'ЗАРЯД И СУПЕРУДАР',
-        body: 'Каждая пробитая коронка даёт очко заряда. Три очка — можно взвести <b>суперудар</b>: он бьёт на 2, но если первый слот раунда не выиграет, эти 2 прилетят тебе. Заряд переносится между боями кампании — копить его к финалу разрешено и полезно.',
+        body: 'Каждая пробитая коронка даёт очко заряда. Три очка — и следующий выбранный тобой жест станет <b>суперударом</b>: он бьёт на 2, но если проиграет — эти 2 прилетят тебе. <b>Слот выбираешь ты</b>, и это важно: пылающий посох противник видит, и если ты бьёшь всегда в одно место — он это место закроет. Заряд переносится между боями кампании.',
         build: () => {
             const box = el('div', 'demo-row');
             box.style.flexDirection = 'column';
