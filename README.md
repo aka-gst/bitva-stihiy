@@ -30,7 +30,15 @@ The build is static, but it is no longer a single file: `index.html` loads
 
 ```bash
 sh tools/deploy.sh            # проверить сборку и показать, что уедет
-sh tools/deploy.sh --deploy   # и выложить
+sh tools/deploy.sh --deploy   # и выложить в /stihii/
+```
+
+The game moved from `/knb/` to `/stihii/` when it was renamed. Until a redirect
+exists on the server the old address is kept alive — links to it are already out
+there, and serving a stale build through them is worse than deploying twice:
+
+```bash
+GAME_PATH=knb sh tools/deploy.sh --deploy
 ```
 
 The script runs the tests first, ships only what belongs on the server, and
@@ -44,7 +52,7 @@ styles/
 
 `tools/`, `tests/`, `docs/` and `package.json` are development-only and do not
 need to ship. Paths in the markup are relative, so the game works from a
-subdirectory such as `/knb`. The host page is expected to provide
+subdirectory such as `/stihii`. The host page is expected to provide
 `/game-menu.css`, `/player-name.js` and the `/api/leaderboard/*` endpoints; when
 they are missing the game still runs, just without the site chrome and the
 scoreboard.
@@ -138,7 +146,7 @@ a list of events; the animation simply replays that list.
 | `src/ui.js` | Interface rendering and the tutorial screen |
 | `src/main.js` | Wiring: screens, story flow, battle loop |
 | `tools/serve.mjs` | Local static server for development |
-| `tools/deploy.sh` | Ships the build to aka-gst.ru/knb/ |
+| `tools/deploy.sh` | Ships the build to aka-gst.ru/stihii/ |
 | `tools/balance.mjs` | Balance simulator for tuning opponents |
 | `tests/` | Rules, AI, campaign, and build-structure tests |
 | `docs/` | Early design document and concept art |
