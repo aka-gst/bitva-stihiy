@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "knb",
+      "name": "stihii",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "start"

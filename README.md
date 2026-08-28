@@ -1,7 +1,10 @@
-# KNB: Tactical Evolution
+# Битва Стихий
 
 A browser tactical fighter built on elements: two mages trade spells while the
 player composes a chain of five moves in advance.
+
+Previously developed as *KNB: Tactical Evolution*; the history of that work is
+kept here, and the early single-file prototype sits in `docs/archive/`.
 
 ![Status](https://img.shields.io/badge/status-playable%20prototype-4c9aff)
 ![Runtime](https://img.shields.io/badge/runtime-browser-55f58b)

@@ -1,5 +1,5 @@
 {
-  "name": "knb-tactical-evolution",
+  "name": "bitva-stihiy",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,5 +7,6 @@
     "start": "node tools/serve.mjs",
     "test": "node --test tests/*.test.mjs",
     "balance": "node tools/balance.mjs"
-  }
+  },
+  "description": "Битва Стихий — тактический файтинг: цепочка из пяти заклинаний против противника, который тебя читает"
 }

@@ -61,5 +61,5 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`KNB: Tactical Evolution → http://localhost:${PORT}`);
+    console.log(`Битва Стихий → http://localhost:${PORT}`);
 });
