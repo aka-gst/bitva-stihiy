@@ -31,6 +31,14 @@ const TYPES = {
     '.ico': 'image/x-icon',
 };
 
+// Игра ссылается на корень сайта-хоста, которого локально нет. Без этих
+// файлов предпросмотр врёт: кнопка «НА ГЛАВНУЮ» не появляется, а на бою она
+// висит поверх арены. Копии лежат в tools/host/ — см. README там же.
+const HOST = new Map([
+    ['/game-menu.css', 'tools/host/game-menu.css'],
+    ['/player-name.js', 'tools/host/player-name.js'],
+]);
+
 const send = (res, code, body) => {
     res.writeHead(code, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end(body);
@@ -41,7 +49,7 @@ const server = createServer(async (req, res) => {
     const path = url.pathname === '/' ? '/index.html' : url.pathname;
 
     // Не выпускаем за пределы каталога проекта.
-    const target = join(ROOT, normalize(decodeURIComponent(path)));
+    const target = join(ROOT, HOST.get(path) ?? normalize(decodeURIComponent(path)));
     if (!target.startsWith(ROOT)) return send(res, 403, 'Forbidden');
 
     try {
@@ -54,8 +62,8 @@ const server = createServer(async (req, res) => {
         });
         createReadStream(target).pipe(res);
     } catch {
-        // Интеграции сайта-хоста (/game-menu.css, /api/...) локально отсутствуют —
-        // это ожидаемо, игра работает и без них.
+        // Таблица результатов (/api/...) локально отсутствует — это ожидаемо,
+        // игра работает и без неё.
         send(res, 404, 'Not found');
     }
 });
