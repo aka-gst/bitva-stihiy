@@ -10,7 +10,7 @@
 import { ELEMENT } from './rules.js';
 import { haptic, sweep, tone } from './audio.js';
 import { applyPose, fighterSvg, pickAttack } from './fighter.js';
-import { backdropSvg } from './backdrop.js';
+import { BACKDROP_LAYERS, backdropSvg, layerSrc } from './backdrop.js';
 
 /** Длительности при нормальной скорости, мс. */
 const T = {
@@ -70,6 +70,17 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         }
         stage.replaceChildren();
         stage.insertAdjacentHTML('afterbegin', backdropSvg(enemyElement));
+        // Небо нарисовано кодом, силуэты приходят файлами и ложатся поверх
+        // него от дальнего к переднему. Если файл не доехал, останется небо
+        // с заревом — беднее, но не пустая коробка.
+        for (const layer of BACKDROP_LAYERS) {
+            const img = document.createElement('img');
+            img.className = `backdrop-plane backdrop-plane--${layer}`;
+            img.decoding = 'async';
+            img.alt = '';
+            img.src = layerSrc(enemyElement, layer);
+            stage.append(img);
+        }
 
         // Зал подсвечивается стихией противника — бой узнаётся с первого взгляда.
         root.style.setProperty('--enemy-glow', tint(enemyElement, 0.16));

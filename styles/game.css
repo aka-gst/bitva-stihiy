@@ -336,6 +336,20 @@ button:disabled { cursor: default; }
 /* Задник лежит под всем: бойцами, вспышками, подписями. */
 .backdrop-layer { position: absolute; inset: 0; pointer-events: none; }
 .backdrop-layer .backdrop { width: 100%; height: 100%; display: block; }
+/* Слой растягивается на всю арену.
+   Пробовал иначе, оба раза хуже: вписывание по ширине (object-fit: cover)
+   оставляет от сцены одну тёмную полосу земли, а запас по высоте с прижимом
+   к земле срезает колоннам верхушки — рисунок занимает почти всю высоту
+   исходника, а не нижние 55%, как просили. Растяжение сплющивает силуэты,
+   но оставляет сцену целой, и это меньшее из зол. */
+.backdrop-plane {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    display: block;
+}
 
 /* Свет от бойцов ложится поверх задника, а не вместо него. */
 .arena::before {
@@ -1166,6 +1180,11 @@ button:disabled { cursor: default; }
     .seen-last-label { display: none; }
     .seen-cell { width: 15px; height: 15px; font-size: 10px; }
     .arena { --fw: clamp(120px, 34%, 190px); min-height: clamp(150px, 26vh, 260px); }
+    /* На широком экране арена шире исходника, и слои растягиваются. Здесь
+       наоборот: она почти квадратная, и растяжение вытягивало колонны в
+       макароны. Вписываем по высоте с обрезкой по бокам — там по заданию
+       ничего важного нет. */
+    .backdrop-plane { object-fit: cover; object-position: center bottom; }
     .fighter { bottom: 16%; }
     .arena::after { bottom: 19%; }
     /* Пять слотов, подпись и зазоры должны уложиться в ширину телефона:
