@@ -630,6 +630,12 @@ button:disabled { cursor: default; }
     box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.35);
 }
 .slot.combo-fired { animation: combo-pop 0.5s ease; }
+.slot.combo-missed { animation: combo-miss 0.5s ease; }
+@keyframes combo-miss {
+    0% { transform: none; }
+    30% { transform: translateY(3px) scale(0.94); border-color: var(--muted); }
+    100% { transform: none; }
+}
 @keyframes combo-pop {
     0% { transform: none; }
     35% { transform: translateY(-7px) scale(1.1); box-shadow: 0 0 22px var(--stun); }

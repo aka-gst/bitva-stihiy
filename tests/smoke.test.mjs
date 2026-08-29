@@ -229,3 +229,16 @@ test("у бойца есть разные удары на одно действ�
         }
     }
 });
+
+test("сорванный узор виден на арене, а не только в логе", async () => {
+    // Узор складывается почти каждый раунд, а срабатывает примерно в трети
+    // случаев. Пока осечка уходила только в боковой лог, игрок видел лишь
+    // редкую вспышку без причины — и читал узоры как случайность.
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    assert.match(arena, /playComboMiss/, "арене нечем показать осечку");
+    const branch = main.slice(main.indexOf("event.type === 'combo'"));
+    const body = branch.slice(0, branch.indexOf("event.type === 'overheat'"));
+    assert.match(body, /playComboMiss/, "осечка не доходит до арены");
+    assert.match(body, /playCombo\(/, "удавшийся узор не доходит до арены");
+});

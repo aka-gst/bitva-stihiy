@@ -524,7 +524,7 @@ function useSuper() {
  * цепочку: узор — это решение, а не сюрприз по итогам раунда.
  */
 function paintCombo() {
-    app.playerSlots.forEach((slot) => slot.classList.remove('in-combo', 'overheating'));
+    app.playerSlots.forEach((slot) => slot.classList.remove('in-combo', 'combo-missed', 'overheating'));
     const found = findCombo(app.seq);
     const hot = overheatOf(app.seq);
 
@@ -686,6 +686,12 @@ async function playEvents(events, plan) {
             if (event.fired) {
                 paintAll({ hp: event.hp, charge: app.battle.charge });
                 await arena.playCombo(event);
+            } else {
+                // Осечку тоже показываем на арене: узор складывается почти
+                // каждый раунд, а срабатывает втрое реже, и молчание в две
+                // трети случаев читается как случайность, а не как правило.
+                for (const i of event.slots) app.playerSlots[i]?.classList.add('combo-missed');
+                await arena.playComboMiss(event);
             }
         } else if (event.type === 'overheat') {
             for (const [i, element] of app.seq.entries()) {

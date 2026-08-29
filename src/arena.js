@@ -435,6 +435,26 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         hideCaption();
     }
 
+    /**
+     * Узор сложился, но не набрал побед. Показываем это так же заметно, как
+     * удавшийся, — иначе игрок видит только редкую вспышку без причины и
+     * решает, что узоры случайны. Осечка вдвое чаще попадания, и именно она
+     * учит правилу; поэтому подпись есть, а урона, тряски и добавки к
+     * здоровью нет — гаснет быстро и не сбивает темп боя.
+     */
+    async function playComboMiss(event) {
+        speed = pendingSpeed;
+        const mine = generation;
+        if (instant()) return;
+
+        showCaption(event.phrase);
+        burst(bodyPoint(playerNode), '#8b7bb8', { size: 1.1, sparks: 7, style: 'wind' });
+        haptic([12]);
+        await wait(T.meet);
+        if (stale(mine)) return;
+        hideCaption();
+    }
+
     /** Отдача за перегрев: бьёт по своему магу его же стихией. */
     async function playOverheat(event) {
         speed = pendingSpeed;
@@ -487,6 +507,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         abort,
         playClash,
         playCombo,
+        playComboMiss,
         playOverheat,
         playKo,
         hideCaption,
