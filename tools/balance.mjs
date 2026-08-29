@@ -13,6 +13,7 @@ import { armSuper, canArmSuper, createBattle, resolveRound } from '../src/engine
 import { planEnemyRound, signatureAt } from '../src/ai.js';
 import { counterTo, elementForRole, ELEMENTS } from '../src/rules.js';
 import { findCombo, overheatOf } from '../src/combos.js';
+import { rollFavour } from '../src/favour.js';
 import { makeRng } from '../src/rng.js';
 import { CAMPAIGN, healAfterWin, PLAYER_MAX_HP } from '../src/campaign.js';
 
@@ -114,6 +115,19 @@ const STRATEGIES = {
         chain: (st, rng) => buildCombo(st, rng, ['surge', 'pierce', 'prism'][Math.floor(rng() * 3) % 3]),
         superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
     },
+    // Жадный до силы арены: каждый раунд гонит вал той стихии, что сегодня
+    // в силе, и получает вдвое. Проверка на то, что новая механика не стала
+    // безотказной кнопкой: три одинаковых подряд — это ровно тот повтор,
+    // который ИИ ловит, а четвёртый такой же в пятёрке уже перегрев.
+    greedy: {
+        chain: (st, rng) => {
+            const chain = Array.from({ length: st.slots }, (_, i) =>
+                counterTo(guessSignatureAt(st, i, rng)));
+            for (let i = 0; i < 3; i += 1) chain[i] = st.favour;
+            return chain;
+        },
+        superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
+    },
     // Полный хаос: никакого вывода о противнике.
     random: {
         chain: (st, rng) => Array.from({ length: st.slots }, () => ELEMENTS[Math.floor(rng() * 3) % 3]),
@@ -131,6 +145,7 @@ function fight(opponent, name, rng, { playerHp = PLAYER_MAX_HP, charge = 0, useS
     let overheats = 0;
 
     while (!st.outcome && rounds < 40) {
+        st = { ...st, favour: rollFavour(rng) };
         const chain = strategy.chain(st, rng);
         if (findCombo(chain)) combos += 1;
         if (overheatOf(chain)) overheats += 1;

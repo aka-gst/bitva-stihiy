@@ -87,6 +87,16 @@ export const COMBOS = {
 
 export const COMBO_LIST = Object.values(COMBOS);
 
+/**
+ * Ведущая стихия тройки — та, что в ней повторяется. От неё зовётся узор и
+ * по ней же считается сила арены. Раньше бралась просто первая, и захлёст
+ * огня мог оказаться двумя водами подряд с огнём на входе.
+ */
+export function leadOf(a, b, c) {
+    if (b === c) return b;   // ABB и AAA
+    return a;                // AAB, ABA, ABC
+}
+
 /** Какой узор образуют три стихии. Форма есть у любой тройки. */
 export function shapeOf(a, b, c) {
     if (a === b && b === c) return COMBOS.surge;   // AAA
@@ -111,7 +121,7 @@ export function findCombo(chain) {
     for (let i = 0; i + COMBO_LENGTH <= chain.length; i += 1) {
         const [a, b, c] = chain.slice(i, i + COMBO_LENGTH);
         if (!a || !b || !c) continue;
-        return { combo: shapeOf(a, b, c), at: i, slots: [i, i + 1, i + 2], element: a };
+        return { combo: shapeOf(a, b, c), at: i, slots: [i, i + 1, i + 2], element: leadOf(a, b, c) };
     }
     return null;
 }

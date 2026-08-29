@@ -8,6 +8,7 @@
 
 import { ELEMENTS, beats, clashPhrase, roleOf } from './rules.js';
 import { findCombo, overheatOf } from './combos.js';
+import { isFavoured } from './favour.js';
 
 export const DEFAULT_HP = 10;
 export const DEFAULT_SLOTS = 5;
@@ -165,12 +166,19 @@ export function resolveRound(state, playerSeq, enemySeq) {
             if (clash.target === 'enemy') comboWins += 1;
             if (index === combo.slots.at(-1)) {
                 const fired = comboWins >= combo.combo.needs;
-                if (fired && combo.combo.damage) {
-                    next.hp.enemy = Math.max(0, next.hp.enemy - combo.combo.damage);
-                    dealt.enemy += combo.combo.damage;
+                // Арена держит одну стихию весь раунд, и узор на ней платит
+                // вдвое. Бросок объявлен до первого хода, поэтому это
+                // условие задачи, а не везение по итогам.
+                const favoured = isFavoured(combo, next.favour);
+                const gain = favoured ? 2 : 1;
+                const damage = combo.combo.damage * gain;
+                const charge = combo.combo.charge * gain;
+                if (fired && damage) {
+                    next.hp.enemy = Math.max(0, next.hp.enemy - damage);
+                    dealt.enemy += damage;
                 }
-                if (fired && combo.combo.charge) {
-                    next.charge = Math.min(CHARGE_COST, next.charge + combo.combo.charge);
+                if (fired && charge) {
+                    next.charge = Math.min(CHARGE_COST, next.charge + charge);
                 }
                 events.push({
                     type: 'combo',
@@ -179,12 +187,13 @@ export function resolveRound(state, playerSeq, enemySeq) {
                     element: combo.element,
                     slots: combo.slots,
                     fired,
+                    favoured,
                     wins: comboWins,
                     needs: combo.combo.needs,
-                    damage: fired ? combo.combo.damage : 0,
-                    charge: fired ? combo.combo.charge : 0,
+                    damage: fired ? damage : 0,
+                    charge: fired ? charge : 0,
                     phrase: fired
-                        ? combo.combo.describe(combo.element)
+                        ? combo.combo.describe(combo.element) + (favoured ? ' — вдвое, арена в силе' : '')
                         : `${combo.combo.name} рассыпался: нужно ${combo.combo.needs} победы внутри узора, было ${comboWins}`,
                     hp: { ...next.hp },
                 });

@@ -43,7 +43,7 @@ export function leadingElement(seen = {}) {
  * @returns {{ text: string, tone: string }|null}
  */
 export function coachLine(state, extra = {}) {
-    const { chargeCost = 3, overheat = null, combo = null } = extra;
+    const { chargeCost = 3, overheat = null, combo = null, favoured = false } = extra;
 
     // Перегрев уже виден в цепочке и ударит в этом же раунде.
     if (overheat) {
@@ -78,10 +78,13 @@ export function coachLine(state, extra = {}) {
     // Иначе полный заряд, который не тратится сам, забивал бы строку весь
     // бой и вытеснял всё остальное.
     if (combo) {
+        // Про силу арены отдельной строкой не говорим — она и так висит над
+        // слотами. Здесь важно другое: попал ли в неё собранный узор.
         return {
-            tone: 'combo',
+            tone: favoured ? 'favour' : 'combo',
             text: `Первые три хода складываются в ${combo.name}.`
-                + ` Нужно выиграть ${combo.needs} обмена из 3 внутри узора.`,
+                + ` Нужно выиграть ${combo.needs} обмена из 3 внутри узора.`
+                + (favoured ? ' Арена в силе — заплатит вдвое.' : ''),
         };
     }
     if ((state.charge ?? 0) >= chargeCost && !state.superArmed) {

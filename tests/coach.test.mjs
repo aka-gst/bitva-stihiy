@@ -71,3 +71,14 @@ test("после урока про коронку подсказчик назы�
     assert.match(line.text, /ВАЛ/);
     assert.match(line.text, /3 обмена из 3/);
 });
+
+test("подсказчик говорит, когда узор попал в силу арены", () => {
+    const state = battle({ sigParried: SIGNATURE_LEARNED, seen: { fire: 5 } });
+    const plain = coachLine(state, { combo: COMBOS.surge });
+    assert.equal(plain.tone, "combo");
+    assert.doesNotMatch(plain.text, /вдвое/);
+
+    const strong = coachLine(state, { combo: COMBOS.surge, favoured: true });
+    assert.equal(strong.tone, "favour");
+    assert.match(strong.text, /вдвое/);
+});

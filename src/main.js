@@ -10,6 +10,7 @@ import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from '
 import { planEnemyRound } from './ai.js';
 import { COMBO_LIST, findCombo, overheatOf } from './combos.js';
 import { coachLine } from './coach.js';
+import { favourText, isFavoured, rollFavour } from './favour.js';
 import { makeRng, pick } from './rng.js';
 import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';
 import {
@@ -42,6 +43,7 @@ const dom = {
     playerSlots: $('player-slots'), enemySlots: $('enemy-slots'),
     chargeFill: $('charge-fill'), chargeLabel: $('charge-label'), charge: document.querySelector('.charge'),
     coach: $('coach'),
+    favour: $('favour'),
     castRow: $('cast-row'), btnUndo: $('btn-undo'), btnGo: $('btn-go'), btnSuper: $('btn-super'),
     timer: $('timer'), timerNum: $('timer-num'), timerFill: $('timer-fill'),
     log: $('log'), stats: $('stats'),
@@ -418,6 +420,10 @@ function startBattle({ opponent, mode, playerHp, charge, wins, tierLabel }) {
 }
 
 function beginRound() {
+    // Бросок до первого хода: игрок должен решать, гнаться ли за силой
+    // арены, а не узнавать о ней по итогам раунда.
+    app.battle = { ...app.battle, favour: rollFavour(app.rng) };
+    paintFavour();
     app.seq = [];
     clearSlots(app.playerSlots);
     clearSlots(app.enemySlots);
@@ -428,6 +434,17 @@ function beginRound() {
     paintIntel();
     setControlsEnabled(true);
     startTimer(app.mode.timer ?? 15);
+}
+
+/** Какая стихия держит арену в этом раунде. */
+function paintFavour() {
+    const favour = app.battle?.favour ?? null;
+    dom.favour.textContent = favourText(favour);
+    // Метка живёт на экране боя, а не на арене: от неё наследуют цвет и
+    // свечение арены, и полоса, и подсказчик — иначе каждый красился бы сам.
+    const screen = dom.arena.closest('.screen--battle');
+    if (favour) screen.dataset.favour = favour;
+    else delete screen.dataset.favour;
 }
 
 /** Разведка: только то, что противник показал на глазах у игрока. */
@@ -552,6 +569,7 @@ function paintCoach(found, hot) {
         chargeCost: CHARGE_COST,
         overheat: hot,
         combo: found?.combo ?? null,
+        favoured: isFavoured(found, app.battle.favour),
     });
     if (!line) {
         dom.coach.replaceChildren();

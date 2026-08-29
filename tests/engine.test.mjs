@@ -272,3 +272,29 @@ test("перегрев может добить и засчитывается в 
     assert.equal(events.at(-1).type, "round-end");
     assert.ok(events.at(-1).dealt.player >= 4, "отдача попадает в итог раунда");
 });
+
+test("узор на стихии арены платит вдвое", () => {
+    // Сила арены объявляется до первого хода, поэтому это условие задачи,
+    // а не везение по итогам: игрок сам решает, гнаться за ней или нет.
+    const chain = ["water", "water", "water", "fire", "fire"];
+    const enemy = [cast("fire"), cast("fire"), cast("fire"), cast("wind"), cast("wind")];
+
+    const plain = resolveRound(battle(), chain, enemy).events.find((e) => e.type === "combo");
+    assert.equal(plain.favoured, false);
+    assert.equal(plain.damage, 3, "вал бьёт на три");
+
+    const strong = resolveRound({ ...battle(), favour: "water" }, chain, enemy)
+        .events.find((e) => e.type === "combo");
+    assert.equal(strong.favoured, true);
+    assert.equal(strong.damage, 6, "на своей арене — вдвое");
+    assert.match(strong.phrase, /арена в силе/);
+});
+
+test("чужая стихия арены узору ничего не даёт", () => {
+    const chain = ["water", "water", "water", "fire", "fire"];
+    const enemy = [cast("fire"), cast("fire"), cast("fire"), cast("wind"), cast("wind")];
+    const other = resolveRound({ ...battle(), favour: "wind" }, chain, enemy)
+        .events.find((e) => e.type === "combo");
+    assert.equal(other.favoured, false);
+    assert.equal(other.damage, 3);
+});

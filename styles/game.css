@@ -288,7 +288,7 @@ button:disabled { cursor: default; }
        видна. --fw держит ширину бойца: от неё же считается сближение. */
     --fw: clamp(108px, 24%, 300px);
     max-width: 1180px;
-    min-height: clamp(180px, 32vh, 430px);
+    min-height: clamp(140px, 20vh, 400px);
     border: 1px solid var(--line);
     border-radius: var(--r);
     overflow: hidden;
@@ -569,7 +569,7 @@ button:disabled { cursor: default; }
     /* Ширину задаём явно: flex-basis во вложенном флексе не удерживал размер,
        и слоты схлопывались до трети задуманного. */
     flex: none;
-    width: clamp(44px, 4.6vw, 62px);
+    width: clamp(38px, min(4.6vw, 6.4vh), 62px);
     aspect-ratio: 3 / 4;
     display: grid;
     place-items: center;
@@ -616,6 +616,32 @@ button:disabled { cursor: default; }
 
 /* Узор, который складывается прямо сейчас. Игрок должен видеть его до броска,
    а не узнавать постфактум. */
+/* Сила арены: условие раунда, объявленное до первого хода. Стоит над
+   слотами, потому что решает, какой узор сегодня стоит собирать. */
+.favour {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 24px;
+    padding: 4px 10px;
+    border-radius: var(--r);
+    background: color-mix(in srgb, var(--favour-color, var(--dim)) 14%, #070d1c);
+    color: var(--favour-color, var(--muted));
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-align: center;
+}
+.favour:empty { display: none; }
+
+/* Арена держит стихию весь раунд — это видно и на самой арене, не только
+   в строке над доской. */
+[data-favour] .arena { box-shadow: inset 0 0 90px -20px var(--favour-color); }
+[data-favour="fire"] { --favour-color: var(--fire); }
+[data-favour="water"] { --favour-color: var(--water); }
+[data-favour="wind"] { --favour-color: var(--wind); }
+
 /* Один совет за раз, ровно там, куда идёт взгляд: слоты → подсказка →
    кнопки. Цвет говорит, о чём речь, раньше, чем текст будет прочитан. */
 .coach {
@@ -638,6 +664,7 @@ button:disabled { cursor: default; }
 .coach[data-tone="super"] { border-left-color: var(--super); }
 .coach[data-tone="hot"] { border-left-color: var(--crit); color: #ffd7dd; }
 .coach[data-tone="combo"] { border-left-color: var(--stun); }
+.coach[data-tone="favour"] { border-left-color: var(--favour-color, var(--stun)); color: var(--favour-color); }
 
 
 /* Слоты, из-за которых цепочка перегреется. */
@@ -697,8 +724,8 @@ button:disabled { cursor: default; }
     position: relative;
     display: grid;
     place-items: center;
-    width: clamp(50px, 5.4vw, 64px);
-    height: clamp(50px, 5.4vw, 64px);
+    width: clamp(44px, min(5.4vw, 7.4vh), 64px);
+    height: clamp(44px, min(5.4vw, 7.4vh), 64px);
     border-radius: 50%;
     background:
         repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.03) 0deg 6deg, transparent 6deg 12deg),
