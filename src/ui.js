@@ -69,8 +69,25 @@ export function renderCastRow(node, onCast) {
 
 /* ─────────────── Слоты ─────────────── */
 
-export function renderSlots(node, count) {
-    node.replaceChildren(...Array.from({ length: count }, () => el('div', 'slot', '')));
+/**
+ * Слоты цепочки. У игрока они разбиты на две группы, потому что правило
+ * «узор задают первые три хода» существовало только в тексте: на поле все
+ * пять слотов выглядели одинаково, и понять, где кончается узор, было
+ * неоткуда. Теперь это видно рамкой с подписью, а не читается в подсказке.
+ */
+export function renderSlots(node, count, { window: windowSize = 0 } = {}) {
+    const make = (n) => Array.from({ length: n }, () => el('div', 'slot', ''));
+    if (!windowSize || windowSize >= count) {
+        node.replaceChildren(...make(count));
+    } else {
+        const zone = el('div', 'slot-group slot-group--window');
+        zone.dataset.label = 'УЗОР';
+        zone.append(...make(windowSize));
+        const rest = el('div', 'slot-group slot-group--free');
+        rest.dataset.label = 'РАЗМЕН';
+        rest.append(...make(count - windowSize));
+        node.replaceChildren(zone, rest);
+    }
     return [...node.querySelectorAll('.slot')];
 }
 

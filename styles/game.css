@@ -590,6 +590,42 @@ button:disabled { cursor: default; }
 }
 .slots { display: flex; flex: 0 0 auto; gap: 8px; justify-content: center; align-items: stretch; min-height: 0; }
 
+/* Узор задают первые три хода, а два последних — чистый размен. Это правило
+   жило только в тексте подсказки: на поле все пять слотов выглядели
+   одинаково, и где кончается узор, было неоткуда узнать. Теперь у зоны есть
+   рамка и подпись — правило видно, а не читается. */
+.slot-group {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    min-height: 0;
+    padding: 14px 8px 8px;
+    border: 1px dashed transparent;
+    border-radius: 12px;
+}
+.slot-group::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 3px;
+    left: 10px;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: var(--dim);
+}
+.slot-group--window {
+    border-color: rgba(251, 191, 36, 0.34);
+    background: rgba(251, 191, 36, 0.05);
+}
+.slot-group--window::before { color: var(--stun); }
+.slots > .slot-group + .slot-group { margin-left: 4px; }
+
+/* У противника та же разбивка, но без подписи и рамки: она нужна только
+   затем, чтобы столбики двух рядов совпадали. Узор считается лишь у игрока. */
+.lane--enemy .slot-group::before { content: none; }
+.lane--enemy .slot-group--window { border-color: transparent; background: none; }
+
 .slot {
     /* Ширину задаём явно: flex-basis во вложенном флексе не удерживал размер,
        и слоты схлопывались до трети задуманного. */

@@ -8,7 +8,7 @@
 import { ELEMENT, ELEMENTS } from './rules.js';
 import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from './engine.js';
 import { planEnemyRound } from './ai.js';
-import { COMBO_LIST, findCombo, overheatOf } from './combos.js';
+import { COMBO_LENGTH, COMBO_LIST, findCombo, overheatOf } from './combos.js';
 import { coachLine } from './coach.js';
 import { favourText, isFavoured, rollFavour } from './favour.js';
 import { makeRng, pick } from './rng.js';
@@ -402,8 +402,11 @@ function startBattle({ opponent, mode, playerHp, charge, wins, tierLabel }) {
     dom.enemyName.textContent = opponent.name;
     dom.board.classList.toggle('duel', app.battle.slots === 1);
 
-    app.playerSlots = renderSlots(dom.playerSlots, app.battle.slots);
-    app.enemySlots = renderSlots(dom.enemySlots, app.battle.slots);
+    app.playerSlots = renderSlots(dom.playerSlots, app.battle.slots, { window: COMBO_LENGTH });
+    // Ряд противника делится так же, хотя подписей у него нет: иначе слоты
+    // двух рядов перестают стоять столбиками, а весь бой — это обмен слот
+    // в слот, и пары должны читаться взглядом сверху вниз.
+    app.enemySlots = renderSlots(dom.enemySlots, app.battle.slots, { window: COMBO_LENGTH });
     dom.log.replaceChildren();
     arena.mount({ playerElement: 'water', enemyElement: opponent.element });
     applySpeed();
