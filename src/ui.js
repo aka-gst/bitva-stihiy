@@ -368,10 +368,40 @@ export function renderModes(node, modes, order, onPick) {
 }
 
 /** Портрет бойца на сюжетном экране — в боевой стойке, а не столбом. */
-export function renderPortrait(node, element, side) {
+/**
+ * Портрет на экране знакомства.
+ *
+ * У противников кампании есть нарисованные портреты — с ними ярусы наконец
+ * различаются в лицо. Всё остальное (свободный бой, обучение) обходится
+ * рисованным бойцом, как раньше.
+ *
+ * Картинка грузится по требованию: все пять весят больше, чем вся игра, и
+ * тянуть их на старте значит менять мгновенное открытие на красоту, которую
+ * увидят через минуту. Если файл не доехал, на его место молча встаёт
+ * рисованный боец — экран не должен оставаться пустым из-за картинки.
+ */
+export function renderPortrait(node, element, side, { art = null } = {}) {
     node.replaceChildren();
-    node.insertAdjacentHTML('afterbegin', fighterSvg({ element, side }));
-    applyPose(node, 'guard');
+    node.classList.toggle('story-portrait--art', Boolean(art));
+    if (!art) {
+        node.insertAdjacentHTML('afterbegin', fighterSvg({ element, side }));
+        applyPose(node, 'guard');
+        return;
+    }
+    const img = el('img', 'portrait-art');
+    // Не loading="lazy": экран знакомства до этого момента скрыт, и браузер
+    // откладывает отложенную картинку в скрытом поддереве — портрет так и
+    // оставался пустым. Отложенность здесь и не нужна: файл запрашивается
+    // ровно тогда, когда этот ярус показывают.
+    img.decoding = 'async';
+    // Размеры оригинала — чтобы место под портрет было занято до загрузки и
+    // текст под ним не прыгал.
+    img.width = 512;
+    img.height = 720;
+    img.alt = '';
+    img.addEventListener('error', () => renderPortrait(node, element, side));
+    img.src = art;
+    node.append(img);
 }
 
 /* ─────────────── Сюжетный трек ─────────────── */

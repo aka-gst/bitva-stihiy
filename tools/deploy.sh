@@ -25,7 +25,7 @@ trap 'rm -rf "$STAGE"' EXIT
 
 # Сборка перестала быть одним файлом: index.html грузит ./src/main.js как
 # ES-модуль. Копируется дерево целиком, иначе на сервере будет белый экран.
-SHIP="index.html src styles"
+SHIP="index.html src styles assets"
 
 echo "проверка правил и структуры"
 npm test --silent >/dev/null || {

@@ -325,7 +325,7 @@ function showTier(index) {
     app.story.index = index;
     dom.storyTier.textContent = opponent.tier;
     dom.storyName.textContent = opponent.name;
-    renderPortrait(dom.storyPortrait, opponent.element, 'enemy');
+    renderPortrait(dom.storyPortrait, opponent.element, 'enemy', { art: portraitArt(opponent.id) });
     dom.storyText.textContent = `«${opponent.intro}»`;
     dom.storyHint.textContent = opponent.teaches;
     renderStoryTrack(dom.storyTrack, CAMPAIGN.length, index);
@@ -448,6 +448,11 @@ function paintFavour() {
     const screen = dom.arena.closest('.screen--battle');
     if (favour) screen.dataset.favour = favour;
     else delete screen.dataset.favour;
+}
+
+/** Файл портрета противника. Имена заведены под кампанию один в один. */
+function portraitArt(id) {
+    return id ? `./assets/portrait-${id}.webp` : null;
 }
 
 /** Разведка: только то, что противник показал на глазах у игрока. */

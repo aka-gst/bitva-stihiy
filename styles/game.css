@@ -202,6 +202,15 @@ button:disabled { cursor: default; }
 .story { gap: 10px; }
 .story-tier { font-size: 11px; letter-spacing: 0.22em; color: var(--dim); font-weight: 700; }
 .story-portrait { width: 148px; height: 190px; }
+/* Нарисованному портрету рамка шире: это знакомство с противником, ради
+   которого ярус и запоминается, а 148 пикселей были размером под силуэт. */
+.story-portrait--art { width: clamp(180px, 26vh, 260px); height: auto; }
+.portrait-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.6));
+}
 .story-portrait svg { width: 100%; height: 100%; overflow: visible; }
 .story-portrait .fig g { transform-box: view-box; }
 .story-portrait .torso { transform-origin: 58px 98px; transform: rotate(var(--torso, 0deg)); }
