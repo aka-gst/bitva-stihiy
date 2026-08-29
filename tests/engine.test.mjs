@@ -51,7 +51,7 @@ test("победа над обычным жестом снимает 1 здор�
     const { state, events } = resolveRound(battle(), chain, enemy);
     assert.ok(clashes(events).every((c) => c.damage === 1), "каждая победа стоит ровно 1");
     const combo = events.find((e) => e.type === "combo");
-    assert.equal(combo.name, "НАЖИМ", "первая тройка — два одинаковых и смена");
+    assert.equal(combo.name, "СВЯЗКА", "в первой тройке две одинаковых");
     assert.equal(state.hp.enemy, 10 - 5 - combo.damage);
     assert.equal(state.hp.player, 10);
 });

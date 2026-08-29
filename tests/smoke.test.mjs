@@ -283,3 +283,19 @@ test("экран боя собран в три этажа: драка, разб�
     assert.match(controls, /id="btn-go"/);
     assert.doesNotMatch(layout.slice(layout.indexOf('class="board"'), layout.indexOf('class="controls"')), /cast-row/);
 });
+
+test("узор называет себя на рамке зоны, а не только в подсказчике", async () => {
+    // Подсказчик занят более важным уроком — коронкой противника, — и до
+    // узоров доходит не сразу. Имя и награда должны стоять там, где узор
+    // складывается: на рамке первых трёх ходов.
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    assert.match(main, /function paintWindowLabel/);
+    const paint = main.slice(main.indexOf("function paintCombo"));
+    assert.match(paint.slice(0, paint.indexOf("function paintWindowLabel")), /paintWindowLabel\(/,
+        "подпись не обновляется при наборе цепочки");
+    const label = main.slice(main.indexOf("function paintWindowLabel"));
+    const body = label.slice(0, label.indexOf("\n}"));
+    for (const mark of [/ПЕРЕГРЕВ/, /combo\.name/, /combo\.damage/, /isFavoured/]) {
+        assert.match(body, mark);
+    }
+});

@@ -69,7 +69,7 @@ test("после урока про коронку подсказчик назы�
     );
     assert.equal(line.tone, "combo");
     assert.match(line.text, /ВАЛ/);
-    assert.match(line.text, /3 обмена из 3/);
+    assert.match(line.text, /2 обмена из 3/, "цена у всех узоров одна");
 });
 
 test("подсказчик говорит, когда узор попал в силу арены", () => {

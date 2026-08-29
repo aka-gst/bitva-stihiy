@@ -194,7 +194,7 @@ export function resolveRound(state, playerSeq, enemySeq) {
                     charge: fired ? charge : 0,
                     phrase: fired
                         ? combo.combo.describe(combo.element) + (favoured ? ' — вдвое, арена в силе' : '')
-                        : `${combo.combo.name} рассыпался: нужно ${combo.combo.needs} победы внутри узора, было ${comboWins}`,
+                        : `Узор ${combo.combo.name} рассыпался: нужно ${combo.combo.needs} победы из 3, было ${comboWins}`,
                     hp: { ...next.hp },
                 });
                 if (next.hp.enemy <= 0) break;

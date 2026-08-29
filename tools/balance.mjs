@@ -59,11 +59,11 @@ function buildCombo(state, rng, shape) {
     const answer = (i) => counterTo(guessSignatureAt(state, i, rng));
     const chain = Array.from({ length: state.slots }, (_, i) => answer(i));
     const a = answer(0);
-    if (shape === 'surge') {                       // AAA — три одинаковые
+    if (shape === 'surge') {                       // три одинаковые
         for (let i = 0; i < 3; i += 1) chain[i] = a;
-    } else if (shape === 'pierce') {               // ABA
+    } else if (shape === 'bond') {                 // две одинаковых
         chain[0] = a; chain[1] = counterTo(a); chain[2] = a;
-    } else if (shape === 'prism') {                // ABC
+    } else if (shape === 'prism') {                // все разные
         chain[0] = a; chain[1] = counterTo(a); chain[2] = counterTo(counterTo(a));
     }
     return chain;
@@ -102,8 +102,8 @@ const STRATEGIES = {
         chain: (st, rng) => buildCombo(st, rng, 'surge'),
         superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
     },
-    pierce: {
-        chain: (st, rng) => buildCombo(st, rng, 'pierce'),
+    bond: {
+        chain: (st, rng) => buildCombo(st, rng, 'bond'),
         superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
     },
     prism: {
@@ -112,7 +112,7 @@ const STRATEGIES = {
     },
     // Собирает разные узоры вперемешку — узор предсказать нельзя.
     mixedCombo: {
-        chain: (st, rng) => buildCombo(st, rng, ['surge', 'pierce', 'prism'][Math.floor(rng() * 3) % 3]),
+        chain: (st, rng) => buildCombo(st, rng, ['surge', 'bond', 'prism'][Math.floor(rng() * 3) % 3]),
         superSlot: (st, rng, chain) => confidentSlot(st, rng, chain),
     },
     // Жадный до силы арены: каждый раунд гонит вал той стихии, что сегодня

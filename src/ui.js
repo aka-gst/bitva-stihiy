@@ -1,7 +1,7 @@
 /** Отрисовка интерфейса. Ничего не решает — только показывает переданные данные. */
 
 import { ELEMENT, ELEMENTS, WHEEL } from './rules.js';
-import { COMBO_LIST } from './combos.js';
+import { COMBO_LIST, COMBO_NEEDS } from './combos.js';
 import { elementGlyph } from './glyphs.js';
 import { fighterSvg, applyPose } from './fighter.js';
 
@@ -238,28 +238,30 @@ export const LEARN_STEPS = [
             box.style.gap = '8px';
             const shapes = {
                 surge: ['fire', 'fire', 'fire'],
-                lash: ['water', 'fire', 'fire'],
-                press: ['fire', 'fire', 'water'],
-                pierce: ['water', 'fire', 'water'],
+                bond: ['fire', 'water', 'fire'],
                 prism: ['fire', 'water', 'wind'],
             };
             for (const combo of COMBO_LIST) {
                 const row = el('div', 'demo-row');
                 for (const id of shapes[combo.id]) {
-                    const slot = el('div', 'slot filled in-combo', ELEMENT[id].glyph);
-                    slot.style.flex = '0 0 38px';
-                    row.append(slot);
+                    row.append(el('div', 'slot filled in-combo', ELEMENT[id].glyph));
                 }
                 const text = el('span', 'demo-verdict');
                 const gain = [
                     combo.damage ? `+${combo.damage} урона` : '',
                     combo.charge ? `+${combo.charge} заряда` : '',
                 ].filter(Boolean).join(' и ');
-                text.innerHTML = `<b>${combo.name}</b> — ${combo.hint}. `
-                    + `${gain}, нужно ${combo.needs} победы из 3`;
+                // Цена одна для всех, поэтому в строке её нет: она сказана
+                // один раз внизу, а не трижды подряд одними словами.
+                text.innerHTML = `<b>${combo.name}</b> — ${combo.hint}: ${gain}`;
                 row.append(text);
                 box.append(row);
             }
+            const rule = el('p', 'demo-note');
+            rule.textContent = `Правило одно: чем больше в тройке повторов, тем сильнее удар.`
+                + ` Цена тоже одна — выиграть ${COMBO_NEEDS} обмена из 3 внутри узора.`
+                + ` Но повторы противник читает, а четыре одинаковых в пятёрке бьют по тебе самому.`;
+            box.append(rule);
             return box;
         },
     },

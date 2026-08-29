@@ -549,6 +549,8 @@ function paintCombo() {
     const hot = overheatOf(app.seq);
     paintCoach(found, hot);
 
+    paintWindowLabel(found, hot);
+
     // Слоты показывают, где именно узор или перегрев; словами это объясняет
     // подсказчик. Раньше рядом висела ещё и отдельная плашка с тем же
     // текстом — две строки об одном на трёх сантиметрах экрана.
@@ -559,6 +561,34 @@ function paintCombo() {
         return;
     }
     found?.slots.forEach((i) => app.playerSlots[i]?.classList.add('in-combo'));
+}
+
+/**
+ * Подпись над зоной узора. Подсказчик занят более важным уроком — коронкой
+ * противника, — и до узоров доходит не сразу. Поэтому узор называет себя
+ * сам, прямо на рамке, где он и складывается: имя и награда рядом с тремя
+ * ходами, которые их дали.
+ */
+function paintWindowLabel(found, hot) {
+    const zone = dom.playerSlots.querySelector('.slot-group--window');
+    if (!zone) return;
+    if (hot) {
+        zone.dataset.label = `ПЕРЕГРЕВ −${hot.damage}`;
+        zone.dataset.state = 'hot';
+        return;
+    }
+    if (!found) {
+        zone.dataset.label = 'УЗОР';
+        delete zone.dataset.state;
+        return;
+    }
+    const gain = [
+        found.combo.damage ? `+${found.combo.damage} урона` : '',
+        found.combo.charge ? `+${found.combo.charge} заряда` : '',
+    ].filter(Boolean).join(', ');
+    const favoured = isFavoured(found, app.battle?.favour);
+    zone.dataset.label = `${found.combo.name} · ${gain}${favoured ? ' · ВДВОЕ' : ''}`;
+    zone.dataset.state = favoured ? 'favour' : 'armed';
 }
 
 /**
