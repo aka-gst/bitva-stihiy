@@ -274,7 +274,10 @@ button:disabled { cursor: default; }
    Арена забирает всю оставшуюся высоту — ради неё всё и затевалось. */
 .battle-layout {
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    /* Доли, а не «по содержимому»: пока средний этаж мерился содержимым,
+       каждый лишний пиксель высоты карточки отнимался у арены — поле росло,
+       но вместе с ним всё сжималось, и на глаз ничего не менялось. */
+    grid-template-rows: minmax(150px, 1fr) minmax(140px, 0.72fr) auto;
     gap: 10px;
     min-height: 0;
 }
@@ -566,8 +569,9 @@ button:disabled { cursor: default; }
 
 .board {
     display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr);
     gap: 8px;
-    align-content: start;
+    min-height: 0;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--r);
@@ -576,24 +580,28 @@ button:disabled { cursor: default; }
 
 /* Подпись и слоты — одна группа по центру: раздельно они расходятся по краям
    и между ними повисает пустота. */
-.lane { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.lane { display: flex; align-items: stretch; justify-content: center; gap: 12px; min-height: 0; }
 .lane-label {
+    align-self: center;
     flex: 0 0 84px;
     text-align: right;
     font-size: 10px; letter-spacing: 0.12em; color: var(--dim); font-weight: 700;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.slots { display: flex; flex: 0 0 auto; gap: 8px; justify-content: center; }
+.slots { display: flex; flex: 0 0 auto; gap: 8px; justify-content: center; align-items: stretch; min-height: 0; }
 
 .slot {
     /* Ширину задаём явно: flex-basis во вложенном флексе не удерживал размер,
        и слоты схлопывались до трети задуманного. */
     flex: none;
-    width: clamp(36px, min(4.4vw, 8.4vh), 76px);
-    /* Выше и уже: поле из десяти карточек — главный рабочий стол игрока,
-       и по высоте ему места не жалко, а по ширине оно и так упирается в
-       колонку рядом с разбором боя. */
-    aspect-ratio: 5 / 8;
+    /* Высоту берёт от ряда, ширину выводит из пропорции — так карточка
+       вытягивается ровно настолько, насколько этажу отведено места, и не
+       она решает, сколько останется арене. Потолок по ширине нужен на
+       случай низкого широкого окна, где ряд выше, чем карточке идёт. */
+    height: 100%;
+    width: auto;
+    max-width: 92px;
+    aspect-ratio: 5 / 9;
     display: grid;
     place-items: center;
     font-size: clamp(18px, 3.4vw, 26px);
@@ -923,11 +931,6 @@ button:disabled { cursor: default; }
     display: grid;
     grid-template-rows: minmax(0, 1fr);
     min-height: 0;
-    /* Потолок обязателен: лог растёт с каждым обменом, а средний этаж —
-       ряд высоты auto. Без потолка лог за пару раундов вытягивал этаж и
-       выдавливал арену из её ряда — она наезжала на разбор боя. Высоту
-       этажа должно задавать поле ходов, а лог пусть прокручивается. */
-    max-height: min(22vh, 280px);
 }
 
 .log {
@@ -1066,7 +1069,7 @@ button:disabled { cursor: default; }
 /* ─────────────────────────── АДАПТИВ ─────────────────────────── */
 
 @media (max-width: 900px) {
-    .battle-layout { grid-template-columns: minmax(0, 1fr); }
+    .battle-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(140px, 1fr) auto auto; }
     /* На телефоне колонок нет: поле ходов занимает всю ширину, а разбор боя
        прячется — читать его во время боя всё равно негде. */
     .middle { grid-template-columns: minmax(0, 1fr); }
@@ -1102,7 +1105,12 @@ button:disabled { cursor: default; }
     .lane { gap: 6px; }
     .lane-label { flex-basis: 64px; }
     .lane-label { font-size: 8px; letter-spacing: 0.04em; }
-    .slot { width: clamp(42px, 12.4vw, 58px); }
+    /* На телефоне дефицит — высота, а не ширина: если карточка берёт высоту
+       от ряда, ряд получается низкий и она выходит квадратной. Здесь наоборот:
+       ширина задана, высота выводится из пропорции. */
+    .board { grid-template-rows: none; align-content: start; }
+    .slot { height: auto; width: clamp(38px, 11.4vw, 54px); }
+    .favour { font-size: 9px; letter-spacing: 0.04em; }
     .cast { padding: 7px 4px; }
     .cast-glyph { width: clamp(52px, 17vw, 72px); height: clamp(52px, 17vw, 72px); }
     .action-row { grid-template-columns: 1fr 1.3fr 1fr; }
