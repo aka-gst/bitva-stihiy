@@ -107,14 +107,22 @@
     </header>
 
     <div class="battle-layout">
-        <div class="stage">
-            <div class="arena" id="arena">
-                <div class="fighter fighter--player" id="fighter-player"></div>
-                <div class="fighter fighter--enemy" id="fighter-enemy"></div>
-                <div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
-                <div class="caption" id="caption" role="status" aria-live="polite"></div>
-                <div class="intel" id="intel" aria-label="Что противник уже показал"></div>
-            </div>
+        <div class="arena" id="arena">
+            <div class="fighter fighter--player" id="fighter-player"></div>
+            <div class="fighter fighter--enemy" id="fighter-enemy"></div>
+            <div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
+            <div class="caption" id="caption" role="status" aria-live="polite"></div>
+            <div class="intel" id="intel" aria-label="Что противник уже показал"></div>
+        </div>
+
+        <!-- Разбор боя слева, поле ходов справа: читают их в разные моменты,
+             и делить одну колонку им незачем. -->
+        <div class="middle">
+            <aside class="side">
+                <div class="wheel wheel--compact" id="battle-wheel" aria-label="Колесо стихий"></div>
+                <div class="log" id="log" role="log" aria-live="polite"></div>
+                <div class="stats" id="stats"></div>
+            </aside>
 
             <div class="board">
                 <div class="timer" id="timer" aria-label="Время на ход">
@@ -131,30 +139,24 @@
                     <span class="lane-label">ТЫ</span>
                     <div class="slots" id="player-slots"></div>
                 </div>
-
-                <div class="coach" id="coach" aria-live="polite"></div>
-
-                <div class="charge" title="Заряд суперудара">
-                    <div class="charge-fill" id="charge-fill"></div>
-                    <span class="charge-label" id="charge-label">ЗАРЯД 0/3</span>
-                </div>
-
-                <div class="controls">
-                    <div class="cast-row" id="cast-row"></div>
-                    <div class="action-row">
-                        <button class="btn btn--del" id="btn-undo">СТЕРЕТЬ</button>
-                        <button class="btn btn--go" id="btn-go">В БОЙ</button>
-                        <button class="btn btn--super" id="btn-super" disabled>СУПЕР</button>
-                    </div>
-                </div>
             </div>
         </div>
 
-        <aside class="side">
-            <div class="wheel wheel--compact" id="battle-wheel" aria-label="Колесо стихий"></div>
-            <div class="log" id="log" role="log" aria-live="polite"></div>
-            <div class="stats" id="stats"></div>
-        </aside>
+        <div class="controls">
+            <div class="coach" id="coach" aria-live="polite"></div>
+
+            <div class="charge" title="Заряд суперудара">
+                <div class="charge-fill" id="charge-fill"></div>
+                <span class="charge-label" id="charge-label">ЗАРЯД 0/3</span>
+            </div>
+
+            <div class="cast-row" id="cast-row"></div>
+            <div class="action-row">
+                <button class="btn btn--del" id="btn-undo">СТЕРЕТЬ</button>
+                <button class="btn btn--go" id="btn-go">В БОЙ</button>
+                <button class="btn btn--super" id="btn-super" disabled>СУПЕР</button>
+            </div>
+        </div>
     </div>
 
     <div class="overlay" id="overlay" hidden>

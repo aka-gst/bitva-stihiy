@@ -274,9 +274,29 @@ button:disabled { cursor: default; }
 .hud-tier { font-size: 11px; letter-spacing: 0.16em; color: var(--dim); font-weight: 700; }
 .hud-round { font-size: 13px; letter-spacing: 0.08em; color: var(--muted); }
 
-.battle-layout { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 10px; min-height: 0; }
-.stage { display: grid; grid-template-rows: minmax(140px, 1fr) auto; gap: 10px; min-height: 0; justify-items: center; }
-.stage > * { width: 100%; }
+/* Три этажа: драка, разбор с полем ходов, кнопки.
+   Арена забирает всю оставшуюся высоту — ради неё всё и затевалось. */
+.battle-layout {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    gap: 10px;
+    min-height: 0;
+}
+
+/* Разбор боя слева, поле ходов справа. Читают их в разные моменты: лог —
+   между раундами, слоты — пока набираешь цепочку, и делить одну колонку им
+   незачем. Поле держит свою ширину, лог занимает остальное. */
+.middle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: stretch;
+    min-height: 0;
+    /* По одной ширине с ареной: иначе на широком мониторе лог расползается
+       на два экрана текста в три строки. */
+    width: min(100%, 1500px);
+    justify-self: center;
+}
 
 /* ─────────────────────────── АРЕНА ─────────────────────────── */
 
@@ -286,9 +306,14 @@ button:disabled { cursor: default; }
     /* Во всю ширину экрана арена превращалась в щель 7:1, и бойцы в ней были
        с ноготь. Ширину ограничиваем, высоту требуем — драка должна быть
        видна. --fw держит ширину бойца: от неё же считается сближение. */
-    --fw: clamp(108px, 24%, 300px);
-    max-width: 1180px;
-    min-height: clamp(140px, 20vh, 400px);
+    --fw: clamp(120px, 25%, 460px);
+    max-width: 1500px;
+    min-height: clamp(150px, 22vh, 620px);
+    /* Не margin: 0 auto — авто-поля у элемента сетки отменяют растяжение,
+       и арена схлопывалась до нулевой ширины: рисунок в ней позиционирован
+       абсолютно, собственной ширины у неё нет. */
+    width: 100%;
+    justify-self: center;
     border: 1px solid var(--line);
     border-radius: var(--r);
     overflow: hidden;
@@ -545,9 +570,8 @@ button:disabled { cursor: default; }
 
 .board {
     display: grid;
-    gap: 10px;
-    width: min(100%, 760px);
-    margin: 0 auto;
+    gap: 8px;
+    align-content: start;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--r);
@@ -569,7 +593,7 @@ button:disabled { cursor: default; }
     /* Ширину задаём явно: flex-basis во вложенном флексе не удерживал размер,
        и слоты схлопывались до трети задуманного. */
     flex: none;
-    width: clamp(38px, min(4.6vw, 6.4vh), 62px);
+    width: clamp(38px, min(5.2vw, 8vh), 84px);
     aspect-ratio: 3 / 4;
     display: grid;
     place-items: center;
@@ -705,8 +729,8 @@ button:disabled { cursor: default; }
 }
 .charge.ready { border-color: var(--super); box-shadow: 0 0 12px rgba(192, 132, 252, 0.45); }
 
-.controls { display: grid; gap: 8px; }
-.cast-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.controls { display: grid; gap: 8px; width: min(100%, 1100px); margin: 0 auto; }
+.cast-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
 .cast {
     display: grid;
@@ -724,8 +748,8 @@ button:disabled { cursor: default; }
     position: relative;
     display: grid;
     place-items: center;
-    width: clamp(44px, min(5.4vw, 7.4vh), 64px);
-    height: clamp(44px, min(5.4vw, 7.4vh), 64px);
+    width: clamp(46px, min(6vw, 9vh), 86px);
+    height: clamp(46px, min(6vw, 9vh), 86px);
     border-radius: 50%;
     background:
         repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.03) 0deg 6deg, transparent 6deg 12deg),
@@ -898,11 +922,14 @@ button:disabled { cursor: default; }
    лентой — колесо и счёт по краям, разбор боя посередине. */
 .side {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: stretch;
+    grid-template-rows: auto minmax(0, 1fr) auto;
     gap: 8px;
     min-height: 0;
-    max-height: 22vh;
+    /* Потолок обязателен: лог растёт с каждым обменом, а средний этаж —
+       ряд высоты auto. Без потолка лог за пару раундов вытягивал этаж и
+       выдавливал арену из её ряда — она наезжала на разбор боя. Высоту
+       этажа должно задавать поле ходов, а лог пусть прокручивается. */
+    max-height: min(22vh, 280px);
 }
 
 .log {
@@ -1055,6 +1082,9 @@ button:disabled { cursor: default; }
 
 @media (max-width: 900px) {
     .battle-layout { grid-template-columns: minmax(0, 1fr); }
+    /* На телефоне колонок нет: поле ходов занимает всю ширину, а разбор боя
+       прячется — читать его во время боя всё равно негде. */
+    .middle { grid-template-columns: minmax(0, 1fr); }
     .side { display: none; }
     .stage { grid-template-rows: minmax(120px, 1fr) auto; }
     /* На телефоне центральный блок съедал полоски здоровья — разносим по строкам.
@@ -1082,10 +1112,12 @@ button:disabled { cursor: default; }
     .arena { --fw: clamp(120px, 34%, 190px); min-height: clamp(150px, 26vh, 260px); }
     .fighter { bottom: 16%; }
     .arena::after { bottom: 19%; }
-    .lane { gap: 8px; }
-    .lane-label { flex-basis: 68px; }
+    /* Пять слотов, подпись и зазоры должны уложиться в ширину телефона:
+       при 68px под подпись последний слот вылезал за край доски. */
+    .lane { gap: 6px; }
+    .lane-label { flex-basis: 52px; }
     .lane-label { font-size: 8px; letter-spacing: 0.04em; }
-    .slot { width: clamp(46px, 13vw, 60px); }
+    .slot { width: clamp(42px, 12.4vw, 58px); }
     .cast { padding: 7px 4px; }
     .cast-glyph { width: clamp(52px, 17vw, 72px); height: clamp(52px, 17vw, 72px); }
     .action-row { grid-template-columns: 1fr 1.3fr 1fr; }

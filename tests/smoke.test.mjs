@@ -264,3 +264,22 @@ test("бойцы сходятся вплотную, а не стреляют с 
     assert.match(fig.slice(0, fig.indexOf("}")), /aspect-ratio:\s*12\s*\/\s*17/);
     assert.match(fighter, /viewBox="0 0 120 170"/);
 });
+
+test("экран боя собран в три этажа: драка, разбор с полем, кнопки", () => {
+    // Порядок задан заказчиком и держит всю раскладку: арена во всю ширину
+    // сверху, слева разбор боя, справа поле ходов, кнопки внизу.
+    const battle = html.slice(html.indexOf('<div class="battle-layout">'));
+    const layout = battle.slice(0, battle.indexOf('<div class="overlay"'));
+    const order = ['id="arena"', 'class="middle"', 'class="side"', 'class="board"', 'class="controls"'];
+    let at = -1;
+    for (const mark of order) {
+        const found = layout.indexOf(mark);
+        assert.ok(found > at, `${mark} стоит не на своём месте`);
+        at = found;
+    }
+    // Кнопки стихий должны жить в нижнем этаже, а не внутри поля ходов.
+    const controls = layout.slice(layout.indexOf('class="controls"'));
+    assert.match(controls, /id="cast-row"/);
+    assert.match(controls, /id="btn-go"/);
+    assert.doesNotMatch(layout.slice(layout.indexOf('class="board"'), layout.indexOf('class="controls"')), /cast-row/);
+});
