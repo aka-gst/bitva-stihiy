@@ -8,6 +8,15 @@
         "start"
       ],
       "port": 4189
+    },
+    {
+      "name": "worm-proto",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "start"
+      ],
+      "port": 4266,
+      "autoPort": true
     }
   ]
 }

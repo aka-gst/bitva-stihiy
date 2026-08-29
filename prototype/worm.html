@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex">
+<title>Наотмашь — проба физики</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none;
+    background: #0d1014; color: #e8eef5;
+    font: 13px/1.35 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  #c { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+
+  #hud {
+    position: absolute; left: 10px; top: 10px; pointer-events: none;
+    font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px #000;
+  }
+  #hud b { font-weight: 600; color: #fff; }
+  #hud .dim { color: #7c8b9c; }
+  #speedbar { width: 132px; height: 5px; margin: 5px 0 7px; border-radius: 3px; background: #1e2833; overflow: hidden; }
+  #speedfill { height: 100%; width: 0; background: #35506b; transition: background .12s; }
+
+  #panel {
+    position: absolute; left: 8px; right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  }
+  .grp {
+    display: flex; align-items: center; gap: 2px;
+    background: #161c24cc; border: 1px solid #263140; border-radius: 9px; padding: 3px 4px;
+    backdrop-filter: blur(6px);
+  }
+  .grp span { padding: 0 5px; color: #9fb0c2; font-size: 12px; }
+  .grp span i { font-style: normal; color: #fff; font-weight: 600; }
+  button {
+    font: inherit; color: #dbe6f2; background: #222c38; border: 0; border-radius: 6px;
+    min-width: 26px; height: 26px; padding: 0 8px; cursor: pointer; touch-action: manipulation;
+  }
+  button:active { background: #33506e; }
+  button.on { background: #2f6b4a; color: #eaffef; }
+
+  .modal {
+    position: absolute; inset: 0; display: none; flex-direction: column;
+    align-items: center; justify-content: center; gap: 9px; padding: 18px;
+    background: #0d1014e6; backdrop-filter: blur(3px); z-index: 5;
+  }
+  .modal.on { display: flex; }
+  .modal h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; color: #9fb0c2; }
+  .modal button {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    width: min(340px, 90%); height: auto; padding: 11px 14px; text-align: left;
+    background: #1a232e; border: 1px solid #2c3a4a; border-radius: 11px;
+  }
+  .modal button:active { background: #29455f; }
+  .modal b { font-size: 15px; color: #fff; }
+  .modal span { font-size: 12.5px; color: #93a5b8; line-height: 1.4; }
+
+  #start h1 { margin: 0 0 2px; font-size: 24px; font-weight: 600; letter-spacing: .02em; }
+  #start ul { margin: 0 0 14px; padding: 0 0 0 18px; max-width: 340px; color: #9fb0c2; font-size: 13.5px; line-height: 1.7; }
+  #start ul b { font-size: inherit; }
+  #start .rec, #over .rec { margin: 0 0 10px; color: #cfae55; font-size: 13.5px; }
+  #over ul { margin: 2px 0 14px; padding: 0 0 0 18px; max-width: 340px; color: #9fb0c2; font-size: 14px; line-height: 1.8; }
+  #over ul b { font-size: inherit; color: #fff; }
+  #over h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
+  #go { align-items: center !important; font-size: 16px; font-weight: 600; color: #eafff0;
+        background: #2f6b4a; border-color: #3d8a60; padding: 13px !important; }
+
+  #panel.off { display: none; }
+  #gear {
+    position: absolute; right: 8px; top: 8px; z-index: 6;
+    width: 34px; height: 34px; padding: 0; font-size: 15px; line-height: 34px;
+    background: #161c24cc; border: 1px solid #263140; border-radius: 9px;
+  }
+
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div><span class="dim">волна</span> <b id="wv">1</b> <span class="dim" id="th"></span> <span class="dim">· счёт</span> <b id="sc">0</b></div>
+  <div><span class="dim">оружие</span> <b id="sp">0</b> <span class="dim">px/с</span></div>
+  <div id="speedbar"><div id="speedfill"></div></div>
+  <div><span class="dim">макс. по телу</span> <b id="mx">0</b></div>
+  <div><span class="dim">длина оружия</span> <b id="ln">7</b></div>
+  <div><span class="dim">лучший удар</span> <b id="best">0</b></div>
+</div>
+
+<div id="cards" class="modal"></div>
+
+<div id="start" class="modal"></div>
+
+<div id="over" class="modal"></div>
+
+<button id="gear" aria-label="настройки">⚙</button>
+
+<div id="panel">
+  <div class="grp"><span>длина <i id="v-len">7</i></span><button data-a="len-">−</button><button data-a="len+">+</button></div>
+  <div class="grp"><span>вес кончика <i id="v-tip">30</i>%</span><button data-a="tip-">−</button><button data-a="tip+">+</button></div>
+  <div class="grp"><span>упругость <i id="v-bend">5</i></span><button data-a="bend-">−</button><button data-a="bend+">+</button></div>
+  <div class="grp"><span>инерция руки <i id="v-hand">5</i></span><button data-a="hand-">−</button><button data-a="hand+">+</button></div>
+  <div class="grp"><span>рывок <i id="v-spd">900</i></span><button data-a="spd-">−</button><button data-a="spd+">+</button></div>
+  <div class="grp"><button data-a="sound" class="on">звук</button><button data-a="rock" class="on">камень</button><button data-a="foes" class="on">враги</button><button data-a="reset">сброс</button></div>
+</div>
+
+<script type="module">
+/**
+ * «Кольчатый» — проба одной идеи: тело червя это верёвка, а верёвка это кистень.
+ * Кнопки атаки нет. Есть только палец, инерция и скорость звена в момент касания.
+ *
+ * Здесь нет прогрессии, волн и баланса — только ощущение замаха.
+ */
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0;
+
+/* ─────────────────────────────── Настройки ─────────────────────────────── */
+
+const S = {
+    len: 7,           // сегментов: начинаем коротким и отращиваем
+    len0: 7,          // с чего начали: потолок роста считается от него
+    seg: 11,          // длина звена, единиц мира
+    headSpeed: 900,   // максимальная скорость головы, px/с
+    tipWeight: 0.30,  // насколько тяжёлый кончик тянет за собой тело
+    drag: 0.992,      // сопротивление среды за подшаг
+    hand: 5,          // инерция руки: 1 — рывком, 9 — вязко
+    stiff: 1,         // мягкая цепь копит энергию как пружина и щёлкает сильнее
+    bend: 5,          // упругость на излом: 0 — цепь, 9 — почти прут
+    bladeW: 13,       // толщина боевой части
+    bladeRGB: [150, 190, 215],
+    sound: true,
+    mode: 'head',     // 'head' — палец держит голову; 'tip' — палец держит оружие
+    bodyMul: 1,       // множитель урона обычных звеньев
+    bladeMul: 2.2,    // множитель урона наконечника
+    rock: true,
+    foes: true,
+};
+
+/** То, к чему возвращаемся между забегами: настройки руками — да, прокачка — нет. */
+const BASE = { ...S };
+
+const DT = 1 / 120;          // фиксированный шаг физики
+const HIT_SPEED = 260;       // ниже этого касание безвредно
+const BLADE = 3;             // сколько последних звеньев считаются «оружием»
+const DMG_K = 0.43;          // урон растёт по корню скорости, а не линейно
+const TEAR = 27;             // выше этого удар по голове отрывает её напрочь
+const ROCK_MAX = 1100;       // потолок скорости камня, единиц мира в секунду
+const PAD = 6;
+/**
+ * Короткая сторона экрана — это всегда 450 единиц мира. Иначе на узком
+ * телефоне те же 900 ед/с означают вдвое более быстрый полёт по арене,
+ * чем на десктопе, и управление становится дёрганым именно там.
+ */
+const VIEW = 450;
+/**
+ * Биом — это палитра плюс один приём в отрисовке. Меняется каждые пять
+ * волн, то есть ровно с приходом очередной туши.
+ */
+const BIOMES = [
+    { name: 'Двор',   sky: '#12160f', line: '#1b2317', spot: '#26301f', mark: '#33402a', style: 'камни' },
+    { name: 'Лёд',    sky: '#0c131a', line: '#142029', spot: '#1d2f3b', mark: '#2b4d61', style: 'трещины' },
+    { name: 'Чертог', sky: '#15100c', line: '#221913', spot: '#2c2019', mark: '#4a3220', style: 'плиты' },
+    { name: 'Пепел',  sky: '#121110', line: '#1c1a19', spot: '#262321', mark: '#3b332c', style: 'пепел' },
+];
+/** На сколько рука отходит от тела. Дальше — герой идёт за оружием. */
+const REACH = 76;
+const HERO_SPEED = 165;   // единиц мира в секунду, шагом
+const HERO_R = 11;
+/** Насколько быстро скорость руки догоняет желаемую, за подшаг. */
+const EASE = [0.45, 0.30, 0.20, 0.13, 0.085, 0.055, 0.035, 0.022, 0.014];
+
+/* ──────────────────────────────── Состояние ────────────────────────────── */
+
+let pts = [], foes = [], orbs = [], nums = [], trail = [], bits = [];
+let sc = 1;   // сколько пикселей экрана в одной единице мира
+let deco = [], decoFor = -1;      // неподвижное убранство арены
+let dec = null, decCtx = null;    // слой следов: он не перерисовывается
+let rock = null;
+let aim = { x: 0, y: 0, down: false };
+let best = 0, spawnTimer = 0, shake = 0, dead = 0;
+let hero = null, held = null, tense = false, slow = 0;
+let started = false, menu = false;
+let score = 0, kills = 0, record = 0;
+let theme = null, bossDone = false;
+let segNow = 11;   // рабочая длина звена: под напряжением цепь подбирается
+let wave = 0, spawnLeft = 0, paused = false;
+
+/**
+ * Свой генератор — чтобы забег можно было повторить по номеру, если
+ * когда-нибудь понадобится. Сид берётся случайный: каждый бой свой.
+ */
+let seed = 1;
+const srand = (n) => { seed = (n >>> 0) || 1; };
+const rnd = (a, b) => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return a + (seed / 4294967296) * (b - a);
+};
+
+
+function reset() {
+    Object.assign(S, BASE);          // прокачка прошлого забега не переносится
+    segNow = S.seg;
+    buildDec(); buildDeco();
+    hero = { x: W / 2, y: H / 2, hp: 5, hpMax: 5, iframe: 0, fx: 0, fy: 1 };
+    held = null;
+    pts = [];
+    for (let i = 0; i < S.len; i++) {
+        const y = H / 2 + 24 + i * S.seg;
+        pts.push({ x: W / 2, y, px: W / 2, py: y });
+    }
+    foes = []; orbs = []; nums = []; trail = []; bits = [];
+    rock = { x: W / 2, y: H * 0.28, vx: 0, vy: 0, r: 19 };
+    aim = { x: W / 2, y: H / 2, down: false };
+    best = 0; shake = 0; dead = 0; wave = 0; score = 0; kills = 0;
+    srand(Math.floor(Math.random() * 2147483647));
+    startWave();
+}
+
+/* ─────────────────────────────── Арена ─────────────────────────────────── */
+
+const forcedBiome = (location.search.match(/biome=(\d+)/) || [])[1];
+const biomeIdx = () => (forcedBiome !== undefined
+    ? +forcedBiome % BIOMES.length                     // для проверки внешнего вида
+    : Math.floor(Math.max(0, wave - 1) / 5) % BIOMES.length);
+const biome = () => BIOMES[biomeIdx()];
+
+/**
+ * Убранство неподвижно, поэтому раскладывается один раз. Случайность здесь
+ * своя, не игровая: расстановка камней не должна влиять на бой.
+ */
+function buildDeco() {
+    decoFor = biomeIdx();
+    deco = [];
+    for (let i = 0; i < 54; i++) {
+        deco.push({
+            x: Math.random() * W, y: Math.random() * H,
+            r: 2 + Math.random() * 8, a: Math.random() * 6.283,
+            l: 12 + Math.random() * 52, t: Math.random(),
+        });
+    }
+}
+
+/** Слой следов: выбоины и пятна копятся за забег и не стираются. */
+function buildDec() {
+    if (!W || !H) return;
+    dec = document.createElement('canvas');
+    dec.width = Math.max(1, Math.ceil(W));
+    dec.height = Math.max(1, Math.ceil(H));
+    decCtx = dec.getContext('2d');
+}
+
+function stain(x, y, r, color, alpha) {
+    if (!decCtx) return;
+    decCtx.globalAlpha = alpha;
+    decCtx.fillStyle = color;
+    decCtx.beginPath();
+    for (let i = 0; i < 5; i++) {
+        decCtx.arc(x + (Math.random() - 0.5) * r * 1.6, y + (Math.random() - 0.5) * r * 1.6,
+            r * (0.3 + Math.random() * 0.6), 0, 7);
+    }
+    decCtx.fill();
+    decCtx.globalAlpha = 1;
+}
+
+/* ──────────────────────────────── Физика ───────────────────────────────── */
+
+const driver = () => (S.mode === 'tip' ? pts.length - 1 : 0);
+/** На сколько звеньев оружие переросло своё начальное состояние. */
+const grown = () => Math.max(0, pts.length - S.len0);
+
+function step(dt) {
+    // Палец держит ровно одно звено. Всё остальное — следствие.
+    const d0 = driver();
+    const h = pts[d0];
+    let vx = h.x - h.px, vy = h.y - h.py;
+    let wx = 0, wy = 0;
+    if (aim.down) {
+        const dx = aim.x - h.x, dy = aim.y - h.y;
+        const d = Math.hypot(dx, dy) || 1;
+        const want = Math.min(d / dt, S.headSpeed) * dt;
+        wx = dx / d * want; wy = dy / d * want;
+    }
+    // У руки есть вес: разгон и остановка занимают время. Без этого голова
+    // мгновенно встаёт колом, и цепь передаёт этот рывок прямо в хлыст.
+    // Напряжение подбирает цепь к руке — это и есть способ её укротить.
+    // Меняем плавно: рывком это швырнуло бы весь хвост.
+    const segWant = tense ? S.seg * 0.66 : S.seg;
+    segNow += (segWant - segNow) * 0.016;
+
+    const e = EASE[S.hand - 1];
+    vx += (wx - vx) * e; vy += (wy - vy) * e;
+    h.px = h.x; h.py = h.y;
+    h.x += vx; h.y += vy;
+
+    // Рука не отрывается от плеча. Уводишь дальше вытянутой руки — герой
+    // шагает следом: одним пальцем и машешь, и ходишь.
+    const ax = h.x - hero.x, ay = h.y - hero.y;
+    const ad = Math.hypot(ax, ay);
+    if (ad > REACH) {
+        const over = ad - REACH, ux = ax / ad, uy = ay / ad;
+        // Чем дальше уводят руку, тем быстрее герой бежит следом. Жёсткий упор
+        // здесь недопустим: он ограничивает руку скоростью шага, и хлыст глохнет.
+        const walk = Math.min(over, (HERO_SPEED + over * 4.5) * dt);
+        hero.x += ux * walk; hero.y += uy * walk;
+        hero.x = Math.max(PAD + HERO_R, Math.min(W - PAD - HERO_R, hero.x));
+        hero.y = Math.max(PAD + HERO_R, Math.min(H - PAD - HERO_R, hero.y));
+        h.x -= ux * over * 0.16; h.y -= uy * over * 0.16;   // рука тянется, а не упирается
+    }
+    if (ad > 1) { hero.fx = ax / ad; hero.fy = ay / ad; }
+
+    // Остальные звенья живут своей инерцией: именно отставание и даёт хлыст.
+    // Чем длиннее оружие, тем гуще среда: иначе прокачка делает его диким.
+    const air = Math.max(0.972, S.drag - grown() * 0.0027);
+    for (let i = 0; i < pts.length; i++) {
+        if (i === d0) continue;
+        const p = pts[i];
+        const vx = (p.x - p.px) * air, vy = (p.y - p.py) * air;
+        p.px = p.x; p.py = p.y;
+        p.x += vx; p.y += vy;
+    }
+
+    // Звенья нерастяжимы. Тянем от ведомого пальцем звена к обоим концам,
+    // поэтому одна и та же цепь работает в обе стороны.
+    for (let k = 0; k < 3; k++) {
+        unbend();
+        for (let i = d0 + 1; i < pts.length; i++) solve(pts[i - 1], pts[i], i, i - 1 === d0);
+        for (let i = d0 - 1; i >= 0; i--) solve(pts[i + 1], pts[i], i + 1, i + 1 === d0);
+    }
+
+    for (const p of pts) bounce(p, 8);
+
+    combat(dt);
+    if (S.rock) moveRock(dt);
+    if (S.foes) moveFoes(dt);
+}
+
+/**
+ * Тело сопротивляется излому: каждый сустав тянется к середине между
+ * соседями. Это и есть разница между цепью и хлыстом — свободная цепь
+ * мотается непредсказуемо, а упругая ведёт себя читаемо.
+ */
+function unbend() {
+    // Каждое лишнее звено усиливает разгон. Чтобы прокачка не превращала
+    // оружие в неуправляемое, упругость растёт вместе с длиной.
+    const k = (tense ? 9 : Math.min(9, S.bend + grown() * 2)) * 0.022;
+    if (k <= 0) return;
+    for (let i = 1; i < pts.length - 1; i++) {
+        const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+        b.x += ((a.x + c.x) / 2 - b.x) * k;
+        b.y += ((a.y + c.y) / 2 - b.y) * k;
+    }
+}
+
+/**
+ * `a` ведёт, `b` следует. Тяжёлый наконечник частично утаскивает ведущее
+ * звено за собой — но никогда то, которое держит палец.
+ */
+function solve(a, b, i, lockA) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const d = Math.hypot(dx, dy) || 1e-6;
+    const diff = (d - segNow) / d * S.stiff;
+    const w = (!lockA && i >= pts.length - BLADE) ? (held ? Math.max(S.tipWeight, held.mass) : S.tipWeight) : 0;
+    a.x += dx * diff * w;       a.y += dy * diff * w;
+    b.x -= dx * diff * (1 - w); b.y -= dy * diff * (1 - w);
+}
+
+function bounce(p, r) {
+    const vx = p.x - p.px, vy = p.y - p.py;
+    let hit = false;
+    if (p.x < PAD + r) { p.x = PAD + r; hit = true; }
+    if (p.x > W - PAD - r) { p.x = W - PAD - r; hit = true; }
+    if (hit) p.px = p.x + vx * 0.5;
+    hit = false;
+    if (p.y < PAD + r) { p.y = PAD + r; hit = true; }
+    if (p.y > H - PAD - r) { p.y = H - PAD - r; hit = true; }
+    if (hit) p.py = p.y + vy * 0.5;
+}
+
+const vel = (p) => [(p.x - p.px) / DT, (p.y - p.py) / DT];
+const radiusAt = (i) => (i >= pts.length - BLADE ? 9 : 6);
+
+/**
+ * На хорошем замахе звено проходит за подшаг больше сотни пикселей и
+ * перепрыгивает врага целиком. Поэтому проверяем не точку, а весь путь звена.
+ */
+function swept(p, e, r) {
+    const dx = p.x - p.px, dy = p.y - p.py;
+    const l2 = dx * dx + dy * dy;
+    let t = l2 ? ((e.x - p.px) * dx + (e.y - p.py) * dy) / l2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(e.x - (p.px + dx * t), e.y - (p.py + dy * t)) <= r + e.r;
+}
+
+/* ──────────────────────────────── Бой ──────────────────────────────────── */
+
+function combat(dt) {
+    for (const e of foes) {
+        e.iframe -= dt;
+        if (e.iframe > 0) continue;
+        let hitPart = -1, hitSeg = -1;
+        for (let i = 1; i < pts.length && hitPart < 0; i++) {
+            const r = radiusAt(i);
+            for (let j = 0; j < 3; j++) {
+                const q = e.p[j];
+                if (!swept(pts[i], { x: q.x, y: q.y, r: j === 1 ? e.r : e.r * 0.78 }, r)) continue;
+                hitPart = j; hitSeg = i; break;
+            }
+        }
+        if (hitPart >= 0) {
+            const i = hitSeg, p = pts[i];
+            const [vx, vy] = vel(p);
+            const sp = Math.hypot(vx, vy);
+            if (sp < HIT_SPEED) continue;
+            if (e.armor && sp < e.armor) {          // панцирь: касание не считается
+                e.iframe = 0.12; e.flash = 0.4;
+                nums.push({ x: e.x, y: e.y - 10, v: 'бронь', t: 0.45 });
+                blip(1500, 0.05, 'square', 0.09);
+                continue;
+            }
+            const mul = i >= pts.length - BLADE ? S.bladeMul * (held ? held.mul : 1) : S.bodyMul;
+            const dmg = DMG_K * Math.sqrt(sp - HIT_SPEED) * mul;
+            hurt(e, dmg, vx * 0.30, vy * 0.30, e.p[hitPart]);
+            e.iframe = 0.1;
+            // Точный сильный удар по голове сносит её вместе с врагом.
+            if (hitPart === 0 && dmg >= TEAR && !e.boss && !e.dead) {
+                nums.push({ x: e.x, y: e.y - 16, v: 'башка!', t: 0.8 });
+                blip(520, 0.2, 'square', 0.16, 120);
+                slow = Math.max(slow, 0.13);
+                kills++;
+                score += Math.round(30 * (1 + dmg / 45));   // за точность вдвое
+                kill(e, vx * 0.5, vy * 0.5, true);
+            }
+            if (dmg > best) best = dmg;
+            if (held && i >= pts.length - BLADE && --held.hits <= 0) {
+                blip(300, 0.2, 'square', 0.14, 90);
+                const t = pts[pts.length - 1];
+                for (let q = 0; q < 6; q++) {
+                    bits.push({ x: t.x, y: t.y, vx: rnd(-260, 260), vy: rnd(-260, 260),
+                        r: rnd(2, 4), ang: rnd(0, 6.283), spin: rnd(-16, 16), t: 0.8, boss: held.boss });
+                }
+                held = null;
+            }
+        }
+    }
+
+    // Обвивка: замкнул тело в кольцо — всё внутри стягивается и трещит.
+    const j = loopEnd();
+    if (j > 0) {
+        const poly = pts.slice(0, j + 1);
+        let cx = 0, cy = 0;
+        for (const p of poly) { cx += p.x; cy += p.y; }
+        cx /= poly.length; cy /= poly.length;
+        for (const e of foes) {
+            if (!inside(poly, e.x, e.y)) continue;
+            e.hp -= 22 * dt;
+            e.x += (cx - e.x) * 2.2 * dt; e.y += (cy - e.y) * 2.2 * dt;
+            e.squeeze = 1;
+            if (e.hp <= 0) kill(e);
+        }
+    }
+
+    for (const o of orbs) {
+        const hand = pts[0];
+        const dh = Math.hypot(o.x - hand.x, o.y - hand.y);
+        const db = Math.hypot(o.x - hero.x, o.y - hero.y);
+        const to = dh < db ? hand : hero;
+        const d = Math.min(dh, db);
+        if (d < 115) { o.x += (to.x - o.x) * 4.5 * dt; o.y += (to.y - o.y) * 4.5 * dt; }
+        if (d < 22) { o.dead = true; grow(1); blip(880, 0.06, 'sine', 0.09); }
+    }
+    orbs = orbs.filter((o) => !o.dead);
+    for (const b of bits) {
+        b.t -= dt;
+        b.x += b.vx * dt; b.y += b.vy * dt;
+        b.vx *= 0.955; b.vy *= 0.955;
+        b.ang += b.spin * dt;
+        if (b.x < PAD + b.r || b.x > W - PAD - b.r) { b.vx *= -0.5; b.spin *= -0.7; }
+        if (b.y < PAD + b.r || b.y > H - PAD - b.r) { b.vy *= -0.5; b.spin *= -0.7; }
+        b.x = Math.max(PAD + b.r, Math.min(W - PAD - b.r, b.x));
+        b.y = Math.max(PAD + b.r, Math.min(H - PAD - b.r, b.y));
+    }
+    for (const b of bits) {
+        if (!b.grab || held) continue;
+        const near = Math.min(
+            Math.hypot(b.x - hero.x, b.y - hero.y),
+            Math.hypot(b.x - pts[0].x, b.y - pts[0].y),   // рукой тоже можно
+        );
+        if (near > b.r + 22) continue;
+        b.t = 0;
+        held = { hits: b.boss ? 14 : 7, mul: b.boss ? 2.4 : 1.7, mass: b.boss ? 0.5 : 0.4, r: b.r * 1.5, boss: b.boss };
+        blip(150, 0.16, 'square', 0.14, 320);
+        buzz(25);
+    }
+    bits = bits.filter((b) => b.t > 0);
+    for (const n of nums) { n.t -= dt; n.y -= 26 * dt; }
+    nums = nums.filter((n) => n.t > 0);
+    if (shake > 0) shake = Math.max(0, shake - dt * 6);
+}
+
+function hurt(e, dmg, kx, ky, part) {
+    e.hp -= dmg;
+    const kr = 1 / e.mass;          // тушу так просто не отбросишь, бегуна сдувает
+    const q = part || e.p[1];
+    push(q, kx * kr, ky * kr);
+    for (const o of e.p) if (o !== q) push(o, kx * kr * 0.3, ky * kr * 0.3);
+    if (dmg > 40) slow = Math.max(slow, 0.09);
+    if (dmg > 18) stain(q.x, q.y, 3.5, e.dark, 0.3);   // брызги остаются на земле
+    e.flash = 1;
+    nums.push({ x: e.x, y: e.y, v: Math.round(dmg), t: 0.6, big: dmg > 25 });
+    blip(210 + rnd(0, 70), 0.13, 'triangle', Math.min(0.3, 0.05 + dmg / 260), 60);
+    shake = Math.min(1, shake + dmg / 120);
+    if (e.hp <= 0 && !e.dead) {
+        kills++;
+        score += Math.round((e.boss ? 300 : 12) * (1 + dmg / 45));
+        kill(e, kx, ky);
+    }
+}
+
+/** Импульс последнего удара уносит ошмётки: видно, откуда прилетело. */
+function kill(e, kx = 0, ky = 0, sure = false) {
+    e.dead = true;
+    stain(e.x, e.y, e.r * 1.4, e.dark, 0.5);
+    blip(e.boss ? 180 : 640, e.boss ? 0.5 : 0.09, 'square', e.boss ? 0.22 : 0.07, e.boss ? 50 : 0);
+    for (let k = 0; k < (e.boss ? 8 : 1); k++) {
+        orbs.push({ x: e.x + rnd(-22, 22), y: e.y + rnd(-22, 22) });
+    }
+    const push = Math.min(700, Math.hypot(kx, ky) * 0.45);
+    const dir = Math.atan2(ky, kx);
+    const n = e.boss ? 16 : 7;
+    for (let k = 0; k < n; k++) {
+        const a = k ? rnd(0, 6.283) : dir;                 // первый кусок летит по удару
+        const sp = rnd(70, 300) + (k ? push * 0.5 : push);
+        bits.push({
+            x: e.x + rnd(-5, 5), y: e.y + rnd(-5, 5),
+            vx: Math.cos(a) * sp + Math.cos(dir) * push * 0.4,
+            vy: Math.sin(a) * sp + Math.sin(dir) * push * 0.4,
+            r: (k ? rnd(2, 4.5) : rnd(5, 7)) * (e.boss ? 1.7 : 1),
+            ang: rnd(0, 6.283), spin: rnd(-16, 16),
+            t: k ? rnd(0.55, 1.2) : 9,          // крупный кусок лежит и ждёт
+            grab: !k && (sure || e.boss || rnd(0, 1) < 0.35), boss: e.boss,
+        });
+    }
+}
+
+function grow(n) {
+    // Растём на три звена от своего оружия: дальше цеп перестаёт слушаться,
+    // а меч перестаёт быть мечом.
+    for (let k = 0; k < n && pts.length < S.len0 + 3; k++) {
+        const t = pts[pts.length - 1];
+        pts.push({ x: t.x, y: t.y, px: t.px, py: t.py });
+    }
+    S.len = pts.length;
+    ui();
+}
+
+function shrink(n) {
+    for (let k = 0; k < n && pts.length > 4; k++) pts.pop();
+    S.len = pts.length;
+    ui();
+}
+
+/* ──────────────────────────── Враги и камень ───────────────────────────── */
+
+function startWave() {
+    wave++;
+    const bossWave = wave % 5 === 0;
+    theme = pickTheme(wave, theme && theme[0]);
+    bossDone = false;
+    // На волне босса тоже приходит толпа — иначе туша остаётся один на один
+    // с оружием и волна выходит легче обычной.
+    spawnLeft = bossWave
+        ? 1 + Math.round(3 + wave * 0.6)
+        : Math.min(30, Math.round((4 + wave * 1.6) * theme[1].size));
+    spawnTimer = 0.5;
+    paused = false;
+    blip(520, 0.1, 'sine', 0.1); blip(780, 0.16, 'sine', 0.08);
+    $('cards').classList.remove('on');
+    ui();
+}
+
+/**
+ * Враги отличаются не числом здоровья, а физикой: массой, длиной тела,
+ * вязкостью и скоростью. Лёгкий бегун улетает от касания, толстяк почти
+ * не сдвигается, щитоносца вообще нельзя задеть медленным оружием.
+ */
+const KINDS = {
+    ходок:     { hp: 18, walk: 52, r: 10, link: 11, damp: 0.962, mass: 1.0, armor: 0,   color: '#c2566b', dark: '#8f3a4c' },
+    бегун:     { hp: 10, walk: 98, r: 8,  link: 9,  damp: 0.950, mass: 0.5, armor: 0,   color: '#dd8b3c', dark: '#a4602a' },
+    толстяк:   { hp: 48, walk: 31, r: 15, link: 15, damp: 0.980, mass: 2.6, armor: 0,   color: '#9a63c4', dark: '#6d4590' },
+    щитоносец: { hp: 26, walk: 44, r: 11, link: 11, damp: 0.970, mass: 1.5, armor: 700, color: '#4f93ad', dark: '#356878' },
+    туша:      { hp: 200, walk: 34, r: 26, link: 24, damp: 0.975, mass: 4.5, armor: 1300, color: '#59626e', dark: '#4d5561' },
+};
+
+/**
+ * У волны есть характер. Ровная смесь всех видов быстро превращается в
+ * однообразие: к десятой волне каждая выглядит как предыдущая. Поэтому
+ * волна выбирает тему — толпу, наскок, тяжёлых или стену щитов — и тема
+ * задаёт и состав, и то, насколько их много.
+ */
+const THEMES = [
+    ['толпа',   { needs: null,        size: 1.5, mix: { ходок: 1, бегун: 0.4 } }],
+    ['наскок',  { needs: 'бегун',     size: 1.2, mix: { бегун: 1, ходок: 0.25 } }],
+    ['тяжёлые', { needs: 'толстяк',   size: 0.55, mix: { толстяк: 1, ходок: 0.35 } }],
+    ['стена',   { needs: 'щитоносец', size: 0.8, mix: { щитоносец: 1, ходок: 0.35 } }],
+    ['вразнос', { needs: 'толстяк',   size: 1.0, mix: { ходок: 1, бегун: 0.9, толстяк: 0.5, щитоносец: 0.4 } }],
+];
+
+/** Когда вид впервые выходит на арену. */
+const UNLOCK = { ходок: 1, бегун: 4, толстяк: 6, щитоносец: 8 };
+
+function pickTheme(w, avoid) {
+    const ok = THEMES.filter(([name, t]) =>
+        (!t.needs || w >= UNLOCK[t.needs]) && name !== avoid);
+    return ok.length ? ok[Math.floor(rnd(0, ok.length))] : THEMES[0];
+}
+
+function pickKind(w, mix) {
+    const list = Object.entries(mix).filter(([k]) => w >= UNLOCK[k]);
+    let t = rnd(0, list.reduce((a, x) => a + x[1], 0));
+    for (const [key, weight] of list) if ((t -= weight) <= 0) return key;
+    return 'ходок';
+}
+
+/** Голова, туловище, ноги — та же цепь, что и у оружия, только короткая. */
+const body = (x, y, link) => [
+    { x, y: y - link, px: x, py: y - link },
+    { x, y, px: x, py: y },
+    { x, y: y + link, px: x, py: y + link },
+];
+
+function stick(a, b, len) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const d = Math.hypot(dx, dy) || 1e-6;
+    const k = (d - len) / d * 0.5;
+    a.x += dx * k; a.y += dy * k;
+    b.x -= dx * k; b.y -= dy * k;
+}
+
+/** Толчок в верле задаётся сдвигом прошлой позиции. */
+const push = (q, ax, ay) => { q.px -= ax * DT; q.py -= ay * DT; };
+
+function spawn() {
+    const edge = Math.floor(rnd(0, 4));
+    const x = edge === 0 ? 20 : edge === 1 ? W - 20 : rnd(20, W - 20);
+    const y = edge === 2 ? 20 : edge === 3 ? H - 20 : rnd(20, H - 20);
+    const boss = wave % 5 === 0 && !bossDone;
+    if (boss) bossDone = true;                    // на волне босса ещё приходит свита
+    const kind = boss ? 'туша' : pickKind(wave, theme[1].mix);
+    const k = KINDS[kind];
+    const hp = Math.round(k.hp * (boss ? 1 + wave * 0.9 : 1 + wave * 0.16));
+    foes.push({
+        x, y, kind, boss, hp, hp0: hp,
+        r: k.r, link: k.link, walk: k.walk, damp: k.damp, mass: k.mass, armor: k.armor,
+        color: k.color, dark: k.dark,
+        iframe: 0, flash: 0, squeeze: 0, touch: 0,
+        p: body(x, y, k.link),
+    });
+}
+
+function moveFoes(dt) {
+    if (spawnLeft > 0) {
+        spawnTimer -= dt;
+        if (spawnTimer <= 0 && foes.length < 30) {
+            spawnTimer = Math.max(0.2, 0.9 - wave * 0.05);
+            spawn(); spawnLeft--;
+        }
+    } else if (!foes.length && !paused) {
+        offerCards();
+    }
+
+    hero.iframe -= dt;
+    for (const e of foes) {
+        const damp = e.damp;
+        for (const q of e.p) {
+            const vx = (q.x - q.px) * damp, vy = (q.y - q.py) * damp;
+            q.px = q.x; q.py = q.y;
+            q.x += vx; q.y += vy;
+        }
+        const dx = hero.x - e.p[1].x, dy = hero.y - e.p[1].y;
+        const d = Math.hypot(dx, dy) || 1;
+        const walk = e.walk * dt;
+        const wx = dx / d * walk, wy = dy / d * walk;
+        for (const q of e.p) {
+            q.x += wx; q.y += wy;
+            q.px += wx; q.py += wy;     // сдвигаем и прошлую точку, иначе шаг копится в скорости
+        }
+        for (let k = 0; k < 2; k++) {
+            stick(e.p[0], e.p[1], e.link);
+            stick(e.p[1], e.p[2], e.link);
+            stick(e.p[0], e.p[2], e.link * 1.75);   // чтобы не складывался пополам
+        }
+        const m = e.r * 0.7;
+        for (const q of e.p) {
+            q.x = Math.max(PAD + m, Math.min(W - PAD - m, q.x));
+            q.y = Math.max(PAD + m, Math.min(H - PAD - m, q.y));
+        }
+        e.x = e.p[1].x; e.y = e.p[1].y;
+        e.flash = Math.max(0, e.flash - dt * 5);
+        e.squeeze = Math.max(0, e.squeeze - dt * 4);
+        e.touch -= dt;
+        if (d < e.r + HERO_R && e.touch <= 0 && hero.iframe <= 0 && !dead) {
+            e.touch = 1; hero.iframe = 0.9;
+            for (const q of e.p) push(q, -dx / d * 500, -dy / d * 500);
+            hero.hp -= 1; shake = 1;
+            blip(95, 0.28, 'sawtooth', 0.2, 45); buzz(80);
+            if (hero.hp <= 0) { dead = 1.4; blip(70, 0.7, 'sawtooth', 0.25, 35); }
+        }
+    }
+    foes = foes.filter((e) => !e.dead);
+}
+
+function moveRock(dt) {
+    rock.x += rock.vx * dt; rock.y += rock.vy * dt;
+    rock.vx *= 0.995; rock.vy *= 0.995;
+    if (rock.x < PAD + rock.r) { rock.x = PAD + rock.r; rock.vx = Math.abs(rock.vx) * 0.8; }
+    if (rock.x > W - PAD - rock.r) { rock.x = W - PAD - rock.r; rock.vx = -Math.abs(rock.vx) * 0.8; }
+    if (rock.y < PAD + rock.r) { rock.y = PAD + rock.r; rock.vy = Math.abs(rock.vy) * 0.8; }
+    if (rock.y > H - PAD - rock.r) { rock.y = H - PAD - rock.r; rock.vy = -Math.abs(rock.vy) * 0.8; }
+
+    // Тело бьёт по камню — камень улетает и косит всё на пути.
+    for (let i = 1; i < pts.length; i++) {
+        const p = pts[i], r = radiusAt(i);
+        const dx = rock.x - p.x, dy = rock.y - p.y;
+        const d = Math.hypot(dx, dy) || 1;
+        if (d > r + rock.r) continue;
+        const ov = r + rock.r - d;
+        rock.x += dx / d * ov; rock.y += dy / d * ov;
+        const [vx, vy] = vel(p);
+        const along = (vx * dx + vy * dy) / d;
+        if (along > 0) { rock.vx += dx / d * along * 0.28; rock.vy += dy / d * along * 0.28; }
+        // Звено разгоняется до тысяч; без потолка камень улетает быстрее,
+        // чем глаз успевает его найти.
+        const rs = Math.hypot(rock.vx, rock.vy);
+        if (rs > ROCK_MAX) { rock.vx *= ROCK_MAX / rs; rock.vy *= ROCK_MAX / rs; }
+    }
+
+    const rs = Math.hypot(rock.vx, rock.vy);
+    if (rs > 200) {
+        for (const e of foes) {
+            if (e.iframe > 0) continue;
+            if (Math.hypot(rock.x - e.x, rock.y - e.y) > rock.r + e.r) continue;
+            e.iframe = 0.15;
+            hurt(e, rs / 26, rock.vx * 0.5, rock.vy * 0.5);
+        }
+    }
+}
+
+/* ─────────────────────────────── Оружие ───────────────────────────────── */
+
+/**
+ * Замеры показали, что вес наконечника почти не меняет пиковую скорость —
+ * он меняет, насколько тяжело оружием управлять. Поэтому оружия здесь
+ * отличаются длиной рычага, упругостью и весом, а не множителем урона.
+ */
+const WEAPONS = [
+    ['Цеп', 'разгоняется сильнее всех и достаёт дальше всех. Второй палец подбирает цепь — этим он и управляется',
+        { len: 10, seg: 10, tipWeight: 0.30, bend: 2, bladeMul: 1.9, headSpeed: 900,
+          bladeW: 13, bladeRGB: [150, 190, 215] }],
+    ['Секира', 'разгон средний, зато сносит с одного удара и таскает тебя за собой',
+        { len: 6, seg: 12, tipWeight: 0.60, bend: 7, bladeMul: 3.4, headSpeed: 780,
+          bladeW: 20, bladeRGB: [205, 170, 115] }],
+    ['Меч', 'разгона нет совсем: бьёт ровно с той скоростью, с какой ведёшь рукой. Зато рука быстрая',
+        { len: 4, seg: 11, tipWeight: 0.10, bend: 9, bladeMul: 2.8, headSpeed: 1150,
+          bladeW: 11, bladeRGB: [190, 200, 212] }],
+];
+
+const RULES = '<ul>' +
+    '<li><b>Урон — от скорости</b>, а не от касания: медленно подвёл — ноль.</li>' +
+    '<li>Уведёшь руку дальше плеча — викинг пойдёт следом.</li>' +
+    '<li><b>Второй палец</b> — подобрать: оружие подтягивается к руке и твердеет. Так наводят удар.</li>' +
+    '<li>Светящиеся куски врагов можно подобрать: это временное оружие.</li>' +
+    '</ul>';
+
+function showResult() {
+    started = false;
+    const beaten = score > record;
+    if (beaten) {
+        record = score;
+        try { localStorage.setItem('worm-record', String(record)); } catch { /* приватный режим */ }
+    }
+    $('over').innerHTML = '<h1>' + (beaten ? 'Новый рекорд' : 'Викинг пал') + '</h1>' +
+        '<ul>' +
+        '<li>дошёл до волны <b>' + wave + '</b>, убил <b>' + kills + '</b></li>' +
+        '<li>лучший удар <b>' + Math.round(best) + '</b></li>' +
+        '<li>счёт <b>' + score + '</b>' + (beaten ? '' : ' · рекорд <b>' + record + '</b>') + '</li>' +
+        '</ul>' +
+        '<button data-again="1"><b>ещё раз</b><span>вернуться к выбору оружия</span></button>';
+    $('over').classList.add('on');
+}
+
+function showStart() {
+    started = false;
+    const el = $('start');
+    el.innerHTML = '<h1>Наотмашь</h1>' + RULES +
+        (record ? '<p class="rec">рекорд ' + record + '</p>' : '') +
+        WEAPONS.map((w, i) => '<button data-w="' + i + '"><b>' + w[0] + '</b><span>' + w[1] + '</span></button>').join('');
+    el.classList.add('on');
+}
+
+/* ──────────────────────────────── Звук ─────────────────────────────────── */
+
+let ac = null, hiss = null, hissGain = null, hissBand = null;
+
+/** Контекст можно завести только из настоящего касания. */
+function audioOn() {
+    if (ac || !S.sound) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ac = new AC();
+    const n = ac.sampleRate * 1.5 | 0;
+    const buf = ac.createBuffer(1, n, ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    hiss = ac.createBufferSource(); hiss.buffer = buf; hiss.loop = true;
+    hissBand = ac.createBiquadFilter(); hissBand.type = 'bandpass'; hissBand.Q.value = 1.3;
+    hissGain = ac.createGain(); hissGain.gain.value = 0;
+    hiss.connect(hissBand).connect(hissGain).connect(ac.destination);
+    hiss.start();
+}
+
+/** Свист замаха: и громкость, и высота идут прямо за скоростью кончика. */
+function hum(sp) {
+    if (!ac) return;
+    const t = S.sound ? Math.min(1, Math.max(0, (sp - 300) / 3800)) : 0;
+    hissGain.gain.setTargetAtTime(t * t * 0.2, ac.currentTime, 0.05);
+    hissBand.frequency.setTargetAtTime(320 + t * 2100, ac.currentTime, 0.05);
+}
+
+function blip(f, dur, type, vol, to) {
+    if (!ac || !S.sound) return;
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f, ac.currentTime);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, ac.currentTime + dur);
+    g.gain.setValueAtTime(vol, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(); o.stop(ac.currentTime + dur + 0.01);
+}
+
+const buzz = (ms) => { try { navigator.vibrate?.(ms); } catch { /* не везде есть */ } };
+
+/* ─────────────────────────── Прокачка забега ───────────────────────────── */
+
+/**
+ * Прокачка меняет физику, а не цифру в табличке: длину рычага, вес
+ * наконечника, скорость руки. Поэтому её видно и слышно в замахе.
+ */
+const UPGRADES = [
+    ['Длиннее', '+2 звена: дальше достаёшь и больнее бьёшь, но хуже поворачиваешь', () => grow(2)],
+    ['Тяжёлый наконечник', 'оружие сильнее таскает тело за собой', () => { S.tipWeight = Math.min(0.6, S.tipWeight + 0.08); }],
+    ['Рывок', '+150 к скорости руки', () => { S.headSpeed += 150; }],
+    ['Шипы', 'больнее бьёт всё тело, а не только кончик', () => { S.bodyMul += 0.4; }],
+    ['Заточка', 'больнее бьёт наконечник', () => { S.bladeMul += 0.5; }],
+    ['Скользкое тело', 'тело дольше держит разгон', () => { S.drag = Math.min(0.998, S.drag + 0.002); }],
+];
+
+function offerCards() {
+    paused = true;
+    score += 40 * wave;                 // за пройденную волну
+    const pool = UPGRADES.slice(), pick = [];
+    while (pick.length < 3 && pool.length) pick.push(pool.splice(Math.floor(rnd(0, pool.length)), 1)[0]);
+    const el = $('cards');
+    el.innerHTML = '<h2>Волна ' + wave + ' зачищена</h2>' +
+        pick.map((u, i) => '<button data-u="' + i + '"><b>' + u[0] + '</b><span>' + u[1] + '</span></button>').join('');
+    el.classList.add('on');
+    el.onclick = (ev) => {
+        const b = ev.target.closest('button');
+        if (!b) return;
+        pick[+b.dataset.u][2]();
+        startWave();
+    };
+}
+
+/* ─────────────────────────── Геометрия кольца ──────────────────────────── */
+
+function loopEnd() {
+    const h = pts[0];
+    for (let j = pts.length - 1; j >= 7; j--) {
+        if (Math.hypot(pts[j].x - h.x, pts[j].y - h.y) < S.seg * 1.4) return j;
+    }
+    return -1;
+}
+
+function inside(poly, x, y) {
+    let c = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const a = poly[i], b = poly[j];
+        if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) c = !c;
+    }
+    return c;
+}
+
+/* ──────────────────────────────── Отрисовка ────────────────────────────── */
+
+function drawGround() {
+    const b = biome();
+    if (decoFor !== biomeIdx() || !deco.length) buildDeco();
+
+    ctx.fillStyle = b.sky;
+    ctx.fillRect(-8, -8, W + 16, H + 16);
+
+    const step = b.style === 'плиты' ? 74 : 44;
+    ctx.strokeStyle = b.line; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let x = 0; x < W; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+    for (let y = 0; y < H; y += step) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+    ctx.stroke();
+
+    for (const d of deco) {
+        if (b.style === 'камни') {
+            ctx.fillStyle = d.t > 0.7 ? b.mark : b.spot;
+            ctx.beginPath(); ctx.ellipse(d.x, d.y, d.r, d.r * 0.68, d.a, 0, 7); ctx.fill();
+        } else if (b.style === 'трещины') {
+            ctx.strokeStyle = b.mark; ctx.lineWidth = 0.8 + d.t;
+            ctx.beginPath();
+            ctx.moveTo(d.x, d.y);
+            ctx.lineTo(d.x + Math.cos(d.a) * d.l, d.y + Math.sin(d.a) * d.l);
+            ctx.lineTo(d.x + Math.cos(d.a + 0.7) * d.l * 1.6, d.y + Math.sin(d.a + 0.7) * d.l * 1.6);
+            ctx.stroke();
+        } else if (b.style === 'плиты') {
+            if (d.t > 0.84) {                       // угли в чертоге дышат
+                // Мельче и глуше, чем враг: реквизит не должен путаться с живым.
+                ctx.fillStyle = 'rgba(214,122,48,' + (0.10 + 0.08 * Math.sin(frame * 0.05 + d.a * 7)) + ')';
+                ctx.beginPath(); ctx.arc(d.x, d.y, d.r * 0.75, 0, 7); ctx.fill();
+            } else {
+                ctx.fillStyle = b.spot;
+                ctx.fillRect(d.x, d.y, d.r * 2.4, d.r * 1.6);
+            }
+        } else {
+            ctx.fillStyle = d.t > 0.6 ? b.mark : b.spot;
+            ctx.fillRect(d.x, d.y, d.r * 0.8, d.r * 0.8);
+        }
+    }
+
+    if (dec) ctx.drawImage(dec, 0, 0, W, H);      // следы боя поверх земли
+
+    ctx.strokeStyle = b.mark; ctx.lineWidth = 2;
+    ctx.strokeRect(PAD, PAD, W - PAD * 2, H - PAD * 2);
+}
+
+function draw() {
+    ctx.save();
+    if (shake > 0) ctx.translate(rnd(-2.5, 2.5) * shake, rnd(-2.5, 2.5) * shake);
+
+    drawGround();
+
+    const j = loopEnd();
+    if (j > 0) {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i <= j; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(90,230,160,.13)'; ctx.fill();
+        ctx.strokeStyle = 'rgba(120,255,190,.35)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
+    for (const o of orbs) {
+        ctx.fillStyle = '#8ef2b0';
+        ctx.beginPath(); ctx.arc(o.x, o.y, 4.5, 0, 7); ctx.fill();
+    }
+
+    if (S.rock) {
+        ctx.fillStyle = '#6b6f77';
+        ctx.beginPath(); ctx.arc(rock.x, rock.y, rock.r, 0, 7); ctx.fill();
+        ctx.fillStyle = '#878d96';
+        ctx.beginPath(); ctx.arc(rock.x - 5, rock.y - 5, rock.r * 0.55, 0, 7); ctx.fill();
+    }
+
+    for (const b of bits) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, b.t * 2);
+        ctx.translate(b.x, b.y); ctx.rotate(b.ang);
+        ctx.fillStyle = b.boss ? '#6c7684' : '#a8455a';
+        ctx.fillRect(-b.r, -b.r * 0.75, b.r * 2, b.r * 1.5);
+        ctx.fillStyle = b.boss ? '#8d97a5' : '#c2566b';
+        ctx.fillRect(-b.r, -b.r * 0.75, b.r * 2, b.r * 0.7);
+        if (b.grab && !held) {
+            ctx.strokeStyle = 'rgba(255,214,110,.8)'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.arc(0, 0, b.r + 5, 0, 7); ctx.stroke();
+        }
+        ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+
+    for (const e of foes) {
+        const r = e.r * (1 - e.squeeze * 0.3);
+        const white = e.flash > 0;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.strokeStyle = white ? '#ffffff' : e.dark;
+        ctx.lineWidth = r * 1.45;
+        ctx.beginPath();
+        ctx.moveTo(e.p[2].x, e.p[2].y);
+        ctx.lineTo(e.p[1].x, e.p[1].y);
+        ctx.lineTo(e.p[0].x, e.p[0].y);
+        ctx.stroke();
+        ctx.fillStyle = white ? '#ffffff' : e.color;
+        ctx.beginPath(); ctx.arc(e.p[0].x, e.p[0].y, r * 0.92, 0, 7); ctx.fill();
+        const ex = e.p[0].x - e.p[1].x, ey = e.p[0].y - e.p[1].y;
+        const ed = Math.hypot(ex, ey) || 1;
+        const nx = -ey / ed * r * 0.34, ny = ex / ed * r * 0.34;
+        ctx.fillStyle = '#1b1016';
+        ctx.beginPath();
+        ctx.arc(e.p[0].x + nx, e.p[0].y + ny, r * 0.17, 0, 7);
+        ctx.arc(e.p[0].x - nx, e.p[0].y - ny, r * 0.17, 0, 7);
+        ctx.fill();
+        if (e.boss) {
+            ctx.strokeStyle = '#8d97a5'; ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(e.p[1].x, e.p[1].y, r * 0.75, 0.6, 2.6); ctx.stroke();
+            const bw = 70;
+            ctx.fillStyle = '#1e2833'; ctx.fillRect(e.x - bw / 2, e.y - r - 26, bw, 5);
+            ctx.fillStyle = '#c2566b';
+            ctx.fillRect(e.x - bw / 2, e.y - r - 26, bw * Math.max(0, e.hp / e.hp0), 5);
+        }
+    }
+
+    // Смаз замаха — одна залитая лента между следом кончика и следом основания.
+    // Копии кадров на быстром замахе разъезжались в частокол; лента не рвётся.
+    const tipNow = pts[pts.length - 1];
+    const [tvx0, tvy0] = vel(tipNow);
+    const hot = Math.min(1, Math.max(0, (Math.hypot(tvx0, tvy0) - HIT_SPEED) / 900));
+    if (trail.length > 2 && hot > 0.02) {
+        ctx.beginPath();
+        ctx.moveTo(trail[0][0], trail[0][1]);
+        for (let i = 1; i < trail.length; i++) ctx.lineTo(trail[i][0], trail[i][1]);
+        for (let i = trail.length - 1; i >= 0; i--) ctx.lineTo(trail[i][2], trail[i][3]);
+        ctx.closePath();
+        const cc = S.bladeRGB;
+        ctx.fillStyle = 'rgba(' + cc[0] + ',' + cc[1] + ',' + cc[2] + ',' + (0.05 + 0.2 * hot) + ')';
+        ctx.fill();
+    }
+
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.strokeStyle = '#2a3b30'; ctx.lineWidth = 13; ctx.stroke();
+    ctx.strokeStyle = '#5f9d6b'; ctx.lineWidth = 8.5; ctx.stroke();
+
+    ctx.beginPath(); ctx.moveTo(pts[pts.length - BLADE - 1].x, pts[pts.length - BLADE - 1].y);
+    for (let i = pts.length - BLADE; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    const c = S.bladeRGB;
+    ctx.strokeStyle = 'rgb(' + Math.round(c[0] + (255 - c[0]) * hot) + ',' +
+        Math.round(c[1] * (1 - 0.32 * hot)) + ',' + Math.round(c[2] * (1 - 0.5 * hot)) + ')';
+    ctx.lineWidth = S.bladeW; ctx.stroke();
+
+    if (held) {                       // подобранный кусок висит на конце
+        const t = pts[pts.length - 1];
+        ctx.fillStyle = held.boss ? '#8d97a5' : '#c2566b';
+        ctx.beginPath(); ctx.arc(t.x, t.y, held.r, 0, 7); ctx.fill();
+        ctx.fillStyle = '#11161c';
+        ctx.font = '700 9px ui-sans-serif, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(held.hits, t.x, t.y + 3.5);
+    }
+
+    // Герой: тень, туловище, шлем, вытянутая к оружию рука и сердца над головой.
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(hero.x, hero.y + 10, 10, 4, 0, 0, 7); ctx.fill();
+    const blink = hero.iframe > 0 && (frame & 4);
+    ctx.strokeStyle = blink ? '#ffffff' : '#d8c39c';
+    ctx.lineCap = 'round'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(hero.x, hero.y); ctx.lineTo(pts[0].x, pts[0].y); ctx.stroke();
+    ctx.fillStyle = blink ? '#ffffff' : '#7d5f3d';
+    ctx.strokeStyle = '#0d1014'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(hero.x, hero.y + 2, 10, 0, 7); ctx.fill(); ctx.stroke();
+    const hx = hero.x + hero.fx * 2, hy = hero.y - 6 + hero.fy * 2;
+    ctx.fillStyle = blink ? '#ffffff' : '#d8c39c';
+    ctx.beginPath(); ctx.arc(hx, hy, 6.5, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#98a2ad';
+    ctx.beginPath(); ctx.arc(hx, hy, 6.4, Math.PI, 0); ctx.fill();
+    ctx.fillRect(hx - 0.9, hy - 7, 1.8, 6);
+    for (let i = 0; i < hero.hpMax; i++) {
+        ctx.fillStyle = i < hero.hp ? '#e0556d' : '#3a2530';
+        ctx.fillRect(hero.x - hero.hpMax * 4 + i * 8, hero.y - 24, 6, 5);
+    }
+
+    const dp = pts[driver()];
+    ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(dp.x, dp.y, 17, 0, 7); ctx.stroke();
+
+    for (const n of nums) {
+        ctx.globalAlpha = Math.min(1, n.t * 2.5);
+        ctx.fillStyle = n.big ? '#ffd873' : '#ffffff';
+        ctx.font = (n.big ? '700 20px ' : '600 14px ') + 'ui-sans-serif, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(n.v, n.x, n.y);
+        ctx.globalAlpha = 1;
+    }
+
+    if (dead > 0) {
+        ctx.fillStyle = 'rgba(10,12,16,.72)'; ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#e8eef5'; ctx.font = '600 22px ui-sans-serif, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('Викинг пал.', W / 2, H / 2);
+    }
+    ctx.restore();
+}
+
+/* ──────────────────────────────── Цикл ─────────────────────────────────── */
+
+let acc = 0, last = performance.now(), frame = 0;
+
+function loop(now) {
+    let dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (slow > 0) { slow = Math.max(0, slow - dt); dt *= 0.3; }   // добивание видно
+    if (dead > 0) { dead -= dt; if (dead <= 0) showResult(); }
+    else if (!paused && !menu && started) {
+        acc += dt;
+        let n = 0;
+        while (acc >= DT && n++ < 6) { step(DT); acc -= DT; }
+    }
+
+    const tip = pts[pts.length - 1], base = pts[Math.max(0, pts.length - BLADE - 1)];
+    trail.push([tip.x, tip.y, base.x, base.y]);
+    if (trail.length > 9) trail.shift();
+
+    draw();
+    hum(Math.hypot(...vel(pts[pts.length - 1])));
+    if ((frame++ & 3) === 0) ui();
+    requestAnimationFrame(loop);
+}
+
+/* ─────────────────────────────── Интерфейс ─────────────────────────────── */
+
+const $ = (id) => document.getElementById(id);
+
+function ui() {
+    const [vx, vy] = vel(pts[pts.length - 1]);
+    const sp = Math.round(Math.hypot(vx, vy));
+    let mx = 0;
+    for (const p of pts) mx = Math.max(mx, Math.hypot(...vel(p)));
+    $('mx').textContent = Math.round(mx);
+    $('wv').textContent = wave;
+    $('sc').textContent = score;
+    $('th').textContent = !theme ? '' : wave % 5 === 0 ? '· туша' : '· ' + theme[0];
+    $('sp').textContent = sp;
+    const f = Math.min(1, sp / 2500);
+    $('speedfill').style.width = (f * 100) + '%';
+    $('speedfill').style.background = sp > HIT_SPEED ? '#e0b64a' : '#35506b';
+    $('ln').textContent = pts.length + (held ? ' + кусок' : '');
+    $('best').textContent = Math.round(best);
+    $('v-len').textContent = pts.length;
+    $('v-tip').textContent = Math.round(S.tipWeight * 100);
+    $('v-spd').textContent = S.headSpeed;
+    $('v-hand').textContent = S.hand;
+    $('v-bend').textContent = S.bend;
+}
+
+document.getElementById('panel').addEventListener('click', (ev) => {
+    const a = ev.target.dataset.a;
+    if (!a) return;
+    if (a === 'len+') grow(2);
+    if (a === 'len-') shrink(2);
+    if (a === 'tip+') S.tipWeight = Math.min(0.6, S.tipWeight + 0.05);
+    if (a === 'tip-') S.tipWeight = Math.max(0, S.tipWeight - 0.05);
+    if (a === 'spd+') S.headSpeed = Math.min(2400, S.headSpeed + 150);
+    if (a === 'spd-') S.headSpeed = Math.max(300, S.headSpeed - 150);
+    if (a === 'rock') { S.rock = !S.rock; ev.target.classList.toggle('on', S.rock); }
+    if (a === 'foes') { S.foes = !S.foes; ev.target.classList.toggle('on', S.foes); if (!S.foes) foes = []; }
+    if (a === 'bend+') S.bend = Math.min(9, S.bend + 1);
+    if (a === 'bend-') S.bend = Math.max(0, S.bend - 1);
+    if (a === 'sound') { S.sound = !S.sound; ev.target.classList.toggle('on', S.sound); if (S.sound) audioOn(); else hum(0); }
+    if (a === 'hand+') S.hand = Math.min(9, S.hand + 1);
+    if (a === 'hand-') S.hand = Math.max(1, S.hand - 1);
+    if (a === 'reset') reset();
+    if (a === 'len+' || a === 'len-') BASE.len = pts.length;
+    BASE.tipWeight = S.tipWeight; BASE.headSpeed = S.headSpeed;
+    BASE.mode = S.mode; BASE.rock = S.rock; BASE.foes = S.foes; BASE.hand = S.hand; BASE.bend = S.bend; BASE.sound = S.sound;
+    ui();
+});
+
+// На тачскрине палец грубее мыши, а экран уже: и умолчания, и панель тут другие.
+const coarse = matchMedia('(pointer: coarse)').matches;
+if (coarse) { S.hand = 7; BASE.hand = 7; }
+$('panel').classList.add('off');          // это отладка, а не часть игры
+try { record = parseInt(localStorage.getItem('worm-record'), 10) || 0; } catch { record = 0; }
+showStart();
+
+// Открытая панель — это и есть пауза: крутить ползунки в бою невозможно.
+$('gear').addEventListener('click', () => {
+    menu = !$('panel').classList.toggle('off');
+    $('gear').textContent = menu ? '▶' : '⚙';
+});
+
+$('over').addEventListener('click', (ev) => {
+    if (!ev.target.closest('button')) return;
+    $('over').classList.remove('on');
+    reset();
+    showStart();
+});
+
+$('start').addEventListener('click', (ev) => {
+    const b = ev.target.closest('button');
+    if (!b) return;
+    const w = { ...WEAPONS[+b.dataset.w][2] };
+    w.len0 = w.len;
+    Object.assign(S, w); Object.assign(BASE, w);   // выбор переживает смерть
+    reset();
+    $('start').classList.remove('on');
+    started = true;
+    audioOn();                            // настоящее касание: звук заводится сразу
+    if (ac && ac.state !== 'running') ac.resume?.();
+});
+
+// Палец закрывает собой то, чем машешь, поэтому на тачскрине рука идёт выше него.
+const LIFT = coarse ? 30 : 0;
+let primary = null;
+const setAim = (e) => { aim.x = e.clientX / sc; aim.y = e.clientY / sc - LIFT; };
+
+cv.addEventListener('pointerdown', (e) => {
+    if (primary !== null) { tense = true; return; }   // второй палец — напрячь
+    primary = e.pointerId;
+    aim.down = true; setAim(e); audioOn();
+    if (ac && ac.state !== 'running') ac.resume?.();
+    try { cv.setPointerCapture(e.pointerId); } catch { /* синтетические события */ }
+});
+cv.addEventListener('pointermove', (e) => { if (aim.down && e.pointerId === primary) setAim(e); });
+const release = (e) => {
+    if (e.pointerId === primary) { primary = null; aim.down = false; } else tense = false;
+};
+cv.addEventListener('pointerup', release);
+cv.addEventListener('pointercancel', release);
+addEventListener('keydown', (e) => { if (e.key === 'Shift') tense = true; });
+addEventListener('keyup', (e) => { if (e.key === 'Shift') tense = false; });
+
+function resize() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const wasEmpty = W === 0 || H === 0;
+    const cw = cv.clientWidth, ch = cv.clientHeight;
+    if (!cw || !ch) return;
+    sc = Math.min(cw, ch) / VIEW;
+    W = cw / sc; H = ch / sc;
+    cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr);
+    ctx.setTransform(dpr * sc, 0, 0, dpr * sc, 0, 0);
+    buildDec(); buildDeco();
+    // Первый раз реальный размер приходит уже после запуска — расставляем заново.
+    if (wasEmpty) reset();
+}
+new ResizeObserver(resize).observe(cv);
+
+resize(); if (!pts.length) reset(); ui();
+requestAnimationFrame(loop);
+
+/*
+ * Самопроверка: worm.html?test прокручивает бой синхронно, без рук и без
+ * анимации, и печатает итог в консоль. Нужна потому, что проверять сборку
+ * приходится на чужом телефоне, а ошибка боя проявляется только в бою.
+ */
+/* Разбор кривой: worm.html?curve печатает состав и вес каждой волны. */
+if (location.search.includes('curve')) {
+    srand(12345);
+    const pad = (x, n) => String(x).padEnd(n);
+    let out = 'КРИВАЯ ВОЛН\n' + pad('волна', 7) + pad('тема', 10) + pad('врагов', 8) + pad('вес HP', 9) + 'состав\n';
+    for (let w = 1; w <= 16; w++) {
+        const boss = w % 5 === 0;
+        const th = pickTheme(w, null);
+        const n = boss ? 1 + Math.round(3 + w * 0.6) : Math.min(30, Math.round((4 + w * 1.6) * th[1].size));
+        const tally = {};
+        let hp = 0;
+        for (let i = 0; i < n; i++) {
+            const kind = boss && i === 0 ? 'туша' : pickKind(w, th[1].mix);
+            tally[kind] = (tally[kind] || 0) + 1;
+            hp += Math.round(KINDS[kind].hp * (kind === 'туша' ? 1 + w * 0.9 : 1 + w * 0.16));
+        }
+        const mix = Object.entries(tally).sort((a, b) => b[1] - a[1])
+            .map(([k, c]) => k + ' ' + c).join(', ');
+        out += pad(w, 7) + pad(boss ? 'туша' : th[0], 10) + pad(n, 8) + pad(hp, 9) + mix + '\n';
+    }
+    console.log(out);
+}
+
+if (location.search.includes('test')) {
+    try {
+        // Размер приходит из вёрстки асинхронно, а тест синхронный: задаём сами,
+        // иначе бой идёт в арене 0x0 и проверка врёт.
+        W = 450; H = 900; sc = 1;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        reset();
+        $('start').classList.remove('on');   // чтобы было видно арену
+        started = true;
+        aim.down = true;
+        let peak = 0;
+        const N = parseInt(location.search.split('test=')[1], 10) || 900;
+        for (let k = 0; k < N; k++) {
+            const t = k / 120;
+            aim.x = W / 2 + Math.cos(t * 7) * 120;
+            aim.y = H / 2 + Math.sin(t * 7) * 120;
+            if (paused) startWave();          // карточки в тесте пропускаем
+            step(1 / 120);
+            const q = pts[pts.length - 1];
+            peak = Math.max(peak, Math.hypot(q.x - q.px, q.y - q.py) * 120);
+        }
+        console.log('САМОПРОВЕРКА: волна ' + wave + ', счёт ' + score + ', убито ' + kills + ', врагов ' + foes.length +
+            ', ошмётков ' + bits.length + ', лучший удар ' + Math.round(best) +
+            ', кусок в руке: ' + (held ? held.hits : 'нет') +
+            ', длина ' + pts.length + ', здоровье ' + hero.hp +
+            ', скорость врагов ' + Math.round(foes.length
+                ? foes.reduce((a, e) => a + Math.hypot(e.p[1].x - e.p[1].px, e.p[1].y - e.p[1].py) * 120, 0) / foes.length
+                : 0) +
+            ', пик оружия ' + Math.round(peak) +
+            ', рука в ' + Math.round(Math.hypot(pts[0].x - hero.x, pts[0].y - hero.y)) + ' от героя' +
+            ', шёл ли герой: ' + (Math.hypot(hero.x - W / 2, hero.y - H / 2) > 5 ? 'да' : 'нет'));
+    } catch (err) {
+        console.error('САМОПРОВЕРКА УПАЛА: ' + err.message + ' | ' + err.stack);
+    }
+}
+</script>
+</body>
+</html>
