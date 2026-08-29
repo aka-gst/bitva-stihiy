@@ -299,3 +299,27 @@ test("узор называет себя на рамке зоны, а не то�
         assert.match(body, mark);
     }
 });
+
+test("удары не повторяются через раз и держатся до попадания", async () => {
+    const { ATTACK_POSES, pickAttack } = await import("../src/fighter.js");
+    // Шести ударов на пять обменов в раунде мало: повтор бросался в глаза
+    // уже на втором раунде.
+    assert.ok(ATTACK_POSES.length >= 9, `ударов всего ${ATTACK_POSES.length}`);
+
+    // Помним два прошлых, а не один: «нога, рука, нога» читается как повтор
+    // не хуже прямого.
+    let recent = null;
+    for (let i = 0; i < 200; i += 1) {
+        const pose = pickAttack(recent);
+        assert.ok(!(recent ?? []).includes(pose), `${pose} повторился слишком рано`);
+        recent = [pose, recent?.[0]].filter(Boolean);
+    }
+
+    // Поза удара обязана дожить до попадания. Пока её сбрасывали сразу после
+    // замаха, сустав со своей плавностью едва успевал дойти до цели и ехал
+    // обратно — все удары сливались в одно дёрганье.
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    const windup = arena.slice(arena.indexOf("await wait(T.windup)"));
+    const afterWindup = windup.slice(0, windup.indexOf("const from = orbPoint"));
+    assert.doesNotMatch(afterWindup, /settle\(/, "поза удара гаснет на замахе");
+});

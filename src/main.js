@@ -587,12 +587,14 @@ function paintWindowLabel(found, hot) {
         delete zone.dataset.state;
         return;
     }
-    const gain = [
-        found.combo.damage ? `+${found.combo.damage} урона` : '',
-        found.combo.charge ? `+${found.combo.charge} заряда` : '',
-    ].filter(Boolean).join(', ');
+    // Подпись короткая нарочно: рамка узора шириной в три слота, а на
+    // телефоне это полтораста пикселей. Полная формулировка «+1 урона,
+    // +1 заряда» не влезала, вылезала за рамку и наезжала на ряд
+    // противника. Урон — то, ради чего узор собирают; про заряд и про
+    // цену договаривает подсказчик под доской.
     const favoured = isFavoured(found, app.battle?.favour);
-    zone.dataset.label = `${found.combo.name} · ${gain}${favoured ? ' · ВДВОЕ' : ''}`;
+    const gain = found.combo.damage ? `+${found.combo.damage}` : `+${found.combo.charge}⚡`;
+    zone.dataset.label = `${found.combo.name} ${gain}${favoured ? ' ×2' : ''}`;
     zone.dataset.state = favoured ? 'favour' : 'armed';
 }
 

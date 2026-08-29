@@ -104,13 +104,22 @@ export const POSES = {
     highKick: { torso: 18, head: -10, armBack: 56, foreBack: -60, armFront: -62, foreFront: -60, legBack: 4, shinBack: -6, legFront: -116, shinFront: -4 },
     jumpKick: { torso: 6, head: -4, armBack: 62, foreBack: -70, armFront: -70, foreFront: -70, legBack: -46, shinBack: -84, legFront: -100, shinFront: 4 },
     headbutt: { torso: -26, head: 22, armBack: 30, foreBack: -104, armFront: -26, foreFront: -104, legBack: 22, shinBack: -20, legFront: -24, shinFront: 16 },
+    // Апперкот, локоть, вертушка и низкий подсек: шести ударов на пять
+    // обменов в раунде мало — повтор бросался в глаза уже на втором раунде.
+    uppercut: { torso: -8, head: -14, armBack: 26, foreBack: -96, armFront: -150, foreFront: -40, legBack: 14, shinBack: -12, legFront: -30, shinFront: 22 },
+    elbow: { torso: -22, head: 8, armBack: 36, foreBack: -96, armFront: -40, foreFront: -142, legBack: 16, shinBack: -14, legFront: -18, shinFront: 12 },
+    spinKick: { torso: 26, head: 16, armBack: -70, foreBack: -30, armFront: 74, foreFront: -34, legBack: 10, shinBack: -10, legFront: -96, shinFront: -22 },
+    lowKick: { torso: 4, head: -2, armBack: 38, foreBack: -84, armFront: -44, foreFront: -78, legBack: 10, shinBack: -12, legFront: -46, shinFront: 32 },
     hurt: { torso: 22, head: -18, armBack: -34, foreBack: -40, armFront: 30, foreFront: -30, legBack: 18, shinBack: -12, legFront: 8, shinFront: 18 },
     down: { torso: 74, head: -30, armBack: -60, foreBack: -20, armFront: 50, foreFront: -14, legBack: 30, shinBack: -70, legFront: 44, shinFront: -60 },
     win: { torso: -4, head: -4, armBack: 150, foreBack: -30, armFront: 140, foreFront: -26, legBack: 10, shinBack: -10, legFront: -10, shinFront: 8 },
 };
 
 /** Разные позы под одно и то же действие — чтобы удары не повторялись. */
-export const ATTACK_POSES = ['punch', 'hook', 'kick', 'highKick', 'jumpKick', 'headbutt'];
+export const ATTACK_POSES = [
+    'punch', 'hook', 'uppercut', 'elbow', 'headbutt',
+    'kick', 'lowKick', 'highKick', 'spinKick', 'jumpKick',
+];
 
 /** Где вращается каждый сустав, в координатах viewBox. */
 export const JOINTS = {
@@ -139,7 +148,14 @@ export function applyPose(node, poseName) {
 }
 
 /** Поза атаки, не повторяющая предыдущую: одинаковые удары не должны выглядеть одинаково. */
-export function pickAttack(previous) {
-    const options = ATTACK_POSES.filter((name) => name !== previous);
+/**
+ * Следующий удар. Помним два прошлых, а не один: с одним удар через раз
+ * возвращался — «нога, рука, нога» читается как повтор не хуже прямого.
+ *
+ * @param {string[]|string|null} recent последние удары, свежий первым
+ */
+export function pickAttack(recent) {
+    const skip = new Set(Array.isArray(recent) ? recent : [recent]);
+    const options = ATTACK_POSES.filter((name) => !skip.has(name));
     return options[Math.floor(Math.random() * options.length)];
 }

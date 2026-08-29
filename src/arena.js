@@ -129,7 +129,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
     /** Разный удар на одно и то же действие: повтор позы утомляет глаз. */
     function strike(node, who) {
         const pose = pickAttack(lastAttack[who]);
-        lastAttack[who] = pose;
+        lastAttack[who] = [pose, lastAttack[who]?.[0]].filter(Boolean);
         node.classList.add('striking');
         applyPose(node, pose);
         return pose;
@@ -324,8 +324,11 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         if (stale(mine)) return;
         playerNode.classList.remove('casting');
         enemyNode.classList.remove('casting');
-        settle(playerNode, 'guard');
-        settle(enemyNode, 'guard');
+        // Поза удара держится до попадания. Раньше её сбрасывали здесь же,
+        // через 220 мс после замаха: сустав со своей плавностью в 170 мс
+        // едва успевал дойти до цели и тут же ехал обратно, и все девять
+        // ударов сливались в одно дёрганье. Заметнее всего было движение
+        // ноги — оттого и казалось, что бьют всегда ногой.
 
         const from = orbPoint(playerNode);
         const enemyFrom = orbPoint(enemyNode);
@@ -349,6 +352,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             await wait(T.meet + T.recover);
             if (stale(mine)) return;
             enemyNode.classList.remove('hurt', 'stunned');
+            settle(playerNode, 'guard');
             applyPose(enemyNode, 'guard');
             hideCaption();
             return;
@@ -369,6 +373,8 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             land();
             await wait(T.meet + T.recover);
             if (stale(mine)) return;
+            settle(playerNode, 'guard');
+            settle(enemyNode, 'guard');
             hideCaption();
             return;
         }
@@ -424,7 +430,8 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         await wait(T.recover);
         if (stale(mine)) return;
         victim.classList.remove('hurt');
-        applyPose(victim, 'guard');
+        settle(playerNode, 'guard');
+        settle(enemyNode, 'guard');
         hideCaption();
     }
 
