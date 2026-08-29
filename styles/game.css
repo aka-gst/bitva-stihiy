@@ -186,6 +186,10 @@ button:disabled { cursor: default; }
 /* В бою карточка тянется во всю высоту своего ряда — в обучении рядов нет,
    и без явного размера она разъезжалась поверх соседних строк. */
 .demo-row .slot { flex: 0 0 34px; width: 34px; height: 56px; font-size: 20px; }
+.demo-mark { flex: 0 0 40px; width: 40px; height: 40px; display: block; }
+/* Пояснение встаёт рядом со слотами, а пересаживается под них только когда
+   места правда нет: вперемешку строки читались как каша. */
+.demo-row .demo-verdict { flex: 1 1 210px; min-width: 0; text-align: left; }
 .demo-cell {
     display: grid; place-items: center; gap: 2px;
     min-width: 62px; padding: 8px 10px;

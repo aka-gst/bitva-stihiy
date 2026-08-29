@@ -243,6 +243,15 @@ export const LEARN_STEPS = [
             };
             for (const combo of COMBO_LIST) {
                 const row = el('div', 'demo-row');
+                // Свой знак у каждого узора: имя запоминается хуже формы, а
+                // на этом экране узор впервые и объясняется.
+                const mark = el('img', 'demo-mark');
+                mark.src = `./assets/mark-${combo.id}.webp`;
+                mark.alt = '';
+                mark.decoding = 'async';
+                mark.width = 512;
+                mark.height = 512;
+                row.append(mark);
                 for (const id of shapes[combo.id]) {
                     row.append(el('div', 'slot filled in-combo', ELEMENT[id].glyph));
                 }
@@ -257,6 +266,16 @@ export const LEARN_STEPS = [
                 row.append(text);
                 box.append(row);
             }
+            const hot = el('div', 'demo-row');
+            const hotMark = el('img', 'demo-mark');
+            hotMark.src = './assets/mark-overheat.webp';
+            hotMark.alt = '';
+            hotMark.decoding = 'async';
+            hotMark.width = 512;
+            hotMark.height = 512;
+            hot.append(hotMark, el('span', 'demo-verdict', 'ПЕРЕГРЕВ — четыре одинаковых в пятёрке бьют по тебе самому'));
+            box.append(hot);
+
             const rule = el('p', 'demo-note');
             rule.textContent = `Правило одно: чем больше в тройке повторов, тем сильнее удар.`
                 + ` Цена тоже одна — выиграть ${COMBO_NEEDS} обмена из 3 внутри узора.`
