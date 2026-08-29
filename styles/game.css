@@ -471,8 +471,8 @@ button:disabled { cursor: default; }
    Рамки при этом заходят друг на друга, и так и надо: силуэт занимает лишь
    середину своей рамки, по краям пусто. Сводили рамки встык — между самими
    бойцами оставалась дыра в две ладони. */
-.fighter--player.engaged { left: calc(50% - var(--fw) * var(--engage, 0.88)); }
-.fighter--enemy.engaged { right: calc(50% - var(--fw) * var(--engage, 0.88)); }
+.fighter--player.engaged { left: calc(50% - var(--fw) * var(--engage, 0.80)); }
+.fighter--enemy.engaged { right: calc(50% - var(--fw) * var(--engage, 0.80)); }
 .fighter svg { width: 100%; height: 100%; overflow: visible; animation: idle-float 3.6s ease-in-out infinite; }
 .fighter--player { left: 6%; }
 .fighter--enemy { right: 6%; }
@@ -487,6 +487,46 @@ button:disabled { cursor: default; }
 .fighter.down { transform: translateY(12%) rotate(-14deg); filter: grayscale(1) brightness(0.5); opacity: 0.55; }
 .fighter--enemy.down { transform: translateY(12%) rotate(14deg); }
 .fighter.victor { animation: victor 1.4s ease-in-out infinite; }
+
+/* Цвет, которым тебя пробили, проступает на самом теле. Раньше стихию
+   победителя было видно только во вспышке между бойцами: она гасла за
+   мгновение, и связь «эта стихия сняла мне здоровье» не успевала возникнуть.
+   Ради этой связи вся игра и затевалась, поэтому её показываем на том, кому
+   досталось, и держим дольше вспышки. */
+.fighter.struck svg { animation: struck calc(0.62s / var(--speed)) ease-out; }
+/* Яркость держим низкой: на большой её силуэт выбеливается и цвет, ради
+   которого всё и делается, перестаёт читаться. Работает свечение, не засветка. */
+@keyframes struck {
+    0%   { filter: drop-shadow(0 0 34px var(--strike, #fff)) drop-shadow(0 0 12px var(--strike, #fff)) brightness(1.5); }
+    30%  { filter: drop-shadow(0 0 14px var(--strike, #fff)) brightness(1.1); }
+    56%  { filter: drop-shadow(0 0 26px var(--strike, #fff)) drop-shadow(0 0 8px var(--strike, #fff)) brightness(1.35); }
+    100% { filter: drop-shadow(0 0 0 transparent) brightness(1); }
+}
+
+/* Перегрев — это взрыв изнутри своей же стихией, а не удар снаружи. */
+/* Имя класса не «burst»: так уже называются искры-вспышки, и боец
+   наследовал их размер, схлопываясь в двадцать шесть пикселей. */
+.fighter.overheating svg { animation: self-burst calc(0.78s / var(--speed)) ease-out; }
+@keyframes self-burst {
+    0%   { filter: drop-shadow(0 0 52px var(--strike, #fff)) drop-shadow(0 0 18px var(--strike, #fff)) brightness(2.1); transform: scale(1.1); }
+    24%  { filter: drop-shadow(0 0 10px var(--strike, #fff)) brightness(1); transform: scale(0.96); }
+    50%  { filter: drop-shadow(0 0 34px var(--strike, #fff)) drop-shadow(0 0 12px var(--strike, #fff)) brightness(1.6); transform: scale(1.04); }
+    100% { filter: drop-shadow(0 0 0 transparent) brightness(1); transform: scale(1); }
+}
+
+/* Ничья: одинаковые стихии гасят друг друга, и бойцы отскакивают. */
+.fighter.clash { animation: clash-bounce calc(0.3s / var(--speed)) ease-out; }
+.fighter--enemy.clash { animation-name: clash-bounce-mirror; }
+@keyframes clash-bounce {
+    0% { transform: translateX(0); }
+    35% { transform: translateX(-9px); }
+    100% { transform: translateX(0); }
+}
+@keyframes clash-bounce-mirror {
+    0% { transform: translateX(0); }
+    35% { transform: translateX(9px); }
+    100% { transform: translateX(0); }
+}
 
 .fx-layer { position: absolute; inset: 0; pointer-events: none; }
 

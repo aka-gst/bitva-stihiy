@@ -126,6 +126,19 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         }
     }
 
+    /**
+     * Подсветить бойца стихией. Цвет ложится на само тело, а не только во
+     * вспышку между бойцами: вспышка гаснет за мгновение, и связь «эта
+     * стихия сняла мне здоровье» из неё не возникала. Ради этой связи вся
+     * игра и затевалась.
+     */
+    function tintStrike(node, element, cls = 'struck') {
+        node.style.setProperty('--strike', ELEMENT[element]?.color ?? '#f87171');
+        node.classList.remove(cls);
+        void node.offsetWidth;
+        node.classList.add(cls);
+    }
+
     /** Разный удар на одно и то же действие: повтор позы утомляет глаз. */
     function strike(node, who) {
         const pose = pickAttack(lastAttack[who]);
@@ -343,6 +356,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             bolt.node.remove();
             burst(bodyPoint(enemyNode), ELEMENT[event.player].color, { size: 1.1, sparks: 10 });
             enemyNode.classList.add('hurt');
+            tintStrike(enemyNode, event.player);
             applyPose(enemyNode, 'hurt');
             land();
             damagePop(bodyPoint(enemyNode), event.damage, false);
@@ -351,7 +365,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             tone(180, 110);
             await wait(T.meet + T.recover);
             if (stale(mine)) return;
-            enemyNode.classList.remove('hurt', 'stunned');
+            enemyNode.classList.remove('hurt', 'stunned', 'struck');
             settle(playerNode, 'guard');
             applyPose(enemyNode, 'guard');
             hideCaption();
@@ -366,13 +380,22 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         // 3. Столкновение в центре: проигравшая стихия гаснет.
         showCaption(event.phrase);
         if (!victim) {
-            burst(meet, '#94a3b8', { size: 0.9, sparks: 10 });
+            // Одинаковые стихии гасят друг друга — удар встречает удар.
+            // Вспышка ставится там, где сходятся кулаки, и оба отскакивают.
+            burst(meet, '#94a3b8', { size: 1.1, sparks: 12 });
             playerBolt.node.remove();
             enemyBolt.node.remove();
+            playerNode.classList.remove('clash');
+            enemyNode.classList.remove('clash');
+            void playerNode.offsetWidth;
+            playerNode.classList.add('clash');
+            enemyNode.classList.add('clash');
             tone(150, 90, { type: 'triangle' });
             land();
             await wait(T.meet + T.recover);
             if (stale(mine)) return;
+            playerNode.classList.remove('clash');
+            enemyNode.classList.remove('clash');
             settle(playerNode, 'guard');
             settle(enemyNode, 'guard');
             hideCaption();
@@ -416,6 +439,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             style,
         });
         victim.classList.add('hurt');
+        tintStrike(victim, winnerElement);
         applyPose(victim, 'hurt');
         if (critical) shake(false);
         land();
@@ -429,7 +453,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
 
         await wait(T.recover);
         if (stale(mine)) return;
-        victim.classList.remove('hurt');
+        victim.classList.remove('hurt', 'struck');
         settle(playerNode, 'guard');
         settle(enemyNode, 'guard');
         hideCaption();
@@ -493,14 +517,15 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             size: 1.6, sparks: 14, style: impactStyle(event.element, 'wind'),
         });
         playerNode.classList.add('hurt');
+        tintStrike(playerNode, event.element, 'overheating');
         applyPose(playerNode, 'hurt');
         damagePop(at, event.damage, true);
-        shake(false);
+        shake(true);
         sweep(520, 120, 320);
         haptic([30, 20, 40]);
         await wait(T.meet + T.recover);
         if (stale(mine)) return;
-        playerNode.classList.remove('hurt');
+        playerNode.classList.remove('hurt', 'overheating');
         applyPose(playerNode, 'guard');
         hideCaption();
     }

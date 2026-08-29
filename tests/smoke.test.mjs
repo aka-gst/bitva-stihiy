@@ -323,3 +323,21 @@ test("удары не повторяются через раз и держатс
     const afterWindup = windup.slice(0, windup.indexOf("const from = orbPoint"));
     assert.doesNotMatch(afterWindup, /settle\(/, "поза удара гаснет на замахе");
 });
+
+test("цвет, которым пробили, ложится на тело проигравшего", async () => {
+    // Стихия победителя раньше была видна только во вспышке между бойцами:
+    // она гасла за мгновение, и связь «эта стихия сняла мне здоровье» из неё
+    // не возникала. Ради этой связи вся игра и затевалась.
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    assert.match(arena, /function tintStrike/);
+    assert.match(arena, /tintStrike\(victim, winnerElement\)/, "победитель не красит проигравшего");
+    assert.match(arena, /tintStrike\(playerNode, event\.element, 'overheating'\)/, "перегрев не красит своего");
+
+    // Имя класса не должно совпадать с классом искр: боец унаследует их
+    // размер и схлопнется в двадцать шесть пикселей.
+    const fx = arena.slice(arena.indexOf("ring.className"), arena.indexOf("ring.className") + 60);
+    const sparkClass = fx.match(/'([a-z-]+)'/)[1];
+    assert.doesNotMatch(arena, new RegExp(`tintStrike\\([^)]*'${sparkClass}'\\)`), `класс ${sparkClass} занят искрами`);
+    assert.match(css, /\.fighter\.struck svg/);
+    assert.match(css, /\.fighter\.overheating svg/);
+});
