@@ -515,6 +515,18 @@ button:disabled { cursor: default; }
 }
 
 /* Ничья: одинаковые стихии гасят друг друга, и бойцы отскакивают. */
+/* Противник выдаёт себя, когда бьёт коронкой: на замахе по нему проходит
+   волна её цвета. Это не подсказка — момент уже случился, ответить на него
+   поздно. Это след, по которому за пару раундов складывается «он всё время
+   загорается оранжевым». Слабее, чем вспышка попадания, нарочно: тут след,
+   там удар. */
+.fighter.tell svg { animation: tell calc(0.5s / var(--speed)) ease-out; }
+@keyframes tell {
+    0%   { filter: drop-shadow(0 0 0 transparent); }
+    35%  { filter: drop-shadow(0 0 20px var(--strike, #fff)) drop-shadow(0 0 7px var(--strike, #fff)); }
+    100% { filter: drop-shadow(0 0 0 transparent); }
+}
+
 .fighter.clash { animation: clash-bounce calc(0.3s / var(--speed)) ease-out; }
 .fighter--enemy.clash { animation-name: clash-bounce-mirror; }
 @keyframes clash-bounce {

@@ -341,3 +341,34 @@ test("цвет, которым пробили, ложится на тело пр
     assert.match(css, /\.fighter\.struck svg/);
     assert.match(css, /\.fighter\.overheating svg/);
 });
+
+test("разбор по коронке считает и говорит по-русски", async () => {
+    // Победа приходит из разгадки, но со стороны это неотличимо от везения:
+    // бой кончился, полоска пустая, почему — непонятно.
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    assert.match(main, /function signatureReport/);
+    assert.match(main, /sigCrits/, "разбор не считает пропущенные коронки");
+
+    // «3 раз» и «бил огонь» — самые заметные грабли этой строки.
+    const src = main.slice(main.indexOf("function timesWord"), main.indexOf("function signatureReport"));
+    const timesWord = new Function(`${src} return timesWord;`)();
+    for (const [n, word] of [[1, "раз"], [2, "раза"], [4, "раза"], [5, "раз"], [11, "раз"], [12, "раз"], [22, "раза"], [25, "раз"]]) {
+        assert.equal(timesWord(n), word, `${n} ${word}`);
+    }
+    assert.match(main, /выбрасывал \$\{el\.accusative\}/, "падеж стихии в отчёте не тот");
+});
+
+test("противник выдаёт себя, когда бьёт коронкой", async () => {
+    // Игрок узнавал коронку только из строки подсказчика. Теперь её видно
+    // на самом противнике: момент уже случился, ответить поздно — но за
+    // пару раундов складывается «он всё время загорается оранжевым».
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    assert.match(arena, /tintStrike\(enemyNode, enemySignature, 'tell'\)/);
+    assert.match(main, /enemySignature: plan\[event\.index\]\.signature/, "план не сообщает арене про коронку");
+    assert.match(css, /\.fighter\.tell svg/);
+
+    // Пробитая коронка — событие, а не единица урона.
+    const hit = arena.slice(arena.indexOf("burst(target, ELEMENT[winnerElement]"));
+    assert.match(hit.slice(0, 400), /event\.parry \? 2/, "вспышка пробитой коронки не усилена");
+});

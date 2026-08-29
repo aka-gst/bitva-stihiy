@@ -293,7 +293,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
      * @param {object} event  событие 'clash' из движка
      * @param {{onImpact?:function}} hooks
      */
-    async function playClash(event, { onImpact } = {}) {
+    async function playClash(event, { onImpact, enemySignature = null } = {}) {
         speed = pendingSpeed;
         const mine = generation;
         const land = () => onImpact?.(event);
@@ -301,13 +301,13 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         if (instant()) { land(); return; }
         busy = true;
         try {
-            await runClash(event, land, mine);
+            await runClash(event, land, mine, enemySignature);
         } finally {
             busy = false;
         }
     }
 
-    async function runClash(event, land, mine) {
+    async function runClash(event, land, mine, enemySignature) {
 
         const victim = PLAYER_WINS.has(event.outcome) ? enemyNode
             : ENEMY_WINS.has(event.outcome) ? playerNode : null;
@@ -331,6 +331,8 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             setOrb(enemyNode, event.enemy);
             enemyNode.classList.add('casting');
             strike(enemyNode, 'enemy');
+            // Коронка выдаёт себя волной своего цвета по телу противника.
+            if (enemySignature) tintStrike(enemyNode, enemySignature, 'tell');
         }
         if (isSuper) sweep(220, 720, 240);
         await wait(T.windup);
@@ -434,10 +436,16 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         winnerBolt.node.remove();
 
         burst(target, ELEMENT[winnerElement].color, {
-            size: critical ? 1.5 : 1.1,
-            sparks: critical ? 14 : 8,
+            size: event.parry ? 2 : critical ? 1.5 : 1.1,
+            sparks: event.parry ? 20 : critical ? 14 : 8,
             style,
         });
+        if (event.parry) {
+            // Момент «я его раскусил» должен звучать наградой, а не минус
+            // единицей здоровья: вспышка вдвое, свой звук и толчок экрана.
+            sweep(300, 1100, 300);
+            shake(false);
+        }
         victim.classList.add('hurt');
         tintStrike(victim, winnerElement);
         applyPose(victim, 'hurt');

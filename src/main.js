@@ -451,6 +451,41 @@ function paintFavour() {
     else delete screen.dataset.favour;
 }
 
+/**
+ * Разбор боя по коронке.
+ *
+ * Победа приходит из разгадки, но со стороны это неотличимо от везения:
+ * бой кончился, полоска пустая, почему — непонятно. Здесь то же самое
+ * сказано числами, и главное в них не счёт, а цена: коронка бьёт вдвое, и
+ * каждое непойманное попадание стоит двух здоровья.
+ */
+function timesWord(n) {
+    // 1 раз, 2–4 раза, 5+ раз; 11–14 всегда «раз».
+    const tail = n % 100;
+    if (tail >= 11 && tail <= 14) return 'раз';
+    const last = n % 10;
+    if (last === 1) return 'раз';
+    if (last >= 2 && last <= 4) return 'раза';
+    return 'раз';
+}
+
+function signatureReport(battle, opponent) {
+    const el = ELEMENT[opponent.element];
+    const seen = battle.sigSeen ?? 0;
+    const parried = battle.sigParried ?? 0;
+    const crits = battle.sigCrits ?? 0;
+    const total = ELEMENTS.reduce((sum, id) => sum + (battle.seen?.[id] ?? 0), 0);
+    if (!total) return '';
+
+    // «Выбрасывал огонь», а не «бил огонь»: винительный падеж у стихий уже
+    // есть, творительного нет, а заводить его ради одной строки незачем.
+    const lines = [`${opponent.name} выбрасывал ${el.accusative} ${seen} ${timesWord(seen)} из ${total}.`];
+    if (parried) lines.push(`Ты гасил коронку ${parried} ${timesWord(parried)} — снял этим ${parried} здоровья.`);
+    else lines.push('Коронку ты не погасил ни разу.');
+    if (crits) lines.push(`Пропустил ${crits} ${timesWord(crits)} — потерял ${crits * 2}: коронка бьёт вдвое.`);
+    return lines.join('\n');
+}
+
 /** Файл портрета противника. Имена заведены под кампанию один в один. */
 function portraitArt(id) {
     return id ? `./assets/portrait-${id}.webp` : null;
@@ -725,7 +760,11 @@ async function playEvents(events, plan) {
                 signature: plan[event.index].signature,
             });
 
-            await arena.playClash(event, { onImpact: applyImpact });
+            await arena.playClash(event, {
+                onImpact: applyImpact,
+                // Коронка помечена в плане — арена подсветит ею противника.
+                enemySignature: plan[event.index].signature ? plan[event.index].sig : null,
+            });
 
             pSlot.classList.remove('now');
             setSlot(pSlot, { element: event.player, state: slotStateFor(event, 'player') });
@@ -814,7 +853,9 @@ function finishBattle(winner) {
             showOverlay({
                 title: 'ЯРУС ВЗЯТ',
                 color: 'var(--win)',
-                text: `«${app.opponent.defeat}»\n${app.opponent.reveal ?? ''}${last ? '' : `\nЗдоровье восстановлено до ${app.story.hp}.`}`,
+                text: `«${app.opponent.defeat}»\n${app.opponent.reveal ?? ''}`
+                    + `${last ? '' : `\nЗдоровье восстановлено до ${app.story.hp}.`}`
+                    + `\n\n${signatureReport(app.battle, app.opponent)}`,
                 actions: last
                     ? [{ label: 'ФИНАЛ', primary: true, onClick: showEpilogue }]
                     : [{ label: 'ДАЛЬШЕ', primary: true, onClick: () => showTier(app.story.index + 1) }],
@@ -836,7 +877,8 @@ function finishBattle(winner) {
                 title: 'ПОРАЖЕНИЕ',
                 color: 'var(--lose)',
                 art: './assets/portrait-hero-down.webp',
-                text: `${app.opponent.name} устоял.\n${app.opponent.reveal ?? ''}\n${app.opponent.teaches}`,
+                text: `${app.opponent.name} устоял.\n${app.opponent.reveal ?? ''}`
+                    + `\n\n${signatureReport(app.battle, app.opponent)}`,
                 actions: [
                     { label: 'ПОВТОРИТЬ ЯРУС', primary: true, onClick: () => { app.story.hp = retryHp; showTier(app.story.index); } },
                     { label: 'ПРАВИЛА', onClick: () => goLearn('story') },
@@ -859,9 +901,11 @@ function finishBattle(winner) {
         title: won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ',
         color: won ? 'var(--win)' : 'var(--lose)',
         art: won ? null : './assets/portrait-hero-down.webp',
-        text: won
-            ? `${app.opponent.name} повержен. Осталось здоровья: ${app.battle.hp.player}.\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`
-            : `${app.opponent.name} оказался быстрее.\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`,
+        text: (won
+            ? `${app.opponent.name} повержен. Осталось здоровья: ${app.battle.hp.player}.`
+            : `${app.opponent.name} оказался быстрее.`)
+            + `\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`
+            + `\n\n${signatureReport(app.battle, app.opponent)}`,
         actions: [
             { label: 'ЕЩЁ РАЗ', primary: true, onClick: () => startFreeBattle(app.mode.id) },
             { label: 'В МЕНЮ', onClick: goMenu },
