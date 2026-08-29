@@ -17,6 +17,18 @@
       ],
       "port": 4266,
       "autoPort": true
+    },
+    {
+      "name": "naotmash",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4267",
+        "--directory",
+        "/Users/gst/dev/naotmash"
+      ],
+      "port": 4267
     }
   ]
 }
