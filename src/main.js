@@ -310,7 +310,7 @@ function startStory() {
 function showPrologue() {
     dom.storyTier.textContent = 'БАШНЯ ТРЁХ СТИХИЙ';
     dom.storyName.textContent = 'ПРОЛОГ';
-    renderPortrait(dom.storyPortrait, 'water', 'player');
+    renderPortrait(dom.storyPortrait, 'water', 'player', { art: './assets/portrait-hero.webp' });
     dom.storyText.textContent = PROLOGUE;
     dom.storyHint.textContent = `Впереди ${CAMPAIGN.length} ярусов. Здоровье переносится между боями, после победы возвращается часть.`;
     renderStoryTrack(dom.storyTrack, CAMPAIGN.length, 0);
@@ -344,7 +344,7 @@ function showTier(index) {
 function showEpilogue() {
     dom.storyTier.textContent = 'ВЕРШИНА';
     dom.storyName.textContent = 'БАШНЯ ПРОЙДЕНА';
-    renderPortrait(dom.storyPortrait, 'wind', 'player');
+    renderPortrait(dom.storyPortrait, 'wind', 'player', { art: './assets/portrait-hero-win.webp' });
     dom.storyText.textContent = EPILOGUE;
     dom.storyHint.textContent = `Осталось здоровья: ${app.story.hp}/${PLAYER_MAX_HP}.`;
     renderStoryTrack(dom.storyTrack, CAMPAIGN.length, CAMPAIGN.length);

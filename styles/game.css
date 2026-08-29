@@ -67,6 +67,15 @@ button:disabled { cursor: default; }
     place-items: center;
     padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
     overflow-y: auto;
+    /* Башня в три светящихся яруса. Раньше пришедший по ссылке видел плоскую
+       темноту с кнопками: игра не начинала себя показывать до первого боя. */
+    /* Две вуали поверх башни: круглая гасит края, вертикальная — низ, где у
+       фона самое яркое место, а у нас там мелкий текст про топ и версию. */
+    background:
+        linear-gradient(transparent 55%, #0b1120d9 88%),
+        radial-gradient(115% 78% at 50% 55%, #0b112059 18%, #0b1120f0 80%),
+        url('../assets/menu-bg.webp') center bottom / cover no-repeat,
+        var(--bg);
 }
 
 .menu-inner {
