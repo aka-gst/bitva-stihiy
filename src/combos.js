@@ -6,6 +6,12 @@
  * засчитывается одно — самое левое. Так игрок видит, как оно собирается,
  * и никогда не получает его случайно.
  *
+ * Узор образует ЛЮБАЯ тройка подряд — все пять возможных форм названы.
+ * Раньше их было три, и AAB с ABB не значили ничего: три хода подряд то
+ * давали что-то, то нет, и отличить это от случайности было нельзя. Теперь
+ * правило одно и без исключений — три подряд всегда складываются во что-то,
+ * вопрос только во что.
+ *
  * Натяжение задумано такое: мощное комбо требует повторов, а повторы
  * противник читает. Поэтому у каждого комбо есть цена — сколько обменов
  * внутри узора нужно выиграть, чтобы он собрался.
@@ -30,6 +36,30 @@ export const COMBOS = {
         // должен соответственно, иначе самый заметный узор оказывается слабейшим.
         needs: 3,
         describe: (element) => `${ELEMENT[element].glyph} Вал ${ELEMENT[element].genitive}: +3 урона`,
+    },
+    lash: {
+        id: 'lash',
+        name: 'ЗАХЛЁСТ',
+        shape: 'ABB',
+        hint: 'заход другой стихией и два одинаковых следом',
+        damage: 2,
+        charge: 0,
+        // Заход чужой стихией сбивает чтение, но два одинаковых следом
+        // противник всё равно поймает — поэтому цена как у вала.
+        needs: 3,
+        describe: (element) => `${ELEMENT[element].glyph} Захлёст ${ELEMENT[element].genitive}: +2 урона`,
+    },
+    press: {
+        id: 'press',
+        name: 'НАЖИМ',
+        shape: 'AAB',
+        hint: 'два одинаковых и смена',
+        damage: 1,
+        charge: 1,
+        // Давишь одним и уходишь в сторону: слабее вала, но и повтор тут
+        // короче — противнику нечего ловить на третьем ходу.
+        needs: 2,
+        describe: (element) => `${ELEMENT[element].glyph} Нажим ${ELEMENT[element].genitive}: +1 урона и +1 заряда`,
     },
     pierce: {
         id: 'pierce',
@@ -57,12 +87,13 @@ export const COMBOS = {
 
 export const COMBO_LIST = Object.values(COMBOS);
 
-/** Какой узор образуют три стихии. */
+/** Какой узор образуют три стихии. Форма есть у любой тройки. */
 export function shapeOf(a, b, c) {
-    if (a === b && b === c) return COMBOS.surge;
-    if (a === c && a !== b) return COMBOS.pierce;
-    if (a !== b && b !== c && a !== c) return COMBOS.prism;
-    return null;  // AAB и ABB узором не считаются
+    if (a === b && b === c) return COMBOS.surge;   // AAA
+    if (a === c && a !== b) return COMBOS.pierce;  // ABA
+    if (a === b) return COMBOS.press;              // AAB
+    if (b === c) return COMBOS.lash;               // ABB
+    return COMBOS.prism;                           // ABC
 }
 
 /**
@@ -71,13 +102,16 @@ export function shapeOf(a, b, c) {
  * @returns {{combo: object, at: number, slots: number[], element: string}|null}
  */
 export function findCombo(chain) {
+    // Форма есть у каждой тройки, поэтому в пятёрке совпадают все три окна.
+    // Берём самое левое, а не самое сильное: выбирать за игрока сильнейшее
+    // значит выбирать самое дорогое — узор с ценой в три победы срывается
+    // вчетверо чаще, и игра сама подставляла бы его вместо надёжного. Так
+    // узор задают первые три хода, а два последних остаются под чистый
+    // размен с противником.
     for (let i = 0; i + COMBO_LENGTH <= chain.length; i += 1) {
         const [a, b, c] = chain.slice(i, i + COMBO_LENGTH);
         if (!a || !b || !c) continue;
-        const combo = shapeOf(a, b, c);
-        if (combo) {
-            return { combo, at: i, slots: [i, i + 1, i + 2], element: a };
-        }
+        return { combo: shapeOf(a, b, c), at: i, slots: [i, i + 1, i + 2], element: a };
     }
     return null;
 }

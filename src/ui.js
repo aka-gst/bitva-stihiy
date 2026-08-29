@@ -233,6 +233,8 @@ export const LEARN_STEPS = [
             box.style.gap = '8px';
             const shapes = {
                 surge: ['fire', 'fire', 'fire'],
+                lash: ['water', 'fire', 'fire'],
+                press: ['fire', 'fire', 'water'],
                 pierce: ['water', 'fire', 'water'],
                 prism: ['fire', 'water', 'wind'],
             };
@@ -244,9 +246,12 @@ export const LEARN_STEPS = [
                     row.append(slot);
                 }
                 const text = el('span', 'demo-verdict');
+                const gain = [
+                    combo.damage ? `+${combo.damage} урона` : '',
+                    combo.charge ? `+${combo.charge} заряда` : '',
+                ].filter(Boolean).join(' и ');
                 text.innerHTML = `<b>${combo.name}</b> — ${combo.hint}. `
-                    + (combo.damage ? `+${combo.damage} урона` : `+${combo.charge} заряда`)
-                    + `, нужно ${combo.needs} победы из 3`;
+                    + `${gain}, нужно ${combo.needs} победы из 3`;
                 row.append(text);
                 box.append(row);
             }

@@ -616,21 +616,29 @@ button:disabled { cursor: default; }
 
 /* Узор, который складывается прямо сейчас. Игрок должен видеть его до броска,
    а не узнавать постфактум. */
-.combo-tag {
-    min-height: 17px;
+/* Один совет за раз, ровно там, куда идёт взгляд: слоты → подсказка →
+   кнопки. Цвет говорит, о чём речь, раньше, чем текст будет прочитан. */
+.coach {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 7px;
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    color: var(--dim);
+    min-height: 30px;
+    padding: 6px 10px;
+    border: 1px solid var(--line-soft);
+    border-left-width: 3px;
+    border-radius: var(--r);
+    background: #0a1122;
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.35;
 }
-.combo-tag b { color: var(--stun); letter-spacing: 0.14em; }
-.combo-tag i { font-style: normal; color: var(--muted); letter-spacing: 0; }
-.combo-tag.armed b { color: var(--super); }
-.combo-tag.hot b { color: var(--crit); }
-.combo-tag.hot i { color: var(--lose); }
+.coach:empty { display: none; }
+.coach[data-tone="watch"] { border-left-color: var(--accent); }
+.coach[data-tone="read"] { border-left-color: var(--win); }
+.coach[data-tone="super"] { border-left-color: var(--super); }
+.coach[data-tone="hot"] { border-left-color: var(--crit); color: #ffd7dd; }
+.coach[data-tone="combo"] { border-left-color: var(--stun); }
+
 
 /* Слоты, из-за которых цепочка перегреется. */
 .slot.overheating {

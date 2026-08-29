@@ -9,6 +9,7 @@ import { ELEMENT, ELEMENTS } from './rules.js';
 import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from './engine.js';
 import { planEnemyRound } from './ai.js';
 import { COMBO_LIST, findCombo, overheatOf } from './combos.js';
+import { coachLine } from './coach.js';
 import { makeRng, pick } from './rng.js';
 import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';
 import {
@@ -40,7 +41,7 @@ const dom = {
     board: document.querySelector('.board'),
     playerSlots: $('player-slots'), enemySlots: $('enemy-slots'),
     chargeFill: $('charge-fill'), chargeLabel: $('charge-label'), charge: document.querySelector('.charge'),
-    comboTag: $('combo-tag'),
+    coach: $('coach'),
     castRow: $('cast-row'), btnUndo: $('btn-undo'), btnGo: $('btn-go'), btnSuper: $('btn-super'),
     timer: $('timer'), timerNum: $('timer-num'), timerFill: $('timer-fill'),
     log: $('log'), stats: $('stats'),
@@ -527,40 +528,38 @@ function paintCombo() {
     app.playerSlots.forEach((slot) => slot.classList.remove('in-combo', 'combo-missed', 'overheating'));
     const found = findCombo(app.seq);
     const hot = overheatOf(app.seq);
+    paintCoach(found, hot);
 
-    // Перегрев важнее узора: он уже случится, а узор ещё надо выиграть.
+    // Слоты показывают, где именно узор или перегрев; словами это объясняет
+    // подсказчик. Раньше рядом висела ещё и отдельная плашка с тем же
+    // текстом — две строки об одном на трёх сантиметрах экрана.
     if (hot) {
         app.seq.forEach((element, i) => {
             if (element === hot.element) app.playerSlots[i]?.classList.add('overheating');
         });
-        dom.comboTag.classList.remove('armed');
-        dom.comboTag.classList.add('hot');
-        const name = document.createElement('b');
-        name.textContent = 'ПЕРЕГРЕВ';
-        const why = document.createElement('i');
-        why.textContent = `${hot.count} одинаковых — отдача ${hot.damage} по тебе`;
-        dom.comboTag.replaceChildren(name, why);
         return;
     }
-    dom.comboTag.classList.remove('hot');
+    found?.slots.forEach((i) => app.playerSlots[i]?.classList.add('in-combo'));
+}
 
-    dom.comboTag.classList.toggle('armed', Boolean(found));
-    if (!found) {
-        // Пустая подсказка означала, что об узорах игрок узнаёт только случайно.
-        const hint = document.createElement('i');
-        hint.textContent = app.seq.length < 3
-            ? 'три подряд складываются в узор'
-            : 'узора нет — три подряд дают ВАЛ, ПРОБОЙ или ПРИЗМУ';
-        dom.comboTag.replaceChildren(hint);
+/**
+ * Один совет за раз — тот, что сейчас меняет решение. Строка живёт рядом с
+ * кнопками, потому что именно там игрок решает, что нажать.
+ */
+function paintCoach(found, hot) {
+    if (!app.battle) return;
+    const line = coachLine(app.battle, {
+        chargeCost: CHARGE_COST,
+        overheat: hot,
+        combo: found?.combo ?? null,
+    });
+    if (!line) {
+        dom.coach.replaceChildren();
+        dom.coach.removeAttribute('data-tone');
         return;
     }
-    found.slots.forEach((i) => app.playerSlots[i]?.classList.add('in-combo'));
-    const { combo } = found;
-    const need = document.createElement('i');
-    need.textContent = `нужно побед: ${combo.needs} из 3`;
-    const name = document.createElement('b');
-    name.textContent = combo.name;
-    dom.comboTag.replaceChildren(name, need);
+    dom.coach.dataset.tone = line.tone;
+    dom.coach.textContent = line.text;
 }
 
 function clearSuperMark() {

@@ -43,12 +43,16 @@ test("одинаковые стихии гасят друг друга без у
 });
 
 test("победа над обычным жестом снимает 1 здоровья", () => {
-    // Любая тройка подряд складывается в узор и добавит бонус, поэтому берём
-    // цепочку, где каждая тройка имеет вид AAB или ABB — такие узором не считаются.
+    // Узор образует любая тройка подряд, поэтому «чистого» размена без
+    // бонуса в пятёрке уже не бывает: проверяем цену самого обмена, а
+    // добавку узора считаем отдельно и явно.
     const chain = ["water", "water", "wind", "wind", "water"];
     const enemy = [cast("fire"), cast("fire"), cast("water"), cast("water"), cast("fire")];
-    const { state } = resolveRound(battle(), chain, enemy);
-    assert.equal(state.hp.enemy, 10 - 5, "каждая победа стоит ровно 1");
+    const { state, events } = resolveRound(battle(), chain, enemy);
+    assert.ok(clashes(events).every((c) => c.damage === 1), "каждая победа стоит ровно 1");
+    const combo = events.find((e) => e.type === "combo");
+    assert.equal(combo.name, "НАЖИМ", "первая тройка — два одинаковых и смена");
+    assert.equal(state.hp.enemy, 10 - 5 - combo.damage);
     assert.equal(state.hp.player, 10);
 });
 
@@ -172,7 +176,9 @@ test("итог раунда содержит суммарный урон по о
     const { events } = resolveRound(battle(), chain, enemy);
     const end = events.at(-1);
     assert.equal(end.type, "round-end");
-    assert.deepEqual(end.dealt, { player: 2, enemy: 3 });
+    // В сумму входит и добавка узора: первая тройка тут складывается в нажим.
+    const combo = events.find((e) => e.type === "combo" && e.fired);
+    assert.deepEqual(end.dealt, { player: 2, enemy: 3 + combo.damage });
 });
 
 test("суперудар бьёт в слот, который выбрал игрок", () => {
