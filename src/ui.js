@@ -133,18 +133,6 @@ export function renderSeen(node, seen, enemyRounds = []) {
     node.replaceChildren(...meters, ...(last ? [history] : []));
 }
 
-/* ─────────────── Статистика ─────────────── */
-
-export function renderStats(node, wins) {
-    node.replaceChildren(
-        ...ELEMENTS.map((id) => {
-            const cell = el('div', 'stat', ELEMENT[id].glyph);
-            cell.append(el('b', null, String(wins[id] ?? 0)), el('small', null, 'побед'));
-            return cell;
-        }),
-    );
-}
-
 /* ─────────────── Полоски здоровья ─────────────── */
 
 export function setHp(barNode, numNode, value, max) {

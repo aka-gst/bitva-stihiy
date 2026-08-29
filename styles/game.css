@@ -129,10 +129,6 @@ button:disabled { cursor: default; }
 .wheel-reason { color: var(--muted); font-size: 12px; }
 .wheel-reason b { color: var(--text); font-weight: 600; }
 
-.wheel--compact { padding: 8px; gap: 3px; }
-.wheel--compact .wheel-row { font-size: 11px; gap: 6px; }
-.wheel--compact .wheel-glyph { font-size: 16px; }
-.wheel--compact .wheel-reason { font-size: 11px; }
 
 /* ─────────────────────────── КНОПКИ МЕНЮ ─────────────────────────── */
 
@@ -593,8 +589,11 @@ button:disabled { cursor: default; }
     /* Ширину задаём явно: flex-basis во вложенном флексе не удерживал размер,
        и слоты схлопывались до трети задуманного. */
     flex: none;
-    width: clamp(38px, min(5.2vw, 8vh), 84px);
-    aspect-ratio: 3 / 4;
+    width: clamp(36px, min(4.4vw, 8.4vh), 76px);
+    /* Выше и уже: поле из десяти карточек — главный рабочий стол игрока,
+       и по высоте ему места не жалко, а по ширине оно и так упирается в
+       колонку рядом с разбором боя. */
+    aspect-ratio: 5 / 8;
     display: grid;
     place-items: center;
     font-size: clamp(18px, 3.4vw, 26px);
@@ -922,8 +921,7 @@ button:disabled { cursor: default; }
    лентой — колесо и счёт по краям, разбор боя посередине. */
 .side {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: 8px;
+    grid-template-rows: minmax(0, 1fr);
     min-height: 0;
     /* Потолок обязателен: лог растёт с каждым обменом, а средний этаж —
        ряд высоты auto. Без потолка лог за пару раундов вытягивал этаж и
@@ -951,19 +949,6 @@ button:disabled { cursor: default; }
 .log-line.neutral { border-color: var(--dim); color: var(--muted); }
 .log-line.system { border-color: var(--super); color: #e9d5ff; font-weight: 700; }
 
-.stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--r);
-    padding: 8px;
-    text-align: center;
-}
-.stat { font-size: 18px; }
-.stat b { display: block; font-size: 17px; font-weight: 900; }
-.stat small { display: block; font-size: 9px; color: var(--dim); letter-spacing: 0.06em; }
 
 /* ─────────────────────────── ОВЕРЛЕЙ И ИНСТРУМЕНТЫ ─────────────────────────── */
 
@@ -1115,7 +1100,7 @@ button:disabled { cursor: default; }
     /* Пять слотов, подпись и зазоры должны уложиться в ширину телефона:
        при 68px под подпись последний слот вылезал за край доски. */
     .lane { gap: 6px; }
-    .lane-label { flex-basis: 52px; }
+    .lane-label { flex-basis: 64px; }
     .lane-label { font-size: 8px; letter-spacing: 0.04em; }
     .slot { width: clamp(42px, 12.4vw, 58px); }
     .cast { padding: 7px 4px; }

@@ -21,14 +21,14 @@ import { createArena } from './arena.js';
 import { haptic, sweep, tone, wakeAudioOnInteraction } from './audio.js';
 import {
     $, LEARN_STEPS, clearSlots, pushLog, renderCastRow, renderLearnStep, renderModes,
-    renderPortrait, renderSeen, renderSlots, renderStats, renderStoryTrack, renderWheel,
+    renderPortrait, renderSeen, renderSlots, renderStoryTrack, renderWheel,
     setCharge, setHp, setSlot, showScreen,
 } from './ui.js';
 
 /* ─────────────────────────── Ссылки на DOM ─────────────────────────── */
 
 const dom = {
-    menuWheel: $('menu-wheel'), battleWheel: $('battle-wheel'), leaders: $('leaders'),
+    menuWheel: $('menu-wheel'), leaders: $('leaders'),
     modeGrid: $('mode-grid'),
     learnCard: $('learn-card'), learnProgress: $('learn-progress'), learnPrev: $('learn-prev'), learnNext: $('learn-next'),
     storyTier: $('story-tier'), storyName: $('story-name'), storyPortrait: $('story-portrait'),
@@ -46,7 +46,7 @@ const dom = {
     favour: $('favour'),
     castRow: $('cast-row'), btnUndo: $('btn-undo'), btnGo: $('btn-go'), btnSuper: $('btn-super'),
     timer: $('timer'), timerNum: $('timer-num'), timerFill: $('timer-fill'),
-    log: $('log'), stats: $('stats'),
+    log: $('log'),
     overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'), overlayActions: $('overlay-actions'),
     btnSpeed: $('btn-speed'), btnRules: $('btn-rules'), btnQuit: $('btn-quit'),
     notice: $('notice'),
@@ -459,7 +459,6 @@ function paintAll(snapshot) {
     setHp(dom.playerHpBar, dom.playerHpNum, hp.player, b.maxHp.player);
     setHp(dom.enemyHpBar, dom.enemyHpNum, hp.enemy, b.maxHp.enemy);
     setCharge(dom.chargeFill, dom.chargeLabel, dom.charge, charge, CHARGE_COST);
-    renderStats(dom.stats, app.shownWins ?? b.wins);
     renderSeen(dom.intel, b.seen, b.enemyRounds);
 
     // Три состояния кнопки: заряд готов, ждём выбора слота, слот назначен.
@@ -899,10 +898,8 @@ function blockZoomGestures() {
 function boot() {
     blockZoomGestures();
     renderWheel(dom.menuWheel);
-    renderWheel(dom.battleWheel);
     renderCastRow(dom.castRow, castElement);
     renderModes(dom.modeGrid, MODES, MODE_ORDER, startFreeBattle);
-    renderStats(dom.stats, { fire: 0, water: 0, wind: 0 });
     loadSpeed();
     wakeAudioOnInteraction();
 
