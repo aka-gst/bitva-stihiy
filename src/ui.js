@@ -51,19 +51,15 @@ export function renderCastRow(node, onCast) {
             const button = el('button', 'cast');
             button.dataset.element = id;
             button.type = 'button';
+            // Только знак, без подписи: три стихии узнаются по форме и цвету
+            // быстрее, чем читаются, а строка «бьёт ветер» на кнопке дублирует
+            // колесо и делает из кнопки пункт меню. Что кого гасит, говорят
+            // колесо рядом и заголовок кнопки для тех, кто ведёт мышью.
             const glyph = el('span', 'cast-glyph');
             glyph.insertAdjacentHTML('afterbegin', elementGlyph(id));
-            button.append(
-                glyph,
-                (() => {
-                    const text = el('span', 'cast-text');
-                    text.append(
-                        el('span', 'cast-name', info.name.toUpperCase()),
-                        el('span', 'cast-beats', `бьёт ${ELEMENT[info.beats].glyph} ${ELEMENT[info.beats].accusative}`),
-                    );
-                    return text;
-                })(),
-            );
+            button.append(glyph);
+            button.title = `${info.name.toUpperCase()} — бьёт ${ELEMENT[info.beats].accusative}`;
+            button.setAttribute('aria-label', button.title);
             button.addEventListener('click', () => onCast(id));
             return button;
         }),

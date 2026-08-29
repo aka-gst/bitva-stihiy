@@ -274,15 +274,21 @@ button:disabled { cursor: default; }
 .hud-tier { font-size: 11px; letter-spacing: 0.16em; color: var(--dim); font-weight: 700; }
 .hud-round { font-size: 13px; letter-spacing: 0.08em; color: var(--muted); }
 
-.battle-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 24vw); gap: 12px; min-height: 0; }
-.stage { display: grid; grid-template-rows: minmax(140px, 1fr) auto; gap: 10px; min-height: 0; }
+.battle-layout { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 10px; min-height: 0; }
+.stage { display: grid; grid-template-rows: minmax(140px, 1fr) auto; gap: 10px; min-height: 0; justify-items: center; }
+.stage > * { width: 100%; }
 
 /* ─────────────────────────── АРЕНА ─────────────────────────── */
 
 /* Зал башни: арки, колонны, пол — и рассеянный свет от каждого бойца. */
 .arena {
     position: relative;
-    min-height: 0;
+    /* Во всю ширину экрана арена превращалась в щель 7:1, и бойцы в ней были
+       с ноготь. Ширину ограничиваем, высоту требуем — драка должна быть
+       видна. --fw держит ширину бойца: от неё же считается сближение. */
+    --fw: clamp(108px, 24%, 300px);
+    max-width: 1180px;
+    min-height: clamp(180px, 32vh, 430px);
     border: 1px solid var(--line);
     border-radius: var(--r);
     overflow: hidden;
@@ -385,13 +391,25 @@ button:disabled { cursor: default; }
 .fighter {
     position: absolute;
     bottom: 8%;
-    width: clamp(108px, 24%, 300px);
-    aspect-ratio: 3 / 4;
+    width: var(--fw);
+    /* Ровно по viewBox рисунка (120×170): при 3/4 svg вписывался с полями,
+       и ширина полей зависела от размера окна — на телефоне бойцы налезали
+       друг на друга, на большом экране между ними оставалась дыра. Без полей
+       силуэт занимает одну и ту же долю рамки везде, и сближение считается
+       одним числом. */
+    aspect-ratio: 12 / 17;
     /* Высота выводится из ширины, поэтому в низком окне боец оставался прежним,
        а арена сжималась — и мага срезало сверху. Потолок считаем от арены. */
     max-height: 84%;
-    transition: transform 0.24s ease, filter 0.24s ease;
+    transition: transform 0.24s ease, filter 0.24s ease, left 0.26s ease, right 0.26s ease;
 }
+/* Сближение через left/right, а не transform: у бойца на transform висят
+   замах, отдача и падение — они бы затёрли сдвиг на полпути.
+   Рамки при этом заходят друг на друга, и так и надо: силуэт занимает лишь
+   середину своей рамки, по краям пусто. Сводили рамки встык — между самими
+   бойцами оставалась дыра в две ладони. */
+.fighter--player.engaged { left: calc(50% - var(--fw) * var(--engage, 0.88)); }
+.fighter--enemy.engaged { right: calc(50% - var(--fw) * var(--engage, 0.88)); }
 .fighter svg { width: 100%; height: 100%; overflow: visible; animation: idle-float 3.6s ease-in-out infinite; }
 .fighter--player { left: 6%; }
 .fighter--enemy { right: 6%; }
@@ -551,7 +569,7 @@ button:disabled { cursor: default; }
     /* Ширину задаём явно: flex-basis во вложенном флексе не удерживал размер,
        и слоты схлопывались до трети задуманного. */
     flex: none;
-    width: clamp(48px, 7.4vw, 84px);
+    width: clamp(44px, 4.6vw, 62px);
     aspect-ratio: 3 / 4;
     display: grid;
     place-items: center;
@@ -657,10 +675,8 @@ button:disabled { cursor: default; }
 
 .cast {
     display: grid;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    gap: 10px;
-    padding: 13px 14px;
+    place-items: center;
+    padding: 10px;
     background: #16203a;
     position: relative;
     overflow: hidden;
@@ -673,8 +689,8 @@ button:disabled { cursor: default; }
     position: relative;
     display: grid;
     place-items: center;
-    width: 52px;
-    height: 52px;
+    width: clamp(50px, 5.4vw, 64px);
+    height: clamp(50px, 5.4vw, 64px);
     border-radius: 50%;
     background:
         repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.03) 0deg 6deg, transparent 6deg 12deg),
@@ -692,13 +708,31 @@ button:disabled { cursor: default; }
     0% { box-shadow: inset 0 0 12px rgba(0,0,0,.9), 0 0 34px var(--el); }
     100% { box-shadow: inset 0 0 12px rgba(0,0,0,.9), 0 0 0 var(--el); }
 }
-.cast-text { position: relative; display: grid; text-align: left; gap: 1px; min-width: 0; }
-.cast-name { font-size: 14px; font-weight: 800; letter-spacing: 0.06em; }
-.cast-beats { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cast:active:not(:disabled) { transform: scale(0.96); }
 .cast:disabled { opacity: 0.35; }
-.cast:disabled::before, .cast:disabled::after { animation: none; }
-.cast .cast-name { color: var(--el); }
+.cast:disabled::before, .cast:disabled::after, .cast:disabled .glyph { animation: none; }
+
+/* Знак живёт своей стихией и без подписи: огонь дёргается, вода дышит
+   ровно, ветер сносит вбок. Движение — это и есть название кнопки. */
+.cast .glyph { animation-iteration-count: infinite; }
+.cast[data-element="fire"] .glyph { animation: glyph-fire 2.2s ease-in-out infinite; }
+@keyframes glyph-fire {
+    0%, 100% { transform: translateY(0) scale(1); }
+    35% { transform: translateY(-2.5px) scale(1.06); }
+    58% { transform: translateY(0.5px) scale(0.98); }
+    76% { transform: translateY(-1px) scale(1.03); }
+}
+.cast[data-element="water"] .glyph { animation: glyph-water 3.4s ease-in-out infinite; }
+@keyframes glyph-water {
+    0%, 100% { transform: translateY(-1.5px) scaleY(0.97); }
+    50% { transform: translateY(2px) scaleY(1.04); }
+}
+.cast[data-element="wind"] .glyph { animation: glyph-wind 2.8s ease-in-out infinite; }
+@keyframes glyph-wind {
+    0%, 100% { transform: translateX(-2px) rotate(-2.5deg); }
+    45% { transform: translateX(2.5px) rotate(2.5deg); }
+    70% { transform: translateX(0) rotate(0deg); }
+}
 
 /* Каждая кнопка живёт своей стихией: подложка под цвет, своё движение,
    свой отклик на нажатие. Одинаковые серые прямоугольники не давали понять,
@@ -824,7 +858,17 @@ button:disabled { cursor: default; }
 
 /* ─────────────────────────── БОКОВАЯ ПАНЕЛЬ ─────────────────────────── */
 
-.side { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; min-height: 0; }
+/* Лог ушёл из колонки справа вниз: сбоку он отъедал четверть ширины у арены,
+   ради текста, который читают между раундами, а не во время. Внизу он лежит
+   лентой — колесо и счёт по краям, разбор боя посередине. */
+.side {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: 8px;
+    min-height: 0;
+    max-height: 22vh;
+}
 
 .log {
     background: #060b16;
@@ -1000,16 +1044,15 @@ button:disabled { cursor: default; }
     .seen-row { grid-template-columns: auto 22px auto; gap: 3px; }
     .seen-last-label { display: none; }
     .seen-cell { width: 15px; height: 15px; font-size: 10px; }
-    .fighter { width: clamp(128px, 38%, 190px); bottom: 16%; }
+    .arena { --fw: clamp(120px, 34%, 190px); min-height: clamp(150px, 26vh, 260px); }
+    .fighter { bottom: 16%; }
     .arena::after { bottom: 19%; }
     .lane { gap: 8px; }
     .lane-label { flex-basis: 68px; }
     .lane-label { font-size: 8px; letter-spacing: 0.04em; }
     .slot { width: clamp(46px, 13vw, 60px); }
-    .cast { grid-template-columns: 1fr; justify-items: center; gap: 5px; padding: 9px 4px; text-align: center; }
-    .cast-glyph { width: 44px; height: 44px; }
-    .cast-text { text-align: center; justify-items: center; }
-    .cast-beats { font-size: 9px; }
+    .cast { padding: 7px 4px; }
+    .cast-glyph { width: clamp(52px, 17vw, 72px); height: clamp(52px, 17vw, 72px); }
     .action-row { grid-template-columns: 1fr 1.3fr 1fr; }
     .btn { font-size: 12px; padding: 10px 4px; }
     .battle-tools { gap: 4px; margin-top: 3px; }

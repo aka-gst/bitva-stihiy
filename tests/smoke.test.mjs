@@ -242,3 +242,25 @@ test("сорванный узор виден на арене, а не тольк
     assert.match(body, /playComboMiss/, "осечка не доходит до арены");
     assert.match(body, /playCombo\(/, "удавшийся узор не доходит до арены");
 });
+
+test("на кнопках стихий нет подписей", async () => {
+    // Просили трижды: кнопка — это знак, а не пункт меню. Что кого гасит,
+    // говорят колесо и заголовок кнопки, а не строчка под иконкой.
+    const ui = await readFile(new URL("src/ui.js", root), "utf8");
+    const cast = ui.slice(ui.indexOf("export function renderCastRow"));
+    const body = cast.slice(0, cast.indexOf("export function renderSlots"));
+    assert.doesNotMatch(body, /cast-name|cast-beats|cast-text/, "подпись вернулась на кнопку");
+    assert.match(body, /elementGlyph/, "кнопка осталась без знака");
+    assert.match(body, /aria-label|button\.title/, "без подписи нужен заголовок для доступности");
+});
+
+test("бойцы сходятся вплотную, а не стреляют с краёв", async () => {
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    assert.match(arena, /classList\.add\('engaged'\)/, "сближение не включается");
+    // Рамка бойца обязана совпадать с viewBox рисунка: иначе svg вписывается
+    // с полями, ширина полей плавает от размера окна, и одно и то же
+    // сближение даёт то дыру, то наложение силуэтов.
+    const fig = css.slice(css.indexOf(".fighter {"));
+    assert.match(fig.slice(0, fig.indexOf("}")), /aspect-ratio:\s*12\s*\/\s*17/);
+    assert.match(fighter, /viewBox="0 0 120 170"/);
+});

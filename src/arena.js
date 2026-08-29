@@ -110,7 +110,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
 
     function resetPoses() {
         for (const node of [playerNode, enemyNode]) {
-            node.classList.remove('casting', 'hurt', 'stunned', 'down', 'victor', 'striking');
+            node.classList.remove('casting', 'hurt', 'stunned', 'down', 'victor', 'striking', 'engaged');
             applyPose(node, 'idle');
         }
     }
@@ -289,6 +289,14 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             : ENEMY_WINS.has(event.outcome) ? playerNode : null;
         const critical = event.outcome === 'crit' || event.outcome === 'super-fail' || event.damage > 1;
         const isSuper = event.outcome.startsWith('super');
+
+        // Сходятся и дерутся вплотную, а не перестреливаются с разных краёв.
+        // Сближение включается один раз за раунд и держится до конца: шаг
+        // навстречу перед каждым из пяти обменов растянул бы раунд вдвое.
+        // Точки вылета считаются уже после сближения, поэтому заклинания сами
+        // собой летят короче — расстояние между кулаками стало почти нулевым.
+        playerNode.classList.add('engaged');
+        enemyNode.classList.add('engaged');
 
         // 1. Замах: оба поднимают посохи, орбы загораются выбранной стихией.
         setOrb(playerNode, event.player);
