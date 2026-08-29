@@ -1114,6 +1114,15 @@ button:disabled { cursor: default; }
     gap: 12px;
     animation: fade-up 0.3s ease;
 }
+.overlay-art {
+    display: block;
+    width: clamp(120px, 22vh, 200px);
+    height: auto;
+    margin: 0 auto 4px;
+    filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.6));
+}
+.overlay-art[hidden] { display: none; }
+
 .overlay-title { margin: 0; font-size: clamp(28px, 6vw, 44px); font-weight: 900; letter-spacing: 0.04em; }
 .overlay-text { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .overlay-actions { display: grid; gap: 8px; }

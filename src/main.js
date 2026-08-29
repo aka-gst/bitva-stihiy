@@ -47,7 +47,8 @@ const dom = {
     castRow: $('cast-row'), btnUndo: $('btn-undo'), btnGo: $('btn-go'), btnSuper: $('btn-super'),
     timer: $('timer'), timerNum: $('timer-num'), timerFill: $('timer-fill'),
     log: $('log'),
-    overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'), overlayActions: $('overlay-actions'),
+    overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'),
+    overlayActions: $('overlay-actions'), overlayArt: $('overlay-art'),
     btnSpeed: $('btn-speed'), btnRules: $('btn-rules'), btnQuit: $('btn-quit'),
     notice: $('notice'),
 };
@@ -834,6 +835,7 @@ function finishBattle(winner) {
             showOverlay({
                 title: 'ПОРАЖЕНИЕ',
                 color: 'var(--lose)',
+                art: './assets/portrait-hero-down.webp',
                 text: `${app.opponent.name} устоял.\n${app.opponent.reveal ?? ''}\n${app.opponent.teaches}`,
                 actions: [
                     { label: 'ПОВТОРИТЬ ЯРУС', primary: true, onClick: () => { app.story.hp = retryHp; showTier(app.story.index); } },
@@ -856,6 +858,7 @@ function finishBattle(winner) {
     showOverlay({
         title: won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ',
         color: won ? 'var(--win)' : 'var(--lose)',
+        art: won ? null : './assets/portrait-hero-down.webp',
         text: won
             ? `${app.opponent.name} повержен. Осталось здоровья: ${app.battle.hp.player}.\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`
             : `${app.opponent.name} оказался быстрее.\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`,
@@ -866,7 +869,15 @@ function finishBattle(winner) {
     });
 }
 
-function showOverlay({ title, text, color, actions }) {
+function showOverlay({ title, text, color, actions, art = null }) {
+    // Проигрыш — единственный экран, где герою есть что сказать молча.
+    if (art) {
+        dom.overlayArt.src = art;
+        dom.overlayArt.hidden = false;
+    } else {
+        dom.overlayArt.hidden = true;
+        dom.overlayArt.removeAttribute('src');
+    }
     dom.overlayTitle.textContent = title;
     dom.overlayTitle.style.color = color ?? 'var(--text)';
     dom.overlayText.textContent = text ?? '';
