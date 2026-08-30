@@ -9,6 +9,15 @@
       ],
       "port": 4189,
       "autoPort": true
+    },
+    {
+      "name": "perimetr",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "/Users/gst/dev/stealth/tools/serve.mjs"
+      ],
+      "port": 4191,
+      "autoPort": true
     }
   ]
 }
