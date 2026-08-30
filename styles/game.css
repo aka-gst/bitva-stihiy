@@ -185,7 +185,30 @@ button:disabled { cursor: default; }
 .demo-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; }
 /* В бою карточка тянется во всю высоту своего ряда — в обучении рядов нет,
    и без явного размера она разъезжалась поверх соседних строк. */
-.demo-row .slot { flex: 0 0 34px; width: 34px; height: 56px; font-size: 20px; }
+.demo-row .slot, .demo-list .slot { flex: 0 0 34px; width: 34px; height: 56px; font-size: 20px; }
+
+/* Список примеров. Раньше это был .demo-row с инлайновым flex-direction:
+   column, и каждая строка внутри центрировалась сама по себе. Подписи разной
+   длины — значит и ширина строк разная, и клетки вставали лесенкой. Теперь
+   колонки задаёт контейнер, а строки прозрачные (display: contents), поэтому
+   клетки всех строк стоят строго друг под другом. */
+.demo-list {
+    display: grid;
+    grid-template-columns: auto auto auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px 12px;
+    width: max-content;
+    max-width: 100%;
+    margin-inline: auto;
+}
+/* Пять слотов с подписью слева — своя разметка колонок. */
+.demo-list--chain { grid-template-columns: auto repeat(5, auto); }
+.demo-line { display: contents; }
+/* Строки-пояснения идут во всю ширину, а не в первую колонку. */
+.demo-span { grid-column: 1 / -1; }
+.demo-list .demo-verdict { text-align: left; }
+/* Столбик по центру: полоса заряда, подпись под ней. */
+.demo-stack { display: grid; justify-items: center; gap: 8px; }
 .demo-cell {
     display: grid; place-items: center; gap: 2px;
     min-width: 62px; padding: 8px 10px;
@@ -289,17 +312,27 @@ button:disabled { cursor: default; }
     /* Доли, а не «по содержимому»: пока средний этаж мерился содержимым,
        каждый лишний пиксель высоты карточки отнимался у арены — поле росло,
        но вместе с ним всё сжималось, и на глаз ничего не менялось. */
-    grid-template-rows: minmax(150px, 1fr) minmax(140px, 0.72fr) auto;
+    grid-template-rows: minmax(260px, 1.7fr) minmax(215px, 0.8fr) auto;
     gap: 10px;
     min-height: 0;
 }
 
-/* Разбор боя слева, поле ходов справа. Читают их в разные моменты: лог —
-   между раундами, слоты — пока набираешь цепочку, и делить одну колонку им
-   незачем. Поле держит свою ширину, лог занимает остальное. */
+/* Нижний этаж: кнопки и разбор боя рядом. Лог справа от кнопок — читают его
+   между раундами, поэтому место рядом с ними, а не сбоку от арены. */
+.bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.62fr);
+    gap: 10px;
+    align-items: stretch;
+    min-height: 0;
+    width: min(100%, 1500px);
+    justify-self: center;
+}
+
+/* Поле ходов занимает средний этаж целиком: лог уехал вниз, к кнопкам. */
 .middle {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     align-items: stretch;
     min-height: 0;
@@ -319,7 +352,7 @@ button:disabled { cursor: default; }
        видна. --fw держит ширину бойца: от неё же считается сближение. */
     --fw: clamp(120px, 25%, 460px);
     max-width: 1500px;
-    min-height: clamp(150px, 22vh, 620px);
+    min-height: clamp(260px, 38vh, 720px);
     /* Не margin: 0 auto — авто-поля у элемента сетки отменяют растяжение,
        и арена схлопывалась до нулевой ширины: рисунок в ней позиционирован
        абсолютно, собственной ширины у неё нет. */
@@ -593,11 +626,15 @@ button:disabled { cursor: default; }
 
 /* ─────────────────────────── ДОСКА, СЛОТЫ, КНОПКИ ─────────────────────────── */
 
+/* Своя ширина, а не вся строка: растянутое на монитор поле разносит пять
+   слотов по краям, и цепочка перестаёт читаться одним взглядом. */
 .board {
     display: grid;
     grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr);
     gap: 8px;
     min-height: 0;
+    width: min(100%, 940px);
+    justify-self: center;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--r);
@@ -827,7 +864,9 @@ button:disabled { cursor: default; }
 }
 .charge.ready { border-color: var(--super); box-shadow: 0 0 12px rgba(192, 132, 252, 0.45); }
 
-.controls { display: grid; gap: 8px; width: min(100%, 1100px); margin: 0 auto; }
+/* Ширину задаёт ячейка нижнего этажа, поэтому ни своего предела, ни авто-полей:
+   с margin: 0 auto кнопки отъезжали от лога и между ними повисала дыра. */
+.controls { display: grid; gap: 8px; align-content: start; min-width: 0; }
 .cast-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
 .cast {
@@ -1160,10 +1199,11 @@ button:disabled { cursor: default; }
 /* ─────────────────────────── АДАПТИВ ─────────────────────────── */
 
 @media (max-width: 900px) {
-    .battle-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(140px, 1fr) auto auto; }
+    .battle-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(200px, 1fr) auto auto; }
     /* На телефоне колонок нет: поле ходов занимает всю ширину, а разбор боя
        прячется — читать его во время боя всё равно негде. */
     .middle { grid-template-columns: minmax(0, 1fr); }
+    .bottom { grid-template-columns: minmax(0, 1fr); }
     .side { display: none; }
     .stage { grid-template-rows: minmax(120px, 1fr) auto; }
     /* На телефоне центральный блок съедал полоски здоровья — разносим по строкам.

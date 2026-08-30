@@ -115,13 +115,9 @@
             <div class="intel" id="intel" aria-label="Что противник уже показал"></div>
         </div>
 
-        <!-- Разбор боя слева, поле ходов справа: читают их в разные моменты,
-             и делить одну колонку им незачем. -->
+        <!-- Поле ходов занимает средний этаж целиком: разбор боя уехал вниз,
+             к кнопкам, и отбирать у поля колонку больше некому. -->
         <div class="middle">
-            <aside class="side">
-                <div class="log" id="log" role="log" aria-live="polite"></div>
-            </aside>
-
             <div class="board">
                 <div class="timer" id="timer" aria-label="Время на ход">
                     <div class="timer-fill" id="timer-fill"></div>
@@ -140,20 +136,29 @@
             </div>
         </div>
 
-        <div class="controls">
-            <div class="coach" id="coach" aria-live="polite"></div>
+        <!-- Нижний этаж: кнопки слева, разбор боя справа от них. Лог читают
+             между раундами, а не во время — сбоку от арены он отбирал ширину
+             у драки ради текста, на который в бою не смотрят. -->
+        <div class="bottom">
+            <div class="controls">
+                <div class="coach" id="coach" aria-live="polite"></div>
 
-            <div class="charge" title="Заряд суперудара">
-                <div class="charge-fill" id="charge-fill"></div>
-                <span class="charge-label" id="charge-label">ЗАРЯД 0/3</span>
+                <div class="charge" title="Заряд суперудара">
+                    <div class="charge-fill" id="charge-fill"></div>
+                    <span class="charge-label" id="charge-label">ЗАРЯД 0/3</span>
+                </div>
+
+                <div class="cast-row" id="cast-row"></div>
+                <div class="action-row">
+                    <button class="btn btn--del" id="btn-undo">СТЕРЕТЬ</button>
+                    <button class="btn btn--go" id="btn-go">В БОЙ</button>
+                    <button class="btn btn--super" id="btn-super" disabled>СУПЕР</button>
+                </div>
             </div>
 
-            <div class="cast-row" id="cast-row"></div>
-            <div class="action-row">
-                <button class="btn btn--del" id="btn-undo">СТЕРЕТЬ</button>
-                <button class="btn btn--go" id="btn-go">В БОЙ</button>
-                <button class="btn btn--super" id="btn-super" disabled>СУПЕР</button>
-            </div>
+            <aside class="side">
+                <div class="log" id="log" role="log" aria-live="polite"></div>
+            </aside>
         </div>
     </div>
 

@@ -178,7 +178,7 @@ const demoCell = (element, verdict) => {
 };
 
 const clash = (winner, loser, note) => {
-    const row = el('div', 'demo-row');
+    const row = el('div', 'demo-line');
     row.append(demoCell(winner, 'win'), el('span', 'demo-verdict', '⚔'), demoCell(loser, 'lose'));
     if (note) row.append(el('span', 'demo-verdict', note));
     return row;
@@ -189,11 +189,9 @@ export const LEARN_STEPS = [
         title: 'ТРИ СТИХИИ, ОДИН КРУГ',
         body: 'Каждая стихия гасит ровно одну другую — и проигрывает ровно одной. Ничего не нужно запоминать: правило можно вывести из здравого смысла.',
         build: () => {
-            const box = el('div', 'demo-row');
-            box.style.flexDirection = 'column';
-            box.style.gap = '6px';
+            const box = el('div', 'demo-list');
             for (const { winner, loser, reason } of WHEEL) {
-                const row = el('div', 'demo-row');
+                const row = el('div', 'demo-line');
                 row.append(demoCell(winner, 'win'), el('span', 'demo-verdict', '▸'), demoCell(loser, 'lose'),
                     el('span', 'demo-verdict', reason));
                 box.append(row);
@@ -218,11 +216,9 @@ export const LEARN_STEPS = [
         title: 'У ПРОТИВНИКА ЕСТЬ КОРОНКА',
         body: 'Каждый маг чаще всего бьёт одной стихией — это его <b>коронка</b>. Никто её не назовёт: справа от арены копится разведка — сколько раз какую стихию он выбросил, — и вывод делаешь ты. Побьёшь коронку — получишь заряд, а раз за раунд ещё и <b>оглушишь</b> противника. Проиграешь коронке — <b>двойной урон</b>.',
         build: () => {
-            const box = el('div', 'demo-row');
-            box.style.flexDirection = 'column';
-            box.style.gap = '8px';
+            const box = el('div', 'demo-list');
             box.append(clash('water', 'fire', 'коронка пробита → оглушение'));
-            const bad = el('div', 'demo-row');
+            const bad = el('div', 'demo-line');
             bad.append(demoCell('fire', 'lose'), el('span', 'demo-verdict', '⚔'), demoCell('water', 'win'),
                 el('span', 'demo-verdict', 'проигрыш коронке → −2'));
             box.append(bad);
@@ -233,16 +229,14 @@ export const LEARN_STEPS = [
         title: 'УЗОРЫ ВНУТРИ ЦЕПОЧКИ',
         body: 'Три подряд идущих слота могут сложиться в <b>узор</b>. Он подсвечивается, пока ты набираешь, — сюрпризом не будет. Но узор срабатывает только если ты выиграл нужное число обменов внутри него: это усиление успеха, а не замена ему. Противник ломает узор одним точным ударом внутрь, а не заливкой всей цепочки.',
         build: () => {
-            const box = el('div', 'demo-row');
-            box.style.flexDirection = 'column';
-            box.style.gap = '8px';
+            const box = el('div', 'demo-list');
             const shapes = {
                 surge: ['fire', 'fire', 'fire'],
                 bond: ['fire', 'water', 'fire'],
                 prism: ['fire', 'water', 'wind'],
             };
             for (const combo of COMBO_LIST) {
-                const row = el('div', 'demo-row');
+                const row = el('div', 'demo-line');
                 for (const id of shapes[combo.id]) {
                     row.append(el('div', 'slot filled in-combo', ELEMENT[id].glyph));
                 }
@@ -257,7 +251,7 @@ export const LEARN_STEPS = [
                 row.append(text);
                 box.append(row);
             }
-            const rule = el('p', 'demo-note');
+            const rule = el('p', 'demo-note demo-span');
             rule.textContent = `Правило одно: чем больше в тройке повторов, тем сильнее удар.`
                 + ` Цена тоже одна — выиграть ${COMBO_NEEDS} обмена из 3 внутри узора.`
                 + ` Но повторы противник читает, а четыре одинаковых в пятёрке бьют по тебе самому.`;
@@ -269,12 +263,10 @@ export const LEARN_STEPS = [
         title: 'ПРИМАНКА — ГЛАВНАЯ ЛОВУШКА',
         body: 'Бить строго по коронке — очевидно, и противник это видит. Тогда он подмешивает <b>приманку</b>: стихию, которая гасит твой ожидаемый ответ. Спасение простое — иногда бросай <b>его же коронку</b>: против коронки будет ничья, а приманку она сожжёт.',
         build: () => {
-            const box = el('div', 'demo-row');
-            box.style.flexDirection = 'column';
-            box.style.gap = '8px';
+            const box = el('div', 'demo-list');
 
             const line = (label, cells, note) => {
-                const row = el('div', 'demo-row');
+                const row = el('div', 'demo-line');
                 row.append(el('span', 'demo-verdict', label));
                 cells.forEach(([id, verdict]) => row.append(demoCell(id, verdict)));
                 row.append(el('span', 'demo-verdict', note));
@@ -282,7 +274,7 @@ export const LEARN_STEPS = [
             };
 
             box.append(
-                el('span', 'demo-verdict', 'Коронка противника — 🔥 огонь. Очевидный ответ — 💧 вода.'),
+                el('span', 'demo-verdict demo-span', 'Коронка противника — 🔥 огонь. Очевидный ответ — 💧 вода.'),
                 line('приманка:', [['wind', 'win'], ['water', 'lose']], 'ветер разгоняет твою воду'),
                 line('ответ:', [['fire', 'win'], ['wind', 'lose']], 'его же огонь сжигает приманку'),
             );
@@ -293,9 +285,7 @@ export const LEARN_STEPS = [
         title: 'ЗАРЯД И СУПЕРУДАР',
         body: 'Каждая пробитая коронка даёт очко заряда. Три очка — и следующий выбранный тобой жест станет <b>суперударом</b>: он бьёт на 2, но если проиграет — эти 2 прилетят тебе. <b>Слот выбираешь ты</b>, и это важно: пылающий посох противник видит, и если ты бьёшь всегда в одно место — он это место закроет. Заряд переносится между боями кампании.',
         build: () => {
-            const box = el('div', 'demo-row');
-            box.style.flexDirection = 'column';
-            box.style.gap = '8px';
+            const box = el('div', 'demo-stack');
             const bar = el('div', 'charge');
             bar.style.width = '220px';
             const fill = el('div', 'charge-fill');
@@ -309,26 +299,18 @@ export const LEARN_STEPS = [
         title: 'НЕ ПОВТОРЯЙСЯ',
         body: 'Противники помнят твои ходы двумя способами. Если одна стихия занимает больше половины истории — закрывают часть слотов контр-стихией. А на верхних ярусах помнят ещё и <b>по позициям</b>: если в третий слот ты раунд за раундом ставишь одно и то же, туда прилетит точный ответ. Ровное чередование — тоже узор.',
         build: () => {
-            const box = el('div', 'demo-row');
-            box.style.flexDirection = 'column';
-            box.style.gap = '6px';
-            const spam = el('div', 'demo-row');
-            spam.append(el('span', 'demo-verdict', 'ты:'));
-            Array(5).fill('fire').forEach((id) => {
-                const slot = el('div', 'slot filled', ELEMENT[id].glyph);
-                slot.style.flex = '0 0 38px';
-                spam.append(slot);
-            });
-            const answer = el('div', 'demo-row');
-            answer.append(el('span', 'demo-verdict', 'он:'));
-            ['water', 'water', 'water', 'fire', 'wind'].forEach((id) => {
-                const slot = el('div', 'slot filled', ELEMENT[id].glyph);
-                slot.style.flex = '0 0 38px';
-                answer.append(slot);
-            });
-            box.append(spam, answer,
-                el('span', 'demo-verdict', 'узор прочитан — часть слотов закрыта контр-стихией'),
-                el('span', 'demo-verdict', 'лучшая защита — не иметь узора вообще'));
+            const box = el('div', 'demo-list demo-list--chain');
+            const chain = (label, ids) => {
+                const row = el('div', 'demo-line');
+                row.append(el('span', 'demo-verdict', label));
+                ids.forEach((id) => row.append(el('div', 'slot filled', ELEMENT[id].glyph)));
+                return row;
+            };
+            box.append(
+                chain('ты:', Array(5).fill('fire')),
+                chain('он:', ['water', 'water', 'water', 'fire', 'wind']),
+                el('span', 'demo-verdict demo-span', 'узор прочитан — часть слотов закрыта контр-стихией'),
+                el('span', 'demo-verdict demo-span', 'лучшая защита — не иметь узора вообще'));
             return box;
         },
     },

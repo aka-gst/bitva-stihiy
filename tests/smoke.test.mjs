@@ -267,10 +267,12 @@ test("бойцы сходятся вплотную, а не стреляют с 
 
 test("экран боя собран в три этажа: драка, разбор с полем, кнопки", () => {
     // Порядок задан заказчиком и держит всю раскладку: арена во всю ширину
-    // сверху, слева разбор боя, справа поле ходов, кнопки внизу.
+    // сверху, поле ходов посередине, внизу кнопки, а справа от них — разбор
+    // боя. Лог ушёл вниз из колонки сбоку: там он отбирал ширину у драки ради
+    // текста, который читают между раундами, а не во время.
     const battle = html.slice(html.indexOf('<div class="battle-layout">'));
     const layout = battle.slice(0, battle.indexOf('<div class="overlay"'));
-    const order = ['id="arena"', 'class="middle"', 'class="side"', 'class="board"', 'class="controls"'];
+    const order = ['id="arena"', 'class="middle"', 'class="board"', 'class="bottom"', 'class="controls"', 'class="side"'];
     let at = -1;
     for (const mark of order) {
         const found = layout.indexOf(mark);
