@@ -366,6 +366,9 @@ button:disabled { cursor: default; }
    снимаем с неё ограничение по ширине — размер задаёт сцена. */
 body.showcase .hud,
 body.showcase .middle,
+/* .bottom — весь нижний этаж: кнопки и разбор боя. Пряталось только .controls,
+   но лог переехал к ним в соседнюю ячейку и остался бы виден поверх драки. */
+body.showcase .bottom,
 body.showcase .controls,
 body.showcase .game-home-menu,
 body.showcase .intel,
