@@ -212,7 +212,12 @@ button:disabled { cursor: default; }
     grid-template-columns: auto auto auto minmax(0, 1fr);
     align-items: center;
     gap: 8px 12px;
-    width: max-content;
+    /* fit-content, а не max-content: обхватить содержимое надо, но не шире
+       карточки. С max-content грид растягивался под неперенесённую строку —
+       на карточке правил колонка с пояснением требовала 1222 px при карточке
+       в 560, и заголовок с текстом уезжали за край на 871 px. */
+    width: fit-content;
+    max-width: 100%;
     max-width: 100%;
     margin-inline: auto;
 }
