@@ -13,6 +13,13 @@ import { applyPose, fighterSvg, pickAttack } from './fighter.js';
 import { BACKDROP_LAYERS, backdropSvg, layerSrc } from './backdrop.js';
 
 /** Длительности при нормальной скорости, мс. */
+/**
+ * Сколько длится один обмен на обычной скорости. Нужно сцене для витрины:
+ * в скрытой вкладке браузер душит таймеры произвольно, поэтому снимающему
+ * отдаётся намеренная длительность, а не измеренная.
+ */
+export const CLASH_MS = 220 + 320 + 200 + 210 + 200;
+
 const T = {
     windup: 220,
     travel: 320,
@@ -124,6 +131,19 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             node.classList.remove('casting', 'hurt', 'stunned', 'down', 'victor', 'striking', 'engaged');
             applyPose(node, 'idle');
         }
+    }
+
+    /**
+     * Подсветить бойца стихией. Цвет ложится на само тело, а не только во
+     * вспышку между бойцами: вспышка гаснет за мгновение, и связь «эта
+     * стихия сняла мне здоровье» из неё не возникала. Ради этой связи вся
+     * игра и затевалась.
+     */
+    function tintStrike(node, element, cls = 'struck') {
+        node.style.setProperty('--strike', ELEMENT[element]?.color ?? '#f87171');
+        node.classList.remove(cls);
+        void node.offsetWidth;
+        node.classList.add(cls);
     }
 
     /** Разный удар на одно и то же действие: повтор позы утомляет глаз. */
@@ -280,7 +300,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
      * @param {object} event  событие 'clash' из движка
      * @param {{onImpact?:function}} hooks
      */
-    async function playClash(event, { onImpact } = {}) {
+    async function playClash(event, { onImpact, enemySignature = null } = {}) {
         speed = pendingSpeed;
         const mine = generation;
         const land = () => onImpact?.(event);
@@ -288,13 +308,13 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         if (instant()) { land(); return; }
         busy = true;
         try {
-            await runClash(event, land, mine);
+            await runClash(event, land, mine, enemySignature);
         } finally {
             busy = false;
         }
     }
 
-    async function runClash(event, land, mine) {
+    async function runClash(event, land, mine, enemySignature) {
 
         const victim = PLAYER_WINS.has(event.outcome) ? enemyNode
             : ENEMY_WINS.has(event.outcome) ? playerNode : null;
@@ -318,6 +338,8 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             setOrb(enemyNode, event.enemy);
             enemyNode.classList.add('casting');
             strike(enemyNode, 'enemy');
+            // Коронка выдаёт себя волной своего цвета по телу противника.
+            if (enemySignature) tintStrike(enemyNode, enemySignature, 'tell');
         }
         if (isSuper) sweep(220, 720, 240);
         await wait(T.windup);
@@ -343,6 +365,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             bolt.node.remove();
             burst(bodyPoint(enemyNode), ELEMENT[event.player].color, { size: 1.1, sparks: 10 });
             enemyNode.classList.add('hurt');
+            tintStrike(enemyNode, event.player);
             applyPose(enemyNode, 'hurt');
             land();
             damagePop(bodyPoint(enemyNode), event.damage, false);
@@ -351,7 +374,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             tone(180, 110);
             await wait(T.meet + T.recover);
             if (stale(mine)) return;
-            enemyNode.classList.remove('hurt', 'stunned');
+            enemyNode.classList.remove('hurt', 'stunned', 'struck');
             settle(playerNode, 'guard');
             applyPose(enemyNode, 'guard');
             hideCaption();
@@ -366,13 +389,22 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         // 3. Столкновение в центре: проигравшая стихия гаснет.
         showCaption(event.phrase);
         if (!victim) {
-            burst(meet, '#94a3b8', { size: 0.9, sparks: 10 });
+            // Одинаковые стихии гасят друг друга — удар встречает удар.
+            // Вспышка ставится там, где сходятся кулаки, и оба отскакивают.
+            burst(meet, '#94a3b8', { size: 1.1, sparks: 12 });
             playerBolt.node.remove();
             enemyBolt.node.remove();
+            playerNode.classList.remove('clash');
+            enemyNode.classList.remove('clash');
+            void playerNode.offsetWidth;
+            playerNode.classList.add('clash');
+            enemyNode.classList.add('clash');
             tone(150, 90, { type: 'triangle' });
             land();
             await wait(T.meet + T.recover);
             if (stale(mine)) return;
+            playerNode.classList.remove('clash');
+            enemyNode.classList.remove('clash');
             settle(playerNode, 'guard');
             settle(enemyNode, 'guard');
             hideCaption();
@@ -411,11 +443,18 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         winnerBolt.node.remove();
 
         burst(target, ELEMENT[winnerElement].color, {
-            size: critical ? 1.5 : 1.1,
-            sparks: critical ? 14 : 8,
+            size: event.parry ? 2 : critical ? 1.5 : 1.1,
+            sparks: event.parry ? 20 : critical ? 14 : 8,
             style,
         });
+        if (event.parry) {
+            // Момент «я его раскусил» должен звучать наградой, а не минус
+            // единицей здоровья: вспышка вдвое, свой звук и толчок экрана.
+            sweep(300, 1100, 300);
+            shake(false);
+        }
         victim.classList.add('hurt');
+        tintStrike(victim, winnerElement);
         applyPose(victim, 'hurt');
         if (critical) shake(false);
         land();
@@ -429,7 +468,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
 
         await wait(T.recover);
         if (stale(mine)) return;
-        victim.classList.remove('hurt');
+        victim.classList.remove('hurt', 'struck');
         settle(playerNode, 'guard');
         settle(enemyNode, 'guard');
         hideCaption();
@@ -493,14 +532,15 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             size: 1.6, sparks: 14, style: impactStyle(event.element, 'wind'),
         });
         playerNode.classList.add('hurt');
+        tintStrike(playerNode, event.element, 'overheating');
         applyPose(playerNode, 'hurt');
         damagePop(at, event.damage, true);
-        shake(false);
+        shake(true);
         sweep(520, 120, 320);
         haptic([30, 20, 40]);
         await wait(T.meet + T.recover);
         if (stale(mine)) return;
-        playerNode.classList.remove('hurt');
+        playerNode.classList.remove('hurt', 'overheating');
         applyPose(playerNode, 'guard');
         hideCaption();
     }

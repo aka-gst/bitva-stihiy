@@ -325,3 +325,87 @@ test("удары не повторяются через раз и держатс
     const afterWindup = windup.slice(0, windup.indexOf("const from = orbPoint"));
     assert.doesNotMatch(afterWindup, /settle\(/, "поза удара гаснет на замахе");
 });
+
+test("цвет, которым пробили, ложится на тело проигравшего", async () => {
+    // Стихия победителя раньше была видна только во вспышке между бойцами:
+    // она гасла за мгновение, и связь «эта стихия сняла мне здоровье» из неё
+    // не возникала. Ради этой связи вся игра и затевалась.
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    assert.match(arena, /function tintStrike/);
+    assert.match(arena, /tintStrike\(victim, winnerElement\)/, "победитель не красит проигравшего");
+    assert.match(arena, /tintStrike\(playerNode, event\.element, 'overheating'\)/, "перегрев не красит своего");
+
+    // Имя класса не должно совпадать с классом искр: боец унаследует их
+    // размер и схлопнется в двадцать шесть пикселей.
+    const fx = arena.slice(arena.indexOf("ring.className"), arena.indexOf("ring.className") + 60);
+    const sparkClass = fx.match(/'([a-z-]+)'/)[1];
+    assert.doesNotMatch(arena, new RegExp(`tintStrike\\([^)]*'${sparkClass}'\\)`), `класс ${sparkClass} занят искрами`);
+    assert.match(css, /\.fighter\.struck svg/);
+    assert.match(css, /\.fighter\.overheating svg/);
+});
+
+test("разбор по коронке считает и говорит по-русски", async () => {
+    // Победа приходит из разгадки, но со стороны это неотличимо от везения:
+    // бой кончился, полоска пустая, почему — непонятно.
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    assert.match(main, /function signatureReport/);
+    assert.match(main, /sigCrits/, "разбор не считает пропущенные коронки");
+
+    // «3 раз» и «бил огонь» — самые заметные грабли этой строки.
+    const src = main.slice(main.indexOf("function timesWord"), main.indexOf("function signatureReport"));
+    const timesWord = new Function(`${src} return timesWord;`)();
+    for (const [n, word] of [[1, "раз"], [2, "раза"], [4, "раза"], [5, "раз"], [11, "раз"], [12, "раз"], [22, "раза"], [25, "раз"]]) {
+        assert.equal(timesWord(n), word, `${n} ${word}`);
+    }
+    assert.match(main, /выбрасывал \$\{el\.accusative\}/, "падеж стихии в отчёте не тот");
+});
+
+test("противник выдаёт себя, когда бьёт коронкой", async () => {
+    // Игрок узнавал коронку только из строки подсказчика. Теперь её видно
+    // на самом противнике: момент уже случился, ответить поздно — но за
+    // пару раундов складывается «он всё время загорается оранжевым».
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    assert.match(arena, /tintStrike\(enemyNode, enemySignature, 'tell'\)/);
+    assert.match(main, /enemySignature: plan\[event\.index\]\.signature/, "план не сообщает арене про коронку");
+    assert.match(css, /\.fighter\.tell svg/);
+
+    // Пробитая коронка — событие, а не единица урона.
+    const hit = arena.slice(arena.indexOf("burst(target, ELEMENT[winnerElement]"));
+    assert.match(hit.slice(0, 400), /event\.parry \? 2/, "вспышка пробитой коронки не усилена");
+});
+
+test("сцена для витрины закрепляет всё случайное, что видно в кадре", async () => {
+    // grep -n "Math.random()" src/ даёт тринадцать мест, и все тринадцать
+    // видны в кадре: выбор удара из десяти поз, шесть свойств летающих
+    // частиц и геометрия искр на каждом попадании. Памятью вспоминается
+    // одно, поэтому закрепляем не перечислением, а подменой самого
+    // Math.random — она переживёт четырнадцатое место.
+    // Комментарии выкидываем: без этого проверка ловит закомментированную
+    // строку и остаётся зелёной на снятой закрепке. Поймано поломкой.
+    const raw = await readFile(new URL("src/showcase.js", root), "utf8");
+    const showcase = raw.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.match(showcase, /Math\.random = rng/, "случайность не закреплена");
+    assert.match(showcase, /Math\.random = realRandom/, "закрепка не откатывается");
+    assert.match(showcase, /app\.rng = makeRng\(seed\)/, "свой генератор не засеян");
+    assert.match(showcase, /favour = opponent\.element/, "стихия арены не закреплена");
+
+    // showcase() запускают, а не дожидаются: дождавшийся снимет пустое поле.
+    const body = showcase.slice(showcase.indexOf("function showcase("));
+    assert.doesNotMatch(body.slice(0, body.indexOf("window.stihii")), /^\s*return \(?async/m);
+    assert.match(body, /void \(async \(\) =>/, "показ должен запускаться, а не возвращаться");
+
+    // Момент ловится по признаку, а не по времени.
+    assert.match(showcase, /findIndex\(\(e\) => e\.parry\)/, "момент ловится не по признаку");
+
+    // Намеренная длительность обязана отдаваться рядом с измеренной:
+    // в скрытой вкладке браузер душит таймеры произвольно.
+    assert.match(showcase, /намеренаяДлительность/);
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    assert.match(arena, /export const CLASH_MS/);
+
+    // Сцена молчит сама, и игра открывается немой по ?тихо.
+    const audio = await readFile(new URL("src/audio.js", root), "utf8");
+    assert.match(audio, /has\('тихо'\)/);
+    assert.match(showcase, /setMuted\(true\)/);
+});

@@ -229,7 +229,7 @@ export const LEARN_STEPS = [
         title: 'УЗОРЫ ВНУТРИ ЦЕПОЧКИ',
         body: 'Три подряд идущих слота могут сложиться в <b>узор</b>. Он подсвечивается, пока ты набираешь, — сюрпризом не будет. Но узор срабатывает только если ты выиграл нужное число обменов внутри него: это усиление успеха, а не замена ему. Противник ломает узор одним точным ударом внутрь, а не заливкой всей цепочки.',
         build: () => {
-            const box = el('div', 'demo-list');
+            const box = el('div', 'demo-list demo-list--combo');
             const shapes = {
                 surge: ['fire', 'fire', 'fire'],
                 bond: ['fire', 'water', 'fire'],
@@ -237,6 +237,15 @@ export const LEARN_STEPS = [
             };
             for (const combo of COMBO_LIST) {
                 const row = el('div', 'demo-line');
+                // Свой знак у каждого узора: имя запоминается хуже формы, а
+                // на этом экране узор впервые и объясняется.
+                const mark = el('img', 'demo-mark');
+                mark.src = `./assets/mark-${combo.id}.webp`;
+                mark.alt = '';
+                mark.decoding = 'async';
+                mark.width = 512;
+                mark.height = 512;
+                row.append(mark);
                 for (const id of shapes[combo.id]) {
                     row.append(el('div', 'slot filled in-combo', ELEMENT[id].glyph));
                 }
@@ -251,6 +260,16 @@ export const LEARN_STEPS = [
                 row.append(text);
                 box.append(row);
             }
+            const hot = el('div', 'demo-line demo-line--wide');
+            const hotMark = el('img', 'demo-mark');
+            hotMark.src = './assets/mark-overheat.webp';
+            hotMark.alt = '';
+            hotMark.decoding = 'async';
+            hotMark.width = 512;
+            hotMark.height = 512;
+            hot.append(hotMark, el('span', 'demo-verdict', 'ПЕРЕГРЕВ — четыре одинаковых в пятёрке бьют по тебе самому'));
+            box.append(hot);
+
             const rule = el('p', 'demo-note demo-span');
             rule.textContent = `Правило одно: чем больше в тройке повторов, тем сильнее удар.`
                 + ` Цена тоже одна — выиграть ${COMBO_NEEDS} обмена из 3 внутри узора.`

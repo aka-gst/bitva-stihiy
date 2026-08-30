@@ -67,6 +67,15 @@ button:disabled { cursor: default; }
     place-items: center;
     padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
     overflow-y: auto;
+    /* Башня в три светящихся яруса. Раньше пришедший по ссылке видел плоскую
+       темноту с кнопками: игра не начинала себя показывать до первого боя. */
+    /* Две вуали поверх башни: круглая гасит края, вертикальная — низ, где у
+       фона самое яркое место, а у нас там мелкий текст про топ и версию. */
+    background:
+        linear-gradient(transparent 55%, #0b1120d9 88%),
+        radial-gradient(115% 78% at 50% 55%, #0b112059 18%, #0b1120f0 80%),
+        url('../assets/menu-bg.webp') center bottom / cover no-repeat,
+        var(--bg);
 }
 
 .menu-inner {
@@ -186,6 +195,12 @@ button:disabled { cursor: default; }
 /* В бою карточка тянется во всю высоту своего ряда — в обучении рядов нет,
    и без явного размера она разъезжалась поверх соседних строк. */
 .demo-row .slot, .demo-list .slot { flex: 0 0 34px; width: 34px; height: 56px; font-size: 20px; }
+/* Знак узора: имя запоминается хуже формы, а на этой карточке узор впервые
+   и объясняется. */
+.demo-mark { flex: 0 0 40px; width: 40px; height: 40px; display: block; }
+/* Пояснение встаёт рядом со слотами, а пересаживается под них только когда
+   места правда нет: вперемешку строки читались как каша. */
+.demo-row .demo-verdict { flex: 1 1 210px; min-width: 0; text-align: left; }
 
 /* Список примеров. Раньше это был .demo-row с инлайновым flex-direction:
    column, и каждая строка внутри центрировалась сама по себе. Подписи разной
@@ -201,9 +216,13 @@ button:disabled { cursor: default; }
     max-width: 100%;
     margin-inline: auto;
 }
+/* У узоров впереди ещё знак, поэтому колонок пять. */
+.demo-list--combo { grid-template-columns: auto auto auto auto minmax(0, 1fr); }
 /* Пять слотов с подписью слева — своя разметка колонок. */
 .demo-list--chain { grid-template-columns: auto repeat(5, auto); }
 .demo-line { display: contents; }
+/* Строка «знак и пояснение»: слотов в ней нет, текст занимает всё остальное. */
+.demo-line--wide .demo-verdict { grid-column: 2 / -1; }
 /* Строки-пояснения идут во всю ширину, а не в первую колонку. */
 .demo-span { grid-column: 1 / -1; }
 .demo-list .demo-verdict { text-align: left; }
@@ -341,6 +360,19 @@ button:disabled { cursor: default; }
     width: min(100%, 1500px);
     justify-self: center;
 }
+
+/* Съёмочный кадр: на карточке витрины три секунды должны показывать драку, а
+   не полоски здоровья, кнопки и разбор боя. Прячем всё, кроме арены, и
+   снимаем с неё ограничение по ширине — размер задаёт сцена. */
+body.showcase .hud,
+body.showcase .middle,
+body.showcase .controls,
+body.showcase .game-home-menu,
+body.showcase .intel,
+body.showcase #notice { display: none !important; }
+body.showcase .battle-layout { grid-template-rows: minmax(0, 1fr); gap: 0; }
+body.showcase .screen--battle { padding: 0; }
+body.showcase .arena { max-width: none; margin: 0; }
 
 /* ─────────────────────────── АРЕНА ─────────────────────────── */
 
@@ -491,8 +523,8 @@ button:disabled { cursor: default; }
    Рамки при этом заходят друг на друга, и так и надо: силуэт занимает лишь
    середину своей рамки, по краям пусто. Сводили рамки встык — между самими
    бойцами оставалась дыра в две ладони. */
-.fighter--player.engaged { left: calc(50% - var(--fw) * var(--engage, 0.88)); }
-.fighter--enemy.engaged { right: calc(50% - var(--fw) * var(--engage, 0.88)); }
+.fighter--player.engaged { left: calc(50% - var(--fw) * var(--engage, 0.80)); }
+.fighter--enemy.engaged { right: calc(50% - var(--fw) * var(--engage, 0.80)); }
 .fighter svg { width: 100%; height: 100%; overflow: visible; animation: idle-float 3.6s ease-in-out infinite; }
 .fighter--player { left: 6%; }
 .fighter--enemy { right: 6%; }
@@ -507,6 +539,58 @@ button:disabled { cursor: default; }
 .fighter.down { transform: translateY(12%) rotate(-14deg); filter: grayscale(1) brightness(0.5); opacity: 0.55; }
 .fighter--enemy.down { transform: translateY(12%) rotate(14deg); }
 .fighter.victor { animation: victor 1.4s ease-in-out infinite; }
+
+/* Цвет, которым тебя пробили, проступает на самом теле. Раньше стихию
+   победителя было видно только во вспышке между бойцами: она гасла за
+   мгновение, и связь «эта стихия сняла мне здоровье» не успевала возникнуть.
+   Ради этой связи вся игра и затевалась, поэтому её показываем на том, кому
+   досталось, и держим дольше вспышки. */
+.fighter.struck svg { animation: struck calc(0.62s / var(--speed)) ease-out; }
+/* Яркость держим низкой: на большой её силуэт выбеливается и цвет, ради
+   которого всё и делается, перестаёт читаться. Работает свечение, не засветка. */
+@keyframes struck {
+    0%   { filter: drop-shadow(0 0 34px var(--strike, #fff)) drop-shadow(0 0 12px var(--strike, #fff)) brightness(1.5); }
+    30%  { filter: drop-shadow(0 0 14px var(--strike, #fff)) brightness(1.1); }
+    56%  { filter: drop-shadow(0 0 26px var(--strike, #fff)) drop-shadow(0 0 8px var(--strike, #fff)) brightness(1.35); }
+    100% { filter: drop-shadow(0 0 0 transparent) brightness(1); }
+}
+
+/* Перегрев — это взрыв изнутри своей же стихией, а не удар снаружи. */
+/* Имя класса не «burst»: так уже называются искры-вспышки, и боец
+   наследовал их размер, схлопываясь в двадцать шесть пикселей. */
+.fighter.overheating svg { animation: self-burst calc(0.78s / var(--speed)) ease-out; }
+@keyframes self-burst {
+    0%   { filter: drop-shadow(0 0 52px var(--strike, #fff)) drop-shadow(0 0 18px var(--strike, #fff)) brightness(2.1); transform: scale(1.1); }
+    24%  { filter: drop-shadow(0 0 10px var(--strike, #fff)) brightness(1); transform: scale(0.96); }
+    50%  { filter: drop-shadow(0 0 34px var(--strike, #fff)) drop-shadow(0 0 12px var(--strike, #fff)) brightness(1.6); transform: scale(1.04); }
+    100% { filter: drop-shadow(0 0 0 transparent) brightness(1); transform: scale(1); }
+}
+
+/* Ничья: одинаковые стихии гасят друг друга, и бойцы отскакивают. */
+/* Противник выдаёт себя, когда бьёт коронкой: на замахе по нему проходит
+   волна её цвета. Это не подсказка — момент уже случился, ответить на него
+   поздно. Это след, по которому за пару раундов складывается «он всё время
+   загорается оранжевым». Слабее, чем вспышка попадания, нарочно: тут след,
+   там удар. */
+.fighter.tell svg { animation: tell calc(0.5s / var(--speed)) ease-out; }
+@keyframes tell {
+    0%   { filter: drop-shadow(0 0 0 transparent); }
+    35%  { filter: drop-shadow(0 0 20px var(--strike, #fff)) drop-shadow(0 0 7px var(--strike, #fff)); }
+    100% { filter: drop-shadow(0 0 0 transparent); }
+}
+
+.fighter.clash { animation: clash-bounce calc(0.3s / var(--speed)) ease-out; }
+.fighter--enemy.clash { animation-name: clash-bounce-mirror; }
+@keyframes clash-bounce {
+    0% { transform: translateX(0); }
+    35% { transform: translateX(-9px); }
+    100% { transform: translateX(0); }
+}
+@keyframes clash-bounce-mirror {
+    0% { transform: translateX(0); }
+    35% { transform: translateX(9px); }
+    100% { transform: translateX(0); }
+}
 
 .fx-layer { position: absolute; inset: 0; pointer-events: none; }
 
@@ -1100,6 +1184,15 @@ button:disabled { cursor: default; }
     gap: 12px;
     animation: fade-up 0.3s ease;
 }
+.overlay-art {
+    display: block;
+    width: clamp(120px, 22vh, 200px);
+    height: auto;
+    margin: 0 auto 4px;
+    filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.6));
+}
+.overlay-art[hidden] { display: none; }
+
 .overlay-title { margin: 0; font-size: clamp(28px, 6vw, 44px); font-weight: 900; letter-spacing: 0.04em; }
 .overlay-text { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 .overlay-actions { display: grid; gap: 8px; }

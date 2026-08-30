@@ -10,6 +10,7 @@ import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from '
 import { planEnemyRound } from './ai.js';
 import { COMBO_LENGTH, COMBO_LIST, findCombo, overheatOf } from './combos.js';
 import { coachLine } from './coach.js';
+import { installShowcase } from './showcase.js';
 import { favourText, isFavoured, rollFavour } from './favour.js';
 import { makeRng, pick } from './rng.js';
 import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';
@@ -47,7 +48,8 @@ const dom = {
     castRow: $('cast-row'), btnUndo: $('btn-undo'), btnGo: $('btn-go'), btnSuper: $('btn-super'),
     timer: $('timer'), timerNum: $('timer-num'), timerFill: $('timer-fill'),
     log: $('log'),
-    overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'), overlayActions: $('overlay-actions'),
+    overlay: $('overlay'), overlayTitle: $('overlay-title'), overlayText: $('overlay-text'),
+    overlayActions: $('overlay-actions'), overlayArt: $('overlay-art'),
     btnSpeed: $('btn-speed'), btnRules: $('btn-rules'), btnQuit: $('btn-quit'),
     notice: $('notice'),
 };
@@ -310,7 +312,7 @@ function startStory() {
 function showPrologue() {
     dom.storyTier.textContent = 'БАШНЯ ТРЁХ СТИХИЙ';
     dom.storyName.textContent = 'ПРОЛОГ';
-    renderPortrait(dom.storyPortrait, 'water', 'player');
+    renderPortrait(dom.storyPortrait, 'water', 'player', { art: './assets/portrait-hero.webp' });
     dom.storyText.textContent = PROLOGUE;
     dom.storyHint.textContent = `Впереди ${CAMPAIGN.length} ярусов. Здоровье переносится между боями, после победы возвращается часть.`;
     renderStoryTrack(dom.storyTrack, CAMPAIGN.length, 0);
@@ -344,7 +346,7 @@ function showTier(index) {
 function showEpilogue() {
     dom.storyTier.textContent = 'ВЕРШИНА';
     dom.storyName.textContent = 'БАШНЯ ПРОЙДЕНА';
-    renderPortrait(dom.storyPortrait, 'wind', 'player');
+    renderPortrait(dom.storyPortrait, 'wind', 'player', { art: './assets/portrait-hero-win.webp' });
     dom.storyText.textContent = EPILOGUE;
     dom.storyHint.textContent = `Осталось здоровья: ${app.story.hp}/${PLAYER_MAX_HP}.`;
     renderStoryTrack(dom.storyTrack, CAMPAIGN.length, CAMPAIGN.length);
@@ -448,6 +450,41 @@ function paintFavour() {
     const screen = dom.arena.closest('.screen--battle');
     if (favour) screen.dataset.favour = favour;
     else delete screen.dataset.favour;
+}
+
+/**
+ * Разбор боя по коронке.
+ *
+ * Победа приходит из разгадки, но со стороны это неотличимо от везения:
+ * бой кончился, полоска пустая, почему — непонятно. Здесь то же самое
+ * сказано числами, и главное в них не счёт, а цена: коронка бьёт вдвое, и
+ * каждое непойманное попадание стоит двух здоровья.
+ */
+function timesWord(n) {
+    // 1 раз, 2–4 раза, 5+ раз; 11–14 всегда «раз».
+    const tail = n % 100;
+    if (tail >= 11 && tail <= 14) return 'раз';
+    const last = n % 10;
+    if (last === 1) return 'раз';
+    if (last >= 2 && last <= 4) return 'раза';
+    return 'раз';
+}
+
+function signatureReport(battle, opponent) {
+    const el = ELEMENT[opponent.element];
+    const seen = battle.sigSeen ?? 0;
+    const parried = battle.sigParried ?? 0;
+    const crits = battle.sigCrits ?? 0;
+    const total = ELEMENTS.reduce((sum, id) => sum + (battle.seen?.[id] ?? 0), 0);
+    if (!total) return '';
+
+    // «Выбрасывал огонь», а не «бил огонь»: винительный падеж у стихий уже
+    // есть, творительного нет, а заводить его ради одной строки незачем.
+    const lines = [`${opponent.name} выбрасывал ${el.accusative} ${seen} ${timesWord(seen)} из ${total}.`];
+    if (parried) lines.push(`Ты гасил коронку ${parried} ${timesWord(parried)} — снял этим ${parried} здоровья.`);
+    else lines.push('Коронку ты не погасил ни разу.');
+    if (crits) lines.push(`Пропустил ${crits} ${timesWord(crits)} — потерял ${crits * 2}: коронка бьёт вдвое.`);
+    return lines.join('\n');
 }
 
 /** Файл портрета противника. Имена заведены под кампанию один в один. */
@@ -724,7 +761,11 @@ async function playEvents(events, plan) {
                 signature: plan[event.index].signature,
             });
 
-            await arena.playClash(event, { onImpact: applyImpact });
+            await arena.playClash(event, {
+                onImpact: applyImpact,
+                // Коронка помечена в плане — арена подсветит ею противника.
+                enemySignature: plan[event.index].signature ? plan[event.index].sig : null,
+            });
 
             pSlot.classList.remove('now');
             setSlot(pSlot, { element: event.player, state: slotStateFor(event, 'player') });
@@ -813,7 +854,9 @@ function finishBattle(winner) {
             showOverlay({
                 title: 'ЯРУС ВЗЯТ',
                 color: 'var(--win)',
-                text: `«${app.opponent.defeat}»\n${app.opponent.reveal ?? ''}${last ? '' : `\nЗдоровье восстановлено до ${app.story.hp}.`}`,
+                text: `«${app.opponent.defeat}»\n${app.opponent.reveal ?? ''}`
+                    + `${last ? '' : `\nЗдоровье восстановлено до ${app.story.hp}.`}`
+                    + `\n\n${signatureReport(app.battle, app.opponent)}`,
                 actions: last
                     ? [{ label: 'ФИНАЛ', primary: true, onClick: showEpilogue }]
                     : [{ label: 'ДАЛЬШЕ', primary: true, onClick: () => showTier(app.story.index + 1) }],
@@ -834,7 +877,9 @@ function finishBattle(winner) {
             showOverlay({
                 title: 'ПОРАЖЕНИЕ',
                 color: 'var(--lose)',
-                text: `${app.opponent.name} устоял.\n${app.opponent.reveal ?? ''}\n${app.opponent.teaches}`,
+                art: './assets/portrait-hero-down.webp',
+                text: `${app.opponent.name} устоял.\n${app.opponent.reveal ?? ''}`
+                    + `\n\n${signatureReport(app.battle, app.opponent)}`,
                 actions: [
                     { label: 'ПОВТОРИТЬ ЯРУС', primary: true, onClick: () => { app.story.hp = retryHp; showTier(app.story.index); } },
                     { label: 'ПРАВИЛА', onClick: () => goLearn('story') },
@@ -856,9 +901,12 @@ function finishBattle(winner) {
     showOverlay({
         title: won ? 'ПОБЕДА' : 'ПОРАЖЕНИЕ',
         color: won ? 'var(--win)' : 'var(--lose)',
-        text: won
-            ? `${app.opponent.name} повержен. Осталось здоровья: ${app.battle.hp.player}.\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`
-            : `${app.opponent.name} оказался быстрее.\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`,
+        art: won ? null : './assets/portrait-hero-down.webp',
+        text: (won
+            ? `${app.opponent.name} повержен. Осталось здоровья: ${app.battle.hp.player}.`
+            : `${app.opponent.name} оказался быстрее.`)
+            + `\nЕго коронка — ${ELEMENT[app.opponent.element].name.toLowerCase()}.`
+            + `\n\n${signatureReport(app.battle, app.opponent)}`,
         actions: [
             { label: 'ЕЩЁ РАЗ', primary: true, onClick: () => startFreeBattle(app.mode.id) },
             { label: 'В МЕНЮ', onClick: goMenu },
@@ -866,7 +914,15 @@ function finishBattle(winner) {
     });
 }
 
-function showOverlay({ title, text, color, actions }) {
+function showOverlay({ title, text, color, actions, art = null }) {
+    // Проигрыш — единственный экран, где герою есть что сказать молча.
+    if (art) {
+        dom.overlayArt.src = art;
+        dom.overlayArt.hidden = false;
+    } else {
+        dom.overlayArt.hidden = true;
+        dom.overlayArt.removeAttribute('src');
+    }
     dom.overlayTitle.textContent = title;
     dom.overlayTitle.style.color = color ?? 'var(--text)';
     dom.overlayText.textContent = text ?? '';
@@ -942,6 +998,13 @@ function boot() {
     renderModes(dom.modeGrid, MODES, MODE_ORDER, startFreeBattle);
     loadSpeed();
     wakeAudioOnInteraction();
+    // Сцена для карточки на витрине. Ставит её игра, снимает витрина —
+    // подробности в src/showcase.js.
+    installShowcase({
+        app, arena, dom,
+        createBattle, resolveRound, renderSlots, setSlot, setHp, stopTimer,
+        PLAYER_MAX_HP,
+    });
 
     document.querySelectorAll('[data-goto]').forEach((node) => {
         node.addEventListener('click', () => {

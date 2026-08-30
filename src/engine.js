@@ -53,6 +53,9 @@ export function createBattle({
         // и сколько из них игрок пробил. Высокая доля = игрок читает коронку.
         sigSeen: 0,
         sigParried: 0,
+        // Сколько раз коронка прошла в игрока. Нужен для разбора после боя:
+        // «пропустил трижды — потерял шесть, коронка бьёт вдвое».
+        sigCrits: 0,
         // Роли ходов игрока по позициям в цепочке — сырьё для чтения ритма.
         roleRounds: [],
         // Что противник показал в бою. Коронку игрок вычисляет отсюда сам —
@@ -343,6 +346,7 @@ function resolveClash(state, player, planned, index) {
     }
 
     const crit = planned.signature;
+    if (crit) state.sigCrits += 1;
     return {
         outcome: crit ? 'crit' : 'lose',
         damage: crit ? 2 : HIT,

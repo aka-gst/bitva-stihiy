@@ -2,7 +2,31 @@
 
 let ctx;
 
+/**
+ * Немой режим. Нужен двум разным людям: тому, кто снимает карточку для
+ * витрины (съёмочный адрес обязан молчать сам, без отдельного тумблера), и
+ * тому, у кого игра открыта в соседней вкладке и шумит.
+ *
+ * Глушим на входе в каждую функцию, а не отключаем узел: звук здесь
+ * необязательный, и чем меньше состояния, тем меньше способов забыть его
+ * вернуть.
+ */
+// Читаем адрес осторожно: без этой оговорки модуль падает при импорте вне
+// браузера, а модуль, который нельзя импортировать в тестах, — слепое пятно.
+let muted = (() => {
+    try {
+        const q = new URLSearchParams(globalThis.location?.search ?? '');
+        return q.has('тихо') || q.has('quiet');
+    } catch {
+        return false;
+    }
+})();
+
+export const setMuted = (value) => { muted = Boolean(value); };
+export const isMuted = () => muted;
+
 function engine() {
+    if (muted) return null;
     const Engine = window.AudioContext || window.webkitAudioContext;
     if (!Engine) return null;
     ctx ||= new Engine();
@@ -41,6 +65,7 @@ export function sweep(from, to, duration = 260) {
 }
 
 export function haptic(pattern) {
+    if (muted) return;
     try { navigator.vibrate?.(pattern); } catch { /* не поддерживается */ }
 }
 
