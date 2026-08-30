@@ -10,6 +10,7 @@ import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from '
 import { planEnemyRound } from './ai.js';
 import { COMBO_LENGTH, COMBO_LIST, findCombo, overheatOf } from './combos.js';
 import { coachLine } from './coach.js';
+import { installShowcase } from './showcase.js';
 import { favourText, isFavoured, rollFavour } from './favour.js';
 import { makeRng, pick } from './rng.js';
 import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';
@@ -997,6 +998,13 @@ function boot() {
     renderModes(dom.modeGrid, MODES, MODE_ORDER, startFreeBattle);
     loadSpeed();
     wakeAudioOnInteraction();
+    // Сцена для карточки на витрине. Ставит её игра, снимает витрина —
+    // подробности в src/showcase.js.
+    installShowcase({
+        app, arena, dom,
+        createBattle, resolveRound, renderSlots, setSlot, setHp, stopTimer,
+        PLAYER_MAX_HP,
+    });
 
     document.querySelectorAll('[data-goto]').forEach((node) => {
         node.addEventListener('click', () => {

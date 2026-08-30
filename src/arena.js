@@ -13,6 +13,13 @@ import { applyPose, fighterSvg, pickAttack } from './fighter.js';
 import { BACKDROP_LAYERS, backdropSvg, layerSrc } from './backdrop.js';
 
 /** Длительности при нормальной скорости, мс. */
+/**
+ * Сколько длится один обмен на обычной скорости. Нужно сцене для витрины:
+ * в скрытой вкладке браузер душит таймеры произвольно, поэтому снимающему
+ * отдаётся намеренная длительность, а не измеренная.
+ */
+export const CLASH_MS = 220 + 320 + 200 + 210 + 200;
+
 const T = {
     windup: 220,
     travel: 320,

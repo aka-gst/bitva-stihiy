@@ -322,6 +322,19 @@ button:disabled { cursor: default; }
     justify-self: center;
 }
 
+/* Съёмочный кадр: на карточке витрины три секунды должны показывать драку, а
+   не полоски здоровья, кнопки и разбор боя. Прячем всё, кроме арены, и
+   снимаем с неё ограничение по ширине — размер задаёт сцена. */
+body.showcase .hud,
+body.showcase .middle,
+body.showcase .controls,
+body.showcase .game-home-menu,
+body.showcase .intel,
+body.showcase #notice { display: none !important; }
+body.showcase .battle-layout { grid-template-rows: minmax(0, 1fr); gap: 0; }
+body.showcase .screen--battle { padding: 0; }
+body.showcase .arena { max-width: none; margin: 0; }
+
 /* ─────────────────────────── АРЕНА ─────────────────────────── */
 
 /* Зал башни: арки, колонны, пол — и рассеянный свет от каждого бойца. */

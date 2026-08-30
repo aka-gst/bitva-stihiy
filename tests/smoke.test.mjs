@@ -372,3 +372,38 @@ test("противник выдаёт себя, когда бьёт коронк
     const hit = arena.slice(arena.indexOf("burst(target, ELEMENT[winnerElement]"));
     assert.match(hit.slice(0, 400), /event\.parry \? 2/, "вспышка пробитой коронки не усилена");
 });
+
+test("сцена для витрины закрепляет всё случайное, что видно в кадре", async () => {
+    // grep -n "Math.random()" src/ даёт тринадцать мест, и все тринадцать
+    // видны в кадре: выбор удара из десяти поз, шесть свойств летающих
+    // частиц и геометрия искр на каждом попадании. Памятью вспоминается
+    // одно, поэтому закрепляем не перечислением, а подменой самого
+    // Math.random — она переживёт четырнадцатое место.
+    // Комментарии выкидываем: без этого проверка ловит закомментированную
+    // строку и остаётся зелёной на снятой закрепке. Поймано поломкой.
+    const raw = await readFile(new URL("src/showcase.js", root), "utf8");
+    const showcase = raw.replace(/^\s*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.match(showcase, /Math\.random = rng/, "случайность не закреплена");
+    assert.match(showcase, /Math\.random = realRandom/, "закрепка не откатывается");
+    assert.match(showcase, /app\.rng = makeRng\(seed\)/, "свой генератор не засеян");
+    assert.match(showcase, /favour = opponent\.element/, "стихия арены не закреплена");
+
+    // showcase() запускают, а не дожидаются: дождавшийся снимет пустое поле.
+    const body = showcase.slice(showcase.indexOf("function showcase("));
+    assert.doesNotMatch(body.slice(0, body.indexOf("window.stihii")), /^\s*return \(?async/m);
+    assert.match(body, /void \(async \(\) =>/, "показ должен запускаться, а не возвращаться");
+
+    // Момент ловится по признаку, а не по времени.
+    assert.match(showcase, /findIndex\(\(e\) => e\.parry\)/, "момент ловится не по признаку");
+
+    // Намеренная длительность обязана отдаваться рядом с измеренной:
+    // в скрытой вкладке браузер душит таймеры произвольно.
+    assert.match(showcase, /намеренаяДлительность/);
+    const arena = await readFile(new URL("src/arena.js", root), "utf8");
+    assert.match(arena, /export const CLASH_MS/);
+
+    // Сцена молчит сама, и игра открывается немой по ?тихо.
+    const audio = await readFile(new URL("src/audio.js", root), "utf8");
+    assert.match(audio, /has\('тихо'\)/);
+    assert.match(showcase, /setMuted\(true\)/);
+});
