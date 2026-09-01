@@ -1,3 +1,11 @@
-.game-home-menu{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));z-index:1000;display:block;padding:10px 12px;border:1px solid #76ff9f;background:#0b1010f2;color:#f7f1ff;font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-align:center;text-decoration:none;white-space:nowrap;box-shadow:0 0 14px #76ff9f20}
+.game-home-menu{min-height:44px;box-sizing:border-box;position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));z-index:1000;display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid #76ff9f;border-radius:999px;background:#0b1010f2;color:#f7f1ff;font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;text-align:center;text-decoration:none;white-space:nowrap;box-shadow:0 0 14px #76ff9f20}
 .game-home-menu:hover,.game-home-menu:focus-visible{background:#153725;color:#fff;outline:2px solid #bc70ff;outline-offset:3px}
-@media(max-height:600px) and (orientation:landscape){.game-home-menu{top:max(6px,env(safe-area-inset-top));right:max(6px,env(safe-area-inset-right));padding:8px 10px}}
+@media(max-height:600px) and (orientation:landscape){.game-home-menu{top:max(6px,env(safe-area-inset-top));right:max(6px,env(safe-area-inset-right));padding:8px 10px;min-height:44px}}
+
+/* Кнопка «на главную» одного вида на всём сайте. Место — по обстановке:
+   на страницах-проектах слева-сверху в шапке, на играх в свободном углу,
+   потому что слева у игры собственный логотип или счётчик, и накрывать
+   их нельзя. Форма, шрифт и размер общие, чтобы кнопка узнавалась. */
+.site-home{min-height:44px;box-sizing:border-box;display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid currentColor;border-radius:999px;font:700 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap;color:inherit;opacity:.62;transition:opacity .15s ease}
+.site-home:hover,.site-home:focus-visible{opacity:1}
+.site-home:focus-visible{outline:2px solid currentColor;outline-offset:3px}

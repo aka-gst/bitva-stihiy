@@ -271,6 +271,30 @@ function cycleSpeed() {
 
 /* ─────────────────────────── Навигация по экранам ─────────────────────────── */
 
+/**
+ * Идёт ли партия, которую жалко потерять.
+ *
+ * Проверяется не «открыт ли экран боя», а всё сразу: бой заведён, ещё не
+ * кончился, экран показан и поверх него не висит итог. Иначе вопрос вылезет
+ * после победы, где терять уже нечего, и его перестанут читать.
+ */
+function battleInProgress() {
+    return Boolean(app.battle)
+        && !app.battle.outcome
+        && !$('screen-battle').hidden
+        && dom.overlay.hidden;
+}
+
+/**
+ * Спросить перед уходом. Цена называется словами: человек должен понимать,
+ * что теряет, а не угадывать. Требование владельца — кнопка выхода есть
+ * всегда, и при начатой партии она спрашивает.
+ */
+function confirmLeave(where) {
+    if (!battleInProgress()) return true;
+    return window.confirm(`Выйти ${where}? Бой прервётся, прогресс может не сохраниться.`);
+}
+
 function goMenu() {
     stopTimer();
     arena.abort();
@@ -1032,7 +1056,12 @@ function boot() {
     dom.btnSuper.addEventListener('click', useSuper);
     dom.btnSpeed.addEventListener('click', cycleSpeed);
     dom.btnRules.addEventListener('click', () => goLearn('battle'));
-    dom.btnQuit.addEventListener('click', goMenu);
+    dom.btnQuit.addEventListener('click', () => { if (confirmLeave('в меню')) goMenu(); });
+    // Кнопка сайта живёт в разметке ссылкой и уводит с адреса игры одним
+    // нажатием. Она стоит в углу над ареной, то есть под большим пальцем.
+    document.querySelector('.game-home-menu')?.addEventListener('click', (event) => {
+        if (!confirmLeave('на главную')) event.preventDefault();
+    });
     window.addEventListener('keydown', onKeyDown);
 
     void loadLeaderboard();

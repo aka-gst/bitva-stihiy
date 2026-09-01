@@ -409,3 +409,26 @@ test("сцена для витрины закрепляет всё случай�
     assert.match(audio, /has\('тихо'\)/);
     assert.match(showcase, /setMuted\(true\)/);
 });
+
+test("выход при начатой партии спрашивает и называет цену", async () => {
+    // Стоячее требование владельца: кнопка выхода есть всегда, и при начатой
+    // партии она спрашивает, называя цену словами. Кнопка «НА ГЛАВНУЮ» стоит
+    // в углу над ареной, то есть под большим пальцем, и уводила молча.
+    const main = await readFile(new URL("src/main.js", root), "utf8");
+    assert.match(main, /function battleInProgress/);
+    assert.match(main, /function confirmLeave/);
+    assert.match(main, /прогресс может не сохраниться/, "цена не названа словами");
+
+    // Оба выхода спрашивают: и кнопка сайта, и крестик внутри игры.
+    assert.match(main, /game-home-menu'\)\?\.addEventListener/, "кнопка сайта не перехвачена");
+    assert.match(main, /confirmLeave\('на главную'\)\) event\.preventDefault\(\)/);
+    assert.match(main, /confirmLeave\('в меню'\)\) goMenu\(\)/);
+
+    // Вопрос не должен вылезать там, где терять нечего: после итога боя
+    // поверх экрана висит оверлей, а сам бой уже с исходом.
+    const body = main.slice(main.indexOf("function battleInProgress"));
+    const check = body.slice(0, body.indexOf("function confirmLeave"));
+    for (const mark of [/app\.battle\.outcome/, /screen-battle'\)\.hidden/, /dom\.overlay\.hidden/]) {
+        assert.match(check, mark, "проверка «партия идёт» неполная");
+    }
+});
