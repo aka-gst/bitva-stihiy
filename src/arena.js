@@ -43,6 +43,33 @@ const impactStyle = (winner, loser) => IMPACT[`${winner}:${loser}`] ?? 'plain';
 const PLAYER_WINS = new Set(['win', 'stun', 'super-hit']);
 const ENEMY_WINS = new Set(['lose', 'crit', 'super-fail']);
 
+/**
+ * Откуда арена берёт время.
+ *
+ * По умолчанию — из настоящих часов браузера. Пульт витрины подменяет их
+ * своими, чтобы снимать покадрово: иначе съёмка идёт по реальному времени,
+ * а в скрытой вкладке браузер душит таймеры произвольно и сильно.
+ *
+ * Требование к подмене одно, и оно куплено поломкой: часы обязаны быть
+ * ЕДИНСТВЕННЫМ источником времени для боя. Если пульт двигает время сам, а
+ * setTimeout продолжает тикать, бой проживает больше, чем насчитал пульт.
+ */
+let schedule = (fn, ms) => { setTimeout(fn, ms); };
+
+/**
+ * Подменить часы арены. Возврат — функция отката к настоящим.
+ * Падает громко: тихая подмена на чепуху останавливает бой навсегда, и
+ * искать это потом дороже всего.
+ */
+export function setScheduler(fn) {
+    if (typeof fn !== 'function') {
+        throw new TypeError('setScheduler: нужны часы-функция (fn, ms), пришло ' + typeof fn);
+    }
+    const before = schedule;
+    schedule = fn;
+    return () => { schedule = before; };
+}
+
 export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
     // Скорость фиксируется на время одного столкновения: смена настройки
     // посреди анимации иначе делит длительность на ноль и подвешивает бой.
@@ -55,7 +82,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
 
     const instant = () => speed === 0;
     const rate = () => Math.max(0.05, speed);
-    const wait = (ms) => (instant() ? Promise.resolve() : new Promise((r) => setTimeout(r, ms / rate())));
+    const wait = (ms) => (instant() ? Promise.resolve() : new Promise((r) => schedule(r, ms / rate())));
 
     /** Каждый новый бой/выход из боя обесценивает незавершённые анимации. */
     const abort = () => { generation += 1; };
@@ -285,7 +312,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         root.classList.remove('shake', 'shake-hard');
         void root.offsetWidth;
         root.classList.add(cls);
-        setTimeout(() => root.classList.remove(cls), hard ? 440 : 340);
+        schedule(() => root.classList.remove(cls), hard ? 440 : 340);
     }
 
     function showCaption(text) {

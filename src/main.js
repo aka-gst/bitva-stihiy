@@ -10,7 +10,7 @@ import { CHARGE_COST, armSuper, canArmSuper, createBattle, resolveRound } from '
 import { planEnemyRound } from './ai.js';
 import { COMBO_LENGTH, COMBO_LIST, findCombo, overheatOf } from './combos.js';
 import { coachLine } from './coach.js';
-import { installShowcase } from './showcase.js';
+import { installShowcase } from './showcase.js?v=2';
 import { favourText, isFavoured, rollFavour } from './favour.js';
 import { makeRng, pick } from './rng.js';
 import { MODES, MODE_ORDER, SPARRING, STORY_MODE } from './modes.js';

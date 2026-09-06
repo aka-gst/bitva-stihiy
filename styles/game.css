@@ -374,7 +374,8 @@ body.showcase .middle,
 /* .bottom — весь нижний этаж: кнопки и разбор боя. Пряталось только .controls,
    но лог переехал к ним в соседнюю ячейку и остался бы виден поверх драки. */
 body.showcase .bottom,
-body.showcase .controls,
+body.showcase .controls { display: none !important; }
+
 /* Подстраховка кнопки выхода.
    Она приходит из /game-menu.css — файла с корня сайта, которого в этом
    репозитории нет. Не доехал он (сеть, выкладка, промах кэша) — ссылка
