@@ -24,11 +24,17 @@ test('итог появляется после завершения витрин
     assert.match(css, /font-size:\s*clamp\(32px,\s*3\.1vw,\s*36px\)/, 'итог должен читаться в карточке: 32–36px');
 });
 
-test('вода гасит огонь в читаемой сцене, взятой из Аниматеки', () => {
+test('жест гашения остаётся в игре, а границей витрины служат размер и итог', () => {
     assert.match(animateka, /pageMs:\s*600/, 'крупная сцена должна брать 600 мс из класса Аниматеки «страница»');
     assert.match(animateka, /softOut:\s*'cubic-bezier\(\.22,\.61,\.36,1\)'/, 'волна должна брать мягкий выход Аниматеки');
     assert.match(arena, /function extinguishFire/, 'нужна отдельная сцена гашения, а не мгновенная смена кадра');
     assert.match(arena, /winnerElement === 'water' && loserElement === 'fire'/, 'сцена должна включаться только когда вода побеждает огонь');
     assert.match(arena, /element-clash-wave[\s\S]*element-clash-steam[\s\S]*element-crown-fire/, 'последовательность обязана содержать волну, пар и гаснущую коронку');
     assert.match(css, /body\.showcase \.bolt[^}]*font-size:\s*76px/, 'витринные стихии должны быть крупнее обычных');
+    assert.match(css, /body\.showcase \.showcase-outcome[\s\S]*?font-size:\s*clamp\(32px,\s*3\.1vw,\s*36px\)/, 'крупный итог должен быть частью витрины');
+
+    // Отрицательные контроли: тест обязан краснеть, если исчез любой из двух
+    // признаков витрины, даже когда сам жест в arena.js остался.
+    assert.throws(() => assert.match(css.replace('font-size: 76px', 'font-size: 30px'), /body\.showcase \.bolt[^}]*font-size:\s*76px/));
+    assert.throws(() => assert.match(html.replace('Вода тушит огонь', 'Итог'), /Вода тушит огонь[\s\S]*Коронка пробита/));
 });
