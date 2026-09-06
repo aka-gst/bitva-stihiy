@@ -11,6 +11,7 @@ import { ELEMENT } from './rules.js';
 import { haptic, sweep, tone } from './audio.js';
 import { applyPose, fighterSvg, pickAttack } from './fighter.js';
 import { BACKDROP_LAYERS, backdropSvg, layerSrc } from './backdrop.js';
+import { ANIMATEKA } from './animateka.js';
 
 /** Длительности при нормальной скорости, мс. */
 /**
@@ -231,6 +232,42 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
         return { node: bolt, done: anim.finished.catch(() => {}) };
     }
 
+    // Вода не должна просто заменить огонь одним кадром. Этот слой живёт
+    // 600 мс — класс «страница» из Аниматеки — и объясняет победу жестом:
+    // волна накрывает → пар поднимается → огненная коронка гаснет.
+    function extinguishFire(at) {
+        if (!document.body.classList.contains('showcase') && !root.isConnected) return;
+        const wave = document.createElement('div');
+        wave.className = 'element-clash-wave';
+        wave.style.transform = `translate(${at.x}px, ${at.y}px)`;
+        fxLayer.appendChild(wave);
+        const steam = document.createElement('div');
+        steam.className = 'element-clash-steam';
+        steam.style.transform = `translate(${at.x}px, ${at.y}px)`;
+        fxLayer.appendChild(steam);
+        const crownAt = bodyPoint(enemyNode);
+        const crown = document.createElement('div');
+        crown.className = 'element-crown-fire';
+        crown.textContent = '♛🔥';
+        crown.style.transform = `translate(${crownAt.x}px, ${crownAt.y - 58}px)`;
+        fxLayer.appendChild(crown);
+        crown.animate([
+            { transform: `translate(${crownAt.x}px, ${crownAt.y - 58}px) scale(1)`, opacity: 1, filter: 'brightness(1.8) saturate(1.35)' },
+            { transform: `translate(${crownAt.x}px, ${crownAt.y - 68}px) scale(.72) rotate(-8deg)`, opacity: .12, filter: 'brightness(.45) saturate(.2)' },
+        ], { duration: ANIMATEKA.pageMs, easing: ANIMATEKA.fadeOut, fill: 'forwards' }).finished.catch(() => {}).then(() => crown.remove());
+        const options = { duration: ANIMATEKA.pageMs, easing: ANIMATEKA.softOut, fill: 'forwards' };
+        wave.animate([
+            { transform: `translate(${at.x + 210}px, ${at.y}px) scale(.25, .45)`, opacity: 0 },
+            { transform: `translate(${at.x - 28}px, ${at.y}px) scale(2.8, 1.25)`, opacity: .96, offset: .62 },
+            { transform: `translate(${at.x - 108}px, ${at.y}px) scale(3.7, 1.65)`, opacity: 0 },
+        ], options).finished.catch(() => {}).then(() => wave.remove());
+        steam.animate([
+            { transform: `translate(${at.x}px, ${at.y + 16}px) scale(.4)`, opacity: 0 },
+            { transform: `translate(${at.x - 8}px, ${at.y - 52}px) scale(2.2)`, opacity: .82, offset: .45 },
+            { transform: `translate(${at.x - 18}px, ${at.y - 108}px) scale(3.1)`, opacity: 0 },
+        ], { duration: ANIMATEKA.pageMs, easing: ANIMATEKA.fadeIn, fill: 'forwards' }).finished.catch(() => {}).then(() => steam.remove());
+    }
+
     /** Разброс частиц под конкретный характер стихии. */
     function particle(style, index, total) {
         const spread = (Math.PI * 2 * index) / total;
@@ -449,6 +486,7 @@ export function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
             sparks: style === 'steam' ? 12 : 10,
             style,
         });
+        if (winnerElement === 'water' && loserElement === 'fire') extinguishFire(meet);
         loserBolt.node.remove();
         tone(ELEMENT[winnerElement].tone * 1.5, 80);
         await wait(T.meet);

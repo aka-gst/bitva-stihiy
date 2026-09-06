@@ -694,6 +694,14 @@ body.showcase .showcase-outcome > span[aria-hidden="true"] { font-size: 1.12em; 
     will-change: transform, opacity;
 }
 .bolt.super { width: 62px; height: 62px; margin: -31px 0 0 -31px; font-size: 42px; }
+/* В витрине стихии — действующие лица, а не подписи размером с иконку. */
+body.showcase .bolt { width: 96px; height: 96px; margin: -48px 0 0 -48px; font-size: 76px; line-height: 96px; filter: drop-shadow(0 0 18px var(--bolt-color)); }
+body.showcase .bolt.super { width: 120px; height: 120px; margin: -60px 0 0 -60px; font-size: 98px; line-height: 120px; }
+.element-clash-wave, .element-clash-steam { position: absolute; z-index: 18; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 50%; pointer-events: none; will-change: transform, opacity; }
+.element-crown-fire { position: absolute; z-index: 19; width: 74px; margin: -28px 0 0 -37px; color: #fb923c; font-size: 48px; line-height: 1; text-align: center; text-shadow: 0 0 9px #fff7ed, 0 0 24px #f97316; pointer-events: none; will-change: transform, opacity, filter; }
+.element-clash-wave { background: radial-gradient(ellipse at 25% 50%, rgba(224, 247, 255, .98) 0 8%, rgba(56, 189, 248, .9) 18%, rgba(14, 116, 144, .55) 47%, transparent 72%); box-shadow: 0 0 34px rgba(56,189,248,.9); }
+.element-clash-steam { background: radial-gradient(circle, rgba(255,255,255,.92) 0 12%, rgba(203,213,225,.62) 36%, transparent 71%); filter: blur(5px); }
+@media (prefers-reduced-motion: reduce) { .element-clash-wave, .element-clash-steam { animation: none; } }
 
 .burst {
     position: absolute;
@@ -1462,4 +1470,3 @@ body.showcase .showcase-outcome > span[aria-hidden="true"] { font-size: 1.12em; 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
 }
-
