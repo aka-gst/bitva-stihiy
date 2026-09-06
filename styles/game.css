@@ -411,6 +411,42 @@ body.showcase .battle-layout { grid-template-rows: minmax(0, 1fr); gap: 0; }
 body.showcase .screen--battle { padding: 0; }
 body.showcase .arena { max-width: none; margin: 0; }
 
+/* Финальный смысл петли должен жить в самой арене: в карточный кадр не
+   попадают шкалы и слоты. В обычной игре этот узел скрыт даже если после
+   съёмки страница продолжила жить без перезагрузки. */
+.showcase-outcome[hidden],
+body:not(.showcase) .showcase-outcome { display: none !important; }
+body.showcase .showcase-outcome {
+    position: absolute;
+    z-index: 30;
+    inset: auto 7% 7%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    min-height: 92px;
+    padding: 12px 24px;
+    border: 1px solid rgba(186, 230, 253, 0.78);
+    border-radius: 18px;
+    background: linear-gradient(100deg, rgba(8, 47, 73, 0.94), rgba(12, 21, 39, 0.9) 46%, rgba(91, 27, 20, 0.94));
+    box-shadow: 0 0 36px rgba(56, 189, 248, 0.42), inset 0 0 28px rgba(251, 146, 60, 0.16);
+    color: #f8fafc;
+    font-size: clamp(32px, 3.1vw, 36px);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: 0.025em;
+    text-align: center;
+    text-transform: uppercase;
+    text-shadow: 0 2px 12px rgba(2, 6, 23, 0.95);
+    pointer-events: none;
+    animation: showcase-outcome-in 320ms cubic-bezier(.2, .8, .2, 1) both;
+}
+body.showcase .showcase-outcome > span[aria-hidden="true"] { font-size: 1.12em; }
+@keyframes showcase-outcome-in {
+    from { opacity: 0; transform: translateY(14px) scale(0.94); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* ─────────────────────────── АРЕНА ─────────────────────────── */
 
 /* Зал башни: арки, колонны, пол — и рассеянный свет от каждого бойца. */
@@ -1426,5 +1462,4 @@ body.showcase .arena { max-width: none; margin: 0; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
 }
-
 

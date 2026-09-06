@@ -38,7 +38,7 @@ const dom = {
     playerHpBar: $('player-hp-bar'), playerHpNum: $('player-hp-num'),
     enemyHpBar: $('enemy-hp-bar'), enemyHpNum: $('enemy-hp-num'),
     hudTier: $('hud-tier'), hudRound: $('hud-round'),
-    arena: $('arena'), fxLayer: $('fx-layer'), caption: $('caption'), intel: $('intel'),
+    arena: $('arena'), fxLayer: $('fx-layer'), caption: $('caption'), intel: $('intel'), showcaseOutcome: $('showcase-outcome'),
     fighterPlayer: $('fighter-player'), fighterEnemy: $('fighter-enemy'),
     board: document.querySelector('.board'),
     playerSlots: $('player-slots'), enemySlots: $('enemy-slots'),

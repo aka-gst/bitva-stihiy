@@ -185,6 +185,7 @@ export function installShowcase(deps) {
     let casts = [];
     let frozen = false;
     let running = false;
+    let sceneRun = 0;
 
     function sizeArena(width, height) {
         // Размер задаём явно и в пикселях: в скрытой вкладке спросить его не
@@ -220,6 +221,11 @@ export function installShowcase(deps) {
         document.body.classList.toggle('showcase', on);
     }
 
+    /** Итог нужен только в кадре витрины, когда обмен уже действительно сыгран. */
+    function showOutcome(on) {
+        dom.showcaseOutcome.hidden = !on;
+    }
+
     /** Отпечаток нарисованного, а не следа состояний. */
     function state() {
         const box = dom.arena.getBoundingClientRect();
@@ -249,6 +255,7 @@ export function installShowcase(deps) {
      * отличие от показа.
      */
     function scene({ seed = SEED, width = SIZE.width, height = SIZE.height, bare = true } = {}) {
+        sceneRun += 1;
         setMuted(true);
         pinRandom(seed);
         stopFeeds();
@@ -256,6 +263,7 @@ export function installShowcase(deps) {
         frozen = false;
         running = false;
         bareStage(bare);
+        showOutcome(false);
         sizeArena(width, height);
 
         app.rng = makeRng(seed);
@@ -389,6 +397,7 @@ export function installShowcase(deps) {
     function showcase(opts = {}) {
         const { steps = 2 } = opts;
         scene(opts);
+        const run = sceneRun;
         const { clashes, at, plan } = moment();
         if (at < 0) return { сыграно: 0, ошибка: 'коронка не пробита, снимать нечего' };
 
@@ -410,6 +419,7 @@ export function installShowcase(deps) {
                 setHp(dom.enemyHpBar, dom.enemyHpNum, event.hp.enemy, opponent.hp);
                 setHp(dom.playerHpBar, dom.playerHpNum, event.hp.player, PLAYER_MAX_HP);
             }
+            if (run === sceneRun) showOutcome(true);
         })();
 
         return {
@@ -480,6 +490,7 @@ export function installShowcase(deps) {
      */
     function loop({ steps = 2, fps = 30, ...opts } = {}) {
         scene(opts);
+        const run = sceneRun;
         hold();
 
         const { clashes, at, plan } = moment();
@@ -506,6 +517,7 @@ export function installShowcase(deps) {
                 setHp(dom.enemyHpBar, dom.enemyHpNum, event.hp.enemy, opponent.hp);
                 setHp(dom.playerHpBar, dom.playerHpNum, event.hp.player, PLAYER_MAX_HP);
             }
+            if (run === sceneRun) showOutcome(true);
             доиграно = true;
         })();
 
