@@ -10,12 +10,12 @@
 
 | проект | папка |
 |---|---|
-| ПЕРИМЕТР (стелс) | `~/dev/stealth` |
-| ПЕРЕЛОМ (файтинг) | `~/dev/perelom` |
-| NEON CLAW | `~/dev/neon-claw` |
+| ПЕРИМЕТР (стелс) | `~/dev/_games/stealth` |
+| ПЕРЕЛОМ (файтинг) | `~/dev/_games/perelom` |
+| NEON CLAW | `~/dev/_games/neon-claw` |
 | Наотмашь | `~/dev/naotmash` |
 | ACID UNO | `~/dev/acid-uno` |
-| ТехноМагия | `~/dev/technomagic` |
+| ТехноМагия | `~/dev/_games/technomagic` |
 | Один удар | `~/dev/odin-udar` |
 | Тетколор и Линии | `~/dev/Zakriva/tetcolor-columns` |
 | сайт | `~/dev/aka-gst.ru` |
