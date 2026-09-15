@@ -1,0 +1,3509 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Битва Стихий — Огонь, Вода, Ветер</title>
+<meta name="description" content="Тактический файтинг на стихиях: собери цепочку из пяти заклинаний и пройди Башню Трёх Стихий.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/game-menu.css?v=1">
+<link rel="stylesheet" href="./styles/game.css?v=2">
+
+
+</head>
+<body>
+
+<a class="game-home-menu" href="/">НА ГЛАВНУЮ</a>
+
+<!-- Сообщения, которые нельзя потерять: показываются поверх любого экрана. -->
+<div class="notice" id="notice" role="status" aria-live="polite" hidden></div>
+
+<!-- ───────────────────────── ГЛАВНОЕ МЕНЮ ───────────────────────── -->
+<section class="screen screen--menu" id="screen-menu" data-screen="menu">
+    <div class="menu-inner">
+        <h1 class="title">БИТВА СТИХИЙ</h1>
+        <p class="subtitle">Огонь · Вода · Ветер</p>
+        <span class="alpha">АЛЬФА-ВЕРСИЯ</span>
+
+        <div class="wheel" id="menu-wheel" aria-label="Колесо стихий"></div>
+
+        <div class="menu-actions">
+            <button class="mbtn mbtn--primary" data-goto="story">
+                <span class="mbtn-name">СЮЖЕТ</span>
+                <span class="mbtn-note">Башня Трёх Стихий · пять противников</span>
+            </button>
+            <button class="mbtn" data-goto="modes">
+                <span class="mbtn-name">СВОБОДНЫЙ БОЙ</span>
+                <span class="mbtn-note">Четыре режима, случайный маг</span>
+            </button>
+            <button class="mbtn" data-goto="learn">
+                <span class="mbtn-name">КАК ЭТО РАБОТАЕТ</span>
+                <span class="mbtn-note">Правила за минуту</span>
+            </button>
+        </div>
+
+        <p class="leaders" id="leaders">ГЛОБАЛЬНЫЙ ТОП: —</p>
+    </div>
+</section>
+
+<!-- ───────────────────────── ВЫБОР РЕЖИМА ───────────────────────── -->
+<section class="screen screen--menu" id="screen-modes" data-screen="modes" hidden>
+    <div class="menu-inner">
+        <h2 class="title title--sm">СВОБОДНЫЙ БОЙ</h2>
+        <p class="subtitle">Один бой против случайного мага</p>
+        <div class="mode-grid" id="mode-grid"></div>
+        <button class="mbtn mbtn--ghost" data-goto="menu">НАЗАД</button>
+    </div>
+</section>
+
+<!-- ───────────────────────── ОБУЧЕНИЕ ───────────────────────── -->
+<section class="screen screen--menu" id="screen-learn" data-screen="learn" hidden>
+    <div class="menu-inner learn">
+        <div class="learn-progress" id="learn-progress"></div>
+        <div class="learn-card" id="learn-card"></div>
+        <div class="learn-nav">
+            <button class="mbtn mbtn--ghost" id="learn-prev">НАЗАД</button>
+            <button class="mbtn mbtn--primary" id="learn-next">ДАЛЬШЕ</button>
+        </div>
+    </div>
+</section>
+
+<!-- ───────────────────────── СЮЖЕТНАЯ ИНТЕРЛЮДИЯ ───────────────────────── -->
+<section class="screen screen--menu" id="screen-story" data-screen="story" hidden>
+    <div class="menu-inner story">
+        <div class="story-tier" id="story-tier"></div>
+        <h2 class="title title--sm" id="story-name"></h2>
+        <div class="story-portrait" id="story-portrait"></div>
+        <p class="story-text" id="story-text"></p>
+        <p class="story-hint" id="story-hint"></p>
+        <div class="story-track" id="story-track"></div>
+        <button class="mbtn mbtn--primary" id="story-go">ДАЛЬШЕ</button>
+    </div>
+</section>
+
+<!-- ───────────────────────── БОЙ ───────────────────────── -->
+<main class="screen screen--battle" id="screen-battle" data-screen="battle" hidden>
+
+    <header class="hud">
+        <div class="hud-side hud-side--player">
+            <div class="hud-name" id="player-name">ТЫ</div>
+            <div class="hp"><div class="hp-fill hp-fill--player" id="player-hp-bar"></div></div>
+            <div class="hp-num" id="player-hp-num">10</div>
+        </div>
+        <div class="hud-center">
+            <div class="hud-tier" id="hud-tier">СВОБОДНЫЙ БОЙ</div>
+            <div class="hud-round"><span id="hud-round">РАУНД 1</span> · <span id="timer-num">15</span> с</div>
+            <div class="battle-tools">
+                <button class="tool" id="btn-speed" title="Скорость анимации">СКОРОСТЬ: НОРМА</button>
+                <button class="tool" id="btn-rules" title="Правила боя">?</button>
+                <button class="tool" id="btn-quit" title="Выйти в меню">✕</button>
+            </div>
+        </div>
+        <div class="hud-side hud-side--enemy">
+            <div class="hud-name" id="enemy-name">ПРОТИВНИК</div>
+            <div class="hp"><div class="hp-fill hp-fill--enemy" id="enemy-hp-bar"></div></div>
+            <div class="hp-num" id="enemy-hp-num">10</div>
+        </div>
+    </header>
+
+    <div class="battle-layout">
+        <div class="arena" id="arena">
+            <div class="fighter fighter--player" id="fighter-player"></div>
+            <div class="fighter fighter--enemy" id="fighter-enemy"></div>
+            <div class="fx-layer" id="fx-layer" aria-hidden="true"></div>
+            <div class="caption" id="caption" role="status" aria-live="polite"></div>
+            <div class="intel" id="intel" aria-label="Что противник уже показал"></div>
+            <div class="showcase-outcome" id="showcase-outcome" role="status" aria-live="polite" hidden>
+                <span aria-hidden="true">💧</span>
+                <span>Вода тушит огонь<br>Коронка пробита</span>
+                <span aria-hidden="true">🔥</span>
+            </div>
+        </div>
+
+        <!-- Поле ходов занимает средний этаж целиком: разбор боя уехал вниз,
+             к кнопкам, и отбирать у поля колонку больше некому. -->
+        <div class="middle">
+            <div class="board">
+                <div class="timer" id="timer" aria-label="Время на ход">
+                    <div class="timer-fill" id="timer-fill"></div>
+                </div>
+
+                <div class="favour" id="favour" aria-live="polite"></div>
+
+                <div class="lane lane--enemy">
+                    <span class="lane-label">ПРОТИВНИК</span>
+                    <div class="slots" id="enemy-slots"></div>
+                </div>
+                <div class="lane lane--player">
+                    <span class="lane-label">ТЫ</span>
+                    <div class="slots" id="player-slots"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Нижний этаж: кнопки слева, разбор боя справа от них. Лог читают
+             между раундами, а не во время — сбоку от арены он отбирал ширину
+             у драки ради текста, на который в бою не смотрят. -->
+        <div class="bottom">
+            <div class="controls">
+                <div class="coach" id="coach" aria-live="polite"></div>
+
+                <div class="charge" title="Заряд суперудара">
+                    <div class="charge-fill" id="charge-fill"></div>
+                    <span class="charge-label" id="charge-label">ЗАРЯД 0/3</span>
+                </div>
+
+                <div class="cast-row" id="cast-row"></div>
+                <div class="action-row">
+                    <button class="btn btn--del" id="btn-undo">СТЕРЕТЬ</button>
+                    <button class="btn btn--go" id="btn-go">В БОЙ</button>
+                    <button class="btn btn--super" id="btn-super" disabled>СУПЕР</button>
+                </div>
+            </div>
+
+            <aside class="side">
+                <div class="log" id="log" role="log" aria-live="polite"></div>
+            </aside>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay" hidden>
+        <div class="overlay-card">
+            <img class="overlay-art" id="overlay-art" alt="" hidden>
+            <h2 class="overlay-title" id="overlay-title"></h2>
+            <p class="overlay-text" id="overlay-text"></p>
+            <div class="overlay-actions" id="overlay-actions"></div>
+        </div>
+    </div>
+
+</main>
+
+<script>
+(() => {
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/rules.js
+  var ELEMENTS = ["fire", "water", "wind"];
+  var ELEMENT = {
+    fire: {
+      id: "fire",
+      glyph: "\u{1F525}",
+      name: "\u041E\u0433\u043E\u043D\u044C",
+      genitive: "\u043E\u0433\u043D\u044F",
+      accusative: "\u043E\u0433\u043E\u043D\u044C",
+      beats: "wind",
+      color: "#fb923c",
+      glow: "#fdba74",
+      tone: 300
+    },
+    water: {
+      id: "water",
+      glyph: "\u{1F4A7}",
+      name: "\u0412\u043E\u0434\u0430",
+      genitive: "\u0432\u043E\u0434\u044B",
+      accusative: "\u0432\u043E\u0434\u0443",
+      beats: "fire",
+      color: "#38bdf8",
+      glow: "#7dd3fc",
+      tone: 440
+    },
+    wind: {
+      id: "wind",
+      glyph: "\u{1F32A}",
+      name: "\u0412\u0435\u0442\u0435\u0440",
+      genitive: "\u0432\u0435\u0442\u0440\u0430",
+      accusative: "\u0432\u0435\u0442\u0435\u0440",
+      beats: "water",
+      color: "#a3e635",
+      glow: "#d9f99d",
+      tone: 560
+    }
+  };
+  var REASONS = {
+    "water:fire": "\u0412\u043E\u0434\u0430 \u0442\u0443\u0448\u0438\u0442 \u043E\u0433\u043E\u043D\u044C",
+    "fire:wind": "\u041E\u0433\u043E\u043D\u044C \u0440\u0430\u0437\u0434\u0443\u0432\u0430\u0435\u0442\u0441\u044F \u043D\u0430 \u0432\u0435\u0442\u0440\u0443",
+    "wind:water": "\u0412\u0435\u0442\u0435\u0440 \u0440\u0430\u0437\u0433\u043E\u043D\u044F\u0435\u0442 \u0432\u043E\u0434\u0443"
+  };
+  var VERBS = {
+    "water:fire": "\u0442\u0443\u0448\u0438\u0442",
+    "fire:wind": "\u043F\u043E\u0436\u0438\u0440\u0430\u0435\u0442",
+    "wind:water": "\u0440\u0430\u0437\u0433\u043E\u043D\u044F\u0435\u0442"
+  };
+  function beats(a, b) {
+    return ELEMENT[a]?.beats === b;
+  }
+  function counterTo(target) {
+    return ELEMENTS.find((id) => beats(id, target)) ?? null;
+  }
+  function preyOf(source) {
+    return ELEMENT[source]?.beats ?? null;
+  }
+  function reasonFor(winner, loser) {
+    return REASONS[`${winner}:${loser}`] ?? "";
+  }
+  function clashPhrase(winner, loser) {
+    const verb = VERBS[`${winner}:${loser}`];
+    if (!verb) return "";
+    return `${ELEMENT[winner].glyph} ${ELEMENT[winner].name} ${verb} ${ELEMENT[loser].glyph} ${ELEMENT[loser].accusative}`;
+  }
+  function roleOf(move, signature) {
+    if (move === signature) return "mirror";
+    if (beats(move, signature)) return "answer";
+    return "third";
+  }
+  function elementForRole(role, signature) {
+    if (role === "mirror") return signature;
+    if (role === "answer") return counterTo(signature);
+    return preyOf(signature);
+  }
+  var WHEEL = ELEMENTS.map((id) => ({
+    winner: id,
+    loser: ELEMENT[id].beats,
+    reason: reasonFor(id, ELEMENT[id].beats)
+  }));
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/combos.js
+  var COMBO_LENGTH = 3;
+  var COMBO_NEEDS = 2;
+  var COMBOS = {
+    surge: {
+      id: "surge",
+      name: "\u0412\u0410\u041B",
+      shape: "AAA",
+      hint: "\u0442\u0440\u0438 \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445",
+      repeats: 3,
+      damage: 3,
+      charge: 0,
+      needs: COMBO_NEEDS,
+      describe: (element) => `${ELEMENT[element].glyph} \u0412\u0430\u043B ${ELEMENT[element].genitive}: +3 \u0443\u0440\u043E\u043D\u0430`
+    },
+    bond: {
+      id: "bond",
+      name: "\u0421\u0412\u042F\u0417\u041A\u0410",
+      shape: "\u0434\u0432\u0435 \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445",
+      hint: "\u0434\u0432\u0435 \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445 \u0438 \u043E\u0434\u043D\u0430 \u0434\u0440\u0443\u0433\u0430\u044F \u2014 \u0432 \u043B\u044E\u0431\u043E\u043C \u043F\u043E\u0440\u044F\u0434\u043A\u0435",
+      repeats: 2,
+      damage: 2,
+      charge: 0,
+      needs: COMBO_NEEDS,
+      describe: (element) => `${ELEMENT[element].glyph} \u0421\u0432\u044F\u0437\u043A\u0430 ${ELEMENT[element].genitive}: +2 \u0443\u0440\u043E\u043D\u0430`
+    },
+    prism: {
+      id: "prism",
+      name: "\u041F\u0420\u0418\u0417\u041C\u0410",
+      shape: "ABC",
+      hint: "\u0442\u0440\u0438 \u0440\u0430\u0437\u043D\u044B\u0435",
+      repeats: 0,
+      damage: 1,
+      charge: 1,
+      needs: COMBO_NEEDS,
+      describe: () => "\u041F\u0440\u0438\u0437\u043C\u0430: +1 \u0443\u0440\u043E\u043D\u0430 \u0438 +1 \u0437\u0430\u0440\u044F\u0434\u0430 \u0437\u0430 \u0442\u043E, \u0447\u0442\u043E \u0442\u0435\u0431\u044F \u043D\u0435 \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043B\u0438"
+    }
+  };
+  var COMBO_LIST = Object.values(COMBOS);
+  function leadOf(a, b, c) {
+    if (a === b || a === c) return a;
+    if (b === c) return b;
+    return null;
+  }
+  function shapeOf(a, b, c) {
+    if (a === b && b === c) return COMBOS.surge;
+    if (a === b || b === c || a === c) return COMBOS.bond;
+    return COMBOS.prism;
+  }
+  function findCombo(chain) {
+    for (let i = 0; i + COMBO_LENGTH <= chain.length; i += 1) {
+      const [a, b, c] = chain.slice(i, i + COMBO_LENGTH);
+      if (!a || !b || !c) continue;
+      return { combo: shapeOf(a, b, c), at: i, slots: [i, i + 1, i + 2], element: leadOf(a, b, c) };
+    }
+    return null;
+  }
+  var OVERHEAT_FROM = 4;
+  var OVERHEAT_DAMAGE = { 4: 2, 5: 4 };
+  function overheatOf(chain) {
+    const counts = {};
+    for (const move of chain) {
+      if (move) counts[move] = (counts[move] ?? 0) + 1;
+    }
+    const [element, count] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? [];
+    if (!element || count < OVERHEAT_FROM) return null;
+    return { element, count, damage: OVERHEAT_DAMAGE[count] ?? OVERHEAT_DAMAGE[5] };
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/favour.js
+  function rollFavour(rng) {
+    return ELEMENTS[Math.floor(rng() * ELEMENTS.length) % ELEMENTS.length];
+  }
+  function isFavoured(combo, favour) {
+    return Boolean(combo && favour && combo.element === favour);
+  }
+  function favourText(favour) {
+    if (!favour) return "";
+    const el2 = ELEMENT[favour];
+    return `${el2.glyph} \u0410\u0420\u0415\u041D\u0410 \u0412 \u0421\u0418\u041B\u0415: ${el2.name.toUpperCase()} \u2014 \u0443\u0437\u043E\u0440 \u043D\u0430 \u043D\u0435\u0439 \u043F\u043B\u0430\u0442\u0438\u0442 \u0432\u0434\u0432\u043E\u0435`;
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/engine.js
+  var DEFAULT_HP = 10;
+  var DEFAULT_SLOTS = 5;
+  var CHARGE_COST = 3;
+  var MAX_STUNS_PER_ROUND = 1;
+  var RHYTHM_MEMORY = 4;
+  var SUPER_MEMORY = 4;
+  var ENEMY_MEMORY = 2;
+  var HIT = 1;
+  var SUPER_HIT = 2;
+  var SUPER_FAIL = 2;
+  var emptyWins = () => ({ fire: 0, water: 0, wind: 0 });
+  function createBattle({
+    opponent,
+    slots = DEFAULT_SLOTS,
+    playerHp = DEFAULT_HP,
+    playerMaxHp = DEFAULT_HP,
+    charge = 0
+  } = {}) {
+    const enemyMaxHp = opponent?.hp ?? DEFAULT_HP;
+    return {
+      opponent: opponent ?? null,
+      slots,
+      round: 1,
+      hp: { player: playerHp, enemy: enemyMaxHp },
+      maxHp: { player: playerMaxHp, enemy: enemyMaxHp },
+      charge: Math.min(charge, CHARGE_COST),
+      superArmed: false,
+      stunPending: false,
+      history: [],
+      wins: emptyWins(),
+      // Наблюдения для адаптивного ИИ: сколько коронок противник выбросил
+      // и сколько из них игрок пробил. Высокая доля = игрок читает коронку.
+      sigSeen: 0,
+      sigParried: 0,
+      // Сколько раз коронка прошла в игрока. Нужен для разбора после боя:
+      // «пропустил трижды — потерял шесть, коронка бьёт вдвое».
+      sigCrits: 0,
+      // Роли ходов игрока по позициям в цепочке — сырьё для чтения ритма.
+      roleRounds: [],
+      // Что противник показал в бою. Коронку игрок вычисляет отсюда сам —
+      // движок её не подсказывает.
+      seen: emptyWins(),
+      // Прошлые цепочки противника: без них смену маски посреди раунда
+      // и подмену стихии в ярости вывести не из чего.
+      enemyRounds: [],
+      // В какие слоты игрок ставил суперудар: противник учится их защищать.
+      superSlots: [],
+      // Где игрок собирал узоры: противник учится ломать их точечно,
+      // а не заливать контр-стихией всю цепочку.
+      comboSlots: [],
+      superSlot: null,
+      outcome: null
+    };
+  }
+  var isOver = (state) => state.outcome !== null;
+  var canArmSuper = (state) => !state.superArmed && state.charge >= CHARGE_COST && !isOver(state);
+  function armSuper(state, slot = 0) {
+    if (!canArmSuper(state)) return state;
+    if (!Number.isInteger(slot) || slot < 0 || slot >= state.slots) return state;
+    return { ...state, superArmed: true, superSlot: slot, charge: 0 };
+  }
+  function resolveRound(state, playerSeq, enemySeq) {
+    if (isOver(state)) return { state, events: [] };
+    const next = {
+      ...state,
+      hp: { ...state.hp },
+      wins: { ...state.wins },
+      seen: { ...state.seen },
+      history: [...state.history, ...playerSeq].slice(-10)
+    };
+    const roundRoles = [];
+    const enemyShown = [];
+    const combo = findCombo(playerSeq);
+    const overheat = overheatOf(playerSeq);
+    let comboWins = 0;
+    if (combo) next.comboSlots = [...state.comboSlots, combo.slots].slice(-SUPER_MEMORY);
+    const events = [{
+      type: "round-start",
+      round: state.round,
+      slots: state.slots,
+      combo: combo && { id: combo.combo.id, name: combo.combo.name, slots: combo.slots, element: combo.element }
+    }];
+    const dealt = { player: 0, enemy: 0 };
+    next.stunBudget = MAX_STUNS_PER_ROUND;
+    for (let index = 0; index < state.slots; index += 1) {
+      const player = playerSeq[index];
+      const planned = enemySeq[index] ?? { element: ELEMENTS[0], signature: false };
+      const superHere = next.superArmed && next.superSlot === index;
+      const clash2 = resolveClash(next, player, planned, index);
+      roundRoles[index] = planned.sig ? roleOf(player, planned.sig) : null;
+      if (superHere) next.superSlots = [...next.superSlots, index].slice(-SUPER_MEMORY);
+      enemyShown[index] = clash2.enemyCasts ? planned.element : null;
+      if (clash2.enemyCasts) next.seen[planned.element] += 1;
+      if (clash2.target) {
+        next.hp[clash2.target] = Math.max(0, next.hp[clash2.target] - clash2.damage);
+        dealt[clash2.target] += clash2.damage;
+      }
+      if (clash2.target === "enemy") next.wins[player] += 1;
+      events.push({
+        type: "clash",
+        index,
+        player,
+        enemy: clash2.enemyCasts ? planned.element : null,
+        enemyPlanned: planned.element,
+        enemySignature: planned.signature,
+        outcome: clash2.outcome,
+        damage: clash2.damage,
+        target: clash2.target,
+        parry: clash2.parry,
+        phrase: clash2.phrase,
+        hp: { ...next.hp },
+        charge: next.charge,
+        superArmed: next.superArmed,
+        stunNext: next.stunPending
+      });
+      if (next.hp.player <= 0 || next.hp.enemy <= 0) break;
+      if (combo && combo.slots.includes(index)) {
+        if (clash2.target === "enemy") comboWins += 1;
+        if (index === combo.slots.at(-1)) {
+          const fired = comboWins >= combo.combo.needs;
+          const favoured = isFavoured(combo, next.favour);
+          const gain = favoured ? 2 : 1;
+          const damage = combo.combo.damage * gain;
+          const charge = combo.combo.charge * gain;
+          if (fired && damage) {
+            next.hp.enemy = Math.max(0, next.hp.enemy - damage);
+            dealt.enemy += damage;
+          }
+          if (fired && charge) {
+            next.charge = Math.min(CHARGE_COST, next.charge + charge);
+          }
+          events.push({
+            type: "combo",
+            id: combo.combo.id,
+            name: combo.combo.name,
+            element: combo.element,
+            slots: combo.slots,
+            fired,
+            favoured,
+            wins: comboWins,
+            needs: combo.combo.needs,
+            damage: fired ? damage : 0,
+            charge: fired ? charge : 0,
+            phrase: fired ? combo.combo.describe(combo.element) + (favoured ? " \u2014 \u0432\u0434\u0432\u043E\u0435, \u0430\u0440\u0435\u043D\u0430 \u0432 \u0441\u0438\u043B\u0435" : "") : `\u0423\u0437\u043E\u0440 ${combo.combo.name} \u0440\u0430\u0441\u0441\u044B\u043F\u0430\u043B\u0441\u044F: \u043D\u0443\u0436\u043D\u043E ${combo.combo.needs} \u043F\u043E\u0431\u0435\u0434\u044B \u0438\u0437 3, \u0431\u044B\u043B\u043E ${comboWins}`,
+            hp: { ...next.hp }
+          });
+          if (next.hp.enemy <= 0) break;
+        }
+      }
+    }
+    if (next.hp.enemy <= 0) next.outcome = "player";
+    else if (next.hp.player <= 0) next.outcome = "enemy";
+    if (overheat && !next.outcome && next.hp.player > 0) {
+      next.hp.player = Math.max(0, next.hp.player - overheat.damage);
+      dealt.player += overheat.damage;
+      events.push({
+        type: "overheat",
+        element: overheat.element,
+        count: overheat.count,
+        damage: overheat.damage,
+        hp: { ...next.hp },
+        phrase: `\u041F\u0435\u0440\u0435\u0433\u0440\u0435\u0432: ${overheat.count} \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445 \u0432 \u0446\u0435\u043F\u043E\u0447\u043A\u0435 \u2014 \u043E\u0442\u0434\u0430\u0447\u0430 \u0431\u044C\u0451\u0442 \u043F\u043E \u0442\u0435\u0431\u0435`
+      });
+      if (next.hp.player <= 0) {
+        next.outcome = "enemy";
+        events.push({ type: "ko", winner: "enemy", hp: { ...next.hp } });
+      }
+    }
+    delete next.stunBudget;
+    if (enemyShown.some(Boolean)) {
+      next.enemyRounds = [...state.enemyRounds, enemyShown].slice(-ENEMY_MEMORY);
+    }
+    if (roundRoles.some(Boolean)) {
+      next.roleRounds = [...state.roleRounds, roundRoles].slice(-RHYTHM_MEMORY);
+    }
+    if (next.outcome) {
+      events.push({ type: "ko", winner: next.outcome, hp: { ...next.hp } });
+    } else {
+      next.round += 1;
+    }
+    events.push({ type: "round-end", round: state.round, dealt: { ...dealt } });
+    return { state: next, events };
+  }
+  function resolveClash(state, player, planned, index) {
+    if (planned.signature && !state.stunPending) state.sigSeen += 1;
+    if (state.stunPending) {
+      state.stunPending = false;
+      return {
+        outcome: "stun",
+        damage: HIT,
+        target: "enemy",
+        parry: false,
+        enemyCasts: false,
+        phrase: "\u041F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u043E\u0433\u043B\u0443\u0448\u0451\u043D \u2014 \u0437\u0430\u043A\u043B\u0438\u043D\u0430\u043D\u0438\u0435 \u043F\u0440\u043E\u0445\u043E\u0434\u0438\u0442 \u0431\u0435\u0437 \u043E\u0442\u0432\u0435\u0442\u0430"
+      };
+    }
+    if (state.superArmed && index === state.superSlot) {
+      state.superArmed = false;
+      state.superSlot = null;
+      if (beats(player, planned.element)) {
+        return {
+          outcome: "super-hit",
+          damage: SUPER_HIT,
+          target: "enemy",
+          parry: false,
+          enemyCasts: true,
+          phrase: `\u0421\u0443\u043F\u0435\u0440\u0443\u0434\u0430\u0440! ${clashPhrase(player, planned.element)}`
+        };
+      }
+      if (player === planned.element) {
+        return {
+          outcome: "super-fizzle",
+          damage: 0,
+          target: null,
+          parry: false,
+          enemyCasts: true,
+          phrase: "\u0421\u0443\u043F\u0435\u0440\u0443\u0434\u0430\u0440 \u043D\u0430\u043B\u0435\u0442\u0435\u043B \u043D\u0430 \u0442\u0430\u043A\u0443\u044E \u0436\u0435 \u0441\u0442\u0438\u0445\u0438\u044E \u2014 \u043E\u0431\u0435 \u043F\u043E\u0433\u0430\u0441\u043B\u0438"
+        };
+      }
+      return {
+        outcome: "super-fail",
+        damage: SUPER_FAIL,
+        target: "player",
+        parry: false,
+        enemyCasts: true,
+        phrase: "\u0421\u0443\u043F\u0435\u0440\u0443\u0434\u0430\u0440 \u043D\u0435 \u043F\u0440\u043E\u0448\u0451\u043B \u0438 \u0443\u0434\u0430\u0440\u0438\u043B \u0432 \u043E\u0442\u0432\u0435\u0442"
+      };
+    }
+    if (player === planned.element) {
+      const charged = state.charge < CHARGE_COST;
+      if (charged) state.charge += 1;
+      return {
+        outcome: "draw",
+        damage: 0,
+        target: null,
+        parry: false,
+        enemyCasts: true,
+        phrase: charged ? "\u041E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0435 \u0441\u0442\u0438\u0445\u0438\u0438 \u0433\u0430\u0441\u044F\u0442 \u0434\u0440\u0443\u0433 \u0434\u0440\u0443\u0433\u0430 \u2014 \u0443\u0434\u0430\u0440 \u0432 \u0443\u0434\u0430\u0440, +\u0437\u0430\u0440\u044F\u0434" : "\u041E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0435 \u0441\u0442\u0438\u0445\u0438\u0438 \u0433\u0430\u0441\u044F\u0442 \u0434\u0440\u0443\u0433 \u0434\u0440\u0443\u0433\u0430"
+      };
+    }
+    if (beats(player, planned.element)) {
+      const parry = planned.signature;
+      let stunned = false;
+      if (parry) {
+        state.charge = Math.min(CHARGE_COST, state.charge + 1);
+        state.sigParried += 1;
+        if (state.stunBudget > 0) {
+          state.stunBudget -= 1;
+          state.stunPending = true;
+          stunned = true;
+        }
+      }
+      return {
+        outcome: "win",
+        damage: HIT,
+        target: "enemy",
+        parry,
+        enemyCasts: true,
+        phrase: stunned ? `${clashPhrase(player, planned.element)} \u2014 \u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u043F\u0440\u043E\u0431\u0438\u0442\u0430, \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u043E\u0433\u043B\u0443\u0448\u0451\u043D` : parry ? `${clashPhrase(player, planned.element)} \u2014 \u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u043F\u0440\u043E\u0431\u0438\u0442\u0430, +\u0437\u0430\u0440\u044F\u0434` : clashPhrase(player, planned.element)
+      };
+    }
+    const crit = planned.signature;
+    if (crit) state.sigCrits += 1;
+    return {
+      outcome: crit ? "crit" : "lose",
+      damage: crit ? 2 : HIT,
+      target: "player",
+      parry: false,
+      enemyCasts: true,
+      phrase: crit ? `\u041A\u043E\u0440\u043E\u043D\u043A\u0430 \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0430: ${clashPhrase(planned.element, player)} \u2014 \u0434\u0432\u043E\u0439\u043D\u043E\u0439 \u0443\u0440\u043E\u043D` : clashPhrase(planned.element, player)
+    };
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/ai.js
+  function isEnraged(opponent, state) {
+    const at = opponent?.enrageAt ?? 0;
+    return at > 0 && state.hp.enemy <= at;
+  }
+  function signatureFor(opponent, state) {
+    const base = opponent?.element ?? ELEMENTS[0];
+    if (!opponent) return base;
+    if (opponent.shiftsEachRound) {
+      const order = opponent.cycle ?? ELEMENTS;
+      return order[(state.round - 1) % order.length];
+    }
+    if (isEnraged(opponent, state) && opponent.enrageElement) {
+      return opponent.enrageElement;
+    }
+    return base;
+  }
+  function masksFor(opponent, state) {
+    const lead = signatureFor(opponent, state);
+    const switchAt = opponent?.switchAt ?? null;
+    if (!switchAt) return { lead, second: null, switchAt: null };
+    const order = opponent.cycle ?? ELEMENTS;
+    const second = order[(order.indexOf(lead) + 1) % order.length];
+    return { lead, second, switchAt };
+  }
+  function signatureAt(opponent, state, index) {
+    const { lead, second, switchAt } = masksFor(opponent, state);
+    return second !== null && index >= switchAt ? second : lead;
+  }
+  function signatureChanceFor(opponent, state) {
+    const base = opponent?.signatureChance ?? 0.7;
+    if (isEnraged(opponent, state)) {
+      return Math.max(base, opponent.enrageSignatureChance ?? base);
+    }
+    return base;
+  }
+  function detectSpam(state, opponent) {
+    const sample = opponent?.spamWindow ?? 6;
+    const threshold = opponent?.spamThreshold ?? 0.6;
+    if (!opponent?.readsPatterns) return null;
+    const history = state.history.slice(-10);
+    if (history.length < sample) return null;
+    const counts = history.reduce((acc, move) => {
+      acc[move] = (acc[move] ?? 0) + 1;
+      return acc;
+    }, {});
+    const [dominant, hits] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? [];
+    return hits / history.length >= threshold ? dominant : null;
+  }
+  function chooseSlots(count, total, rng) {
+    const chosen = /* @__PURE__ */ new Set();
+    const limit = Math.min(count, total);
+    let guard = 0;
+    while (chosen.size < limit && guard < total * 8) {
+      chosen.add(Math.floor(rng() * total) % total);
+      guard += 1;
+    }
+    return chosen;
+  }
+  function detectRhythm(state, opponent) {
+    const found = /* @__PURE__ */ new Map();
+    if (!opponent?.readsRhythm) return found;
+    const rounds = state.roleRounds ?? [];
+    const need = Math.max(3, opponent.rhythmRounds ?? 3);
+    if (rounds.length < need) return found;
+    const threshold = opponent.rhythmThreshold ?? 0.8;
+    for (let slot = 0; slot < state.slots; slot += 1) {
+      const seen = rounds.map((round) => round[slot]).filter(Boolean);
+      if (seen.length < need) continue;
+      const counts = seen.reduce((acc, role2) => {
+        acc[role2] = (acc[role2] ?? 0) + 1;
+        return acc;
+      }, {});
+      const [role, hits] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+      if (hits / seen.length >= threshold) found.set(slot, role);
+    }
+    return found;
+  }
+  function detectSuperSlot(state, opponent) {
+    if (!opponent?.readsSuper || !state.superArmed) return null;
+    const history = state.superSlots ?? [];
+    const need = opponent.superRounds ?? 2;
+    if (history.length < need) return null;
+    const counts = history.reduce((acc, slot2) => {
+      acc[slot2] = (acc[slot2] ?? 0) + 1;
+      return acc;
+    }, {});
+    const [slot, hits] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return hits / history.length >= (opponent.superThreshold ?? 0.6) ? Number(slot) : null;
+  }
+  function detectComboSlot(state, opponent) {
+    if (!opponent?.breaksCombos) return null;
+    const rounds = state.comboSlots ?? [];
+    if (rounds.length < (opponent.comboRounds ?? 2)) return null;
+    const counts = {};
+    for (const slots of rounds) {
+      for (const slot2 of slots) counts[slot2] = (counts[slot2] ?? 0) + 1;
+    }
+    const [slot, hits] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] ?? [];
+    if (slot === void 0) return null;
+    return hits / rounds.length >= (opponent.comboThreshold ?? 0.6) ? Number(slot) : null;
+  }
+  function detectCounterPlay(state, opponent) {
+    if (!opponent?.readsPatterns) return false;
+    const sample = opponent.readWindow ?? 5;
+    if (state.sigSeen < sample) return false;
+    return state.sigParried / state.sigSeen >= (opponent.readThreshold ?? 0.7);
+  }
+  function baitWeightFor(opponent, state) {
+    const base = isEnraged(opponent, state) ? Math.max(opponent?.baitWeight ?? 0.5, opponent?.enrageBaitWeight ?? 0) : opponent?.baitWeight ?? 0.5;
+    return detectCounterPlay(state, opponent) ? Math.max(base, opponent.punishBaitWeight ?? 0.85) : base;
+  }
+  function planEnemyRound(state, rng) {
+    const opponent = state.opponent;
+    const chance = signatureChanceFor(opponent, state);
+    const spam = detectSpam(state, opponent);
+    const counterElement = spam ? counterTo(spam) : null;
+    const punishing = detectCounterPlay(state, opponent);
+    const rhythm = detectRhythm(state, opponent);
+    const baitWeight = baitWeightFor(opponent, state);
+    const punishCount = Math.max(
+      rhythm.size ? opponent.rhythmSlots ?? opponent.punishSlots ?? 2 : 0,
+      counterElement ? opponent.counterSlots ?? 2 : 0,
+      punishing ? opponent.punishSlots ?? 2 : 0
+    );
+    const punishAt = chooseSlots(punishCount, state.slots, rng);
+    const defended = detectSuperSlot(state, opponent);
+    if (defended !== null && defended < state.slots) punishAt.add(defended);
+    const broken = detectComboSlot(state, opponent);
+    if (broken !== null && broken < state.slots) punishAt.add(broken);
+    const plan = [];
+    for (let i = 0; i < state.slots; i += 1) {
+      const signature = signatureAt(opponent, state, i);
+      if (punishAt.has(i)) {
+        const predicted = rhythm.get(i);
+        const element2 = predicted ? counterTo(elementForRole(predicted, signature)) : counterElement ?? counterTo(counterTo(signature));
+        plan.push({ element: element2, signature: element2 === signature, sig: signature });
+        continue;
+      }
+      if (rng() < chance) {
+        plan.push({ element: signature, signature: true, sig: signature });
+        continue;
+      }
+      const answer = counterTo(signature);
+      const bait = counterTo(answer);
+      const element = rng() < baitWeight ? bait : answer;
+      plan.push({ element, signature: false, sig: signature });
+    }
+    return {
+      plan,
+      signature: signatureFor(opponent, state),
+      counteredElement: spam,
+      punishing,
+      rhythmSlots: [...rhythm.keys()],
+      defendedSlot: defended,
+      brokenSlot: broken
+    };
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/coach.js
+  var SIGNATURE_LEARNED = 2;
+  var ENOUGH_SEEN = 3;
+  function leadingElement(seen = {}) {
+    const total = ELEMENTS.reduce((sum, id) => sum + (seen[id] ?? 0), 0);
+    if (total < ENOUGH_SEEN) return null;
+    const top = ELEMENTS.reduce((best, id) => (seen[id] ?? 0) > (seen[best] ?? 0) ? id : best, ELEMENTS[0]);
+    const count = seen[top] ?? 0;
+    if (count * 2 <= total) return null;
+    return { element: top, count, total };
+  }
+  function coachLine(state, extra = {}) {
+    const { chargeCost = 3, overheat = null, combo = null, favoured = false } = extra;
+    if (overheat) {
+      const el2 = ELEMENT[overheat.element];
+      return {
+        tone: "hot",
+        text: `${el2.glyph} ${overheat.count} \u0440\u0430\u0437\u0430 \u0432 \u043E\u0434\u043D\u043E\u0439 \u043F\u044F\u0442\u0451\u0440\u043A\u0435 \u2014 \u044D\u0442\u043E \u043F\u0435\u0440\u0435\u0433\u0440\u0435\u0432. \u0423\u0434\u0430\u0440\u0438\u0442 \u043F\u043E \u0442\u0435\u0431\u0435 \u043D\u0430 \u2212${overheat.damage}.`
+      };
+    }
+    const learned = (state.sigParried ?? 0) >= SIGNATURE_LEARNED;
+    if (!learned) {
+      const lead = leadingElement(state.seen);
+      if (!lead) {
+        return {
+          tone: "watch",
+          text: "\u0423 \u043A\u0430\u0436\u0434\u043E\u0433\u043E \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0430 \u0435\u0441\u0442\u044C \u043B\u044E\u0431\u0438\u043C\u0430\u044F \u0441\u0442\u0438\u0445\u0438\u044F. \u0421\u043C\u043E\u0442\u0440\u0438 \u043D\u0430 \u0441\u0447\u0451\u0442 \u043D\u0430\u0434 \u0430\u0440\u0435\u043D\u043E\u0439 \u2014 \u0447\u0435\u043C \u043E\u043D \u0431\u044C\u0451\u0442 \u0447\u0430\u0449\u0435."
+        };
+      }
+      const counter = counterTo(lead.element);
+      return {
+        tone: "read",
+        text: `${ELEMENT[lead.element].glyph} ${lead.count} \u0440\u0430\u0437\u0430 \u0438\u0437 ${lead.total}. \u041F\u043E\u0445\u043E\u0436\u0435 \u043D\u0430 \u043A\u043E\u0440\u043E\u043D\u043A\u0443 \u2014 \u0433\u0430\u0441\u0438\u0442 \u0435\u0451 ${ELEMENT[counter].glyph} ${ELEMENT[counter].name}.`
+      };
+    }
+    if (combo) {
+      return {
+        tone: favoured ? "favour" : "combo",
+        text: `\u041F\u0435\u0440\u0432\u044B\u0435 \u0442\u0440\u0438 \u0445\u043E\u0434\u0430 \u0441\u043A\u043B\u0430\u0434\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u0432 \u0443\u0437\u043E\u0440: ${combo.name}. \u041D\u0443\u0436\u043D\u043E \u0432\u044B\u0438\u0433\u0440\u0430\u0442\u044C ${combo.needs} \u043E\u0431\u043C\u0435\u043D\u0430 \u0438\u0437 3 \u0432\u043D\u0443\u0442\u0440\u0438 \u043D\u0435\u0433\u043E.` + (favoured ? " \u0410\u0440\u0435\u043D\u0430 \u0432 \u0441\u0438\u043B\u0435 \u2014 \u0437\u0430\u043F\u043B\u0430\u0442\u0438\u0442 \u0432\u0434\u0432\u043E\u0435." : "")
+      };
+    }
+    if ((state.charge ?? 0) >= chargeCost && !state.superArmed) {
+      return {
+        tone: "super",
+        text: "\u0417\u0430\u0440\u044F\u0434 \u043F\u043E\u043B\u043E\u043D. \u0421\u0423\u041F\u0415\u0420 \u0431\u044C\u0451\u0442 \u0432\u0434\u0432\u043E\u0435 \u0441\u0438\u043B\u044C\u043D\u0435\u0435 \u0432 \u0442\u043E\u043C \u0441\u043B\u043E\u0442\u0435, \u043A\u043E\u0442\u043E\u0440\u044B\u0439 \u0432\u044B\u0431\u0435\u0440\u0435\u0448\u044C."
+      };
+    }
+    return {
+      tone: "combo",
+      text: "\u041F\u0435\u0440\u0432\u044B\u0435 \u0442\u0440\u0438 \u0445\u043E\u0434\u0430 \u0441\u043A\u043B\u0430\u0434\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u0432 \u0443\u0437\u043E\u0440: \u0447\u0435\u043C \u0431\u043E\u043B\u044C\u0448\u0435 \u0432 \u043D\u0438\u0445 \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432, \u0442\u0435\u043C \u0441\u0438\u043B\u044C\u043D\u0435\u0435 \u0443\u0434\u0430\u0440."
+    };
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/audio.js
+  var ctx;
+  var muted = (() => {
+    try {
+      const q = new URLSearchParams(globalThis.location?.search ?? "");
+      return q.has("\u0442\u0438\u0445\u043E") || q.has("quiet");
+    } catch {
+      return false;
+    }
+  })();
+  var setMuted = (value) => {
+    muted = Boolean(value);
+  };
+  function engine() {
+    if (muted) return null;
+    const Engine = window.AudioContext || window.webkitAudioContext;
+    if (!Engine) return null;
+    ctx ||= new Engine();
+    if (ctx.state === "suspended") void ctx.resume();
+    return ctx;
+  }
+  function tone(frequency, duration = 80, { type = "square", gain = 0.035 } = {}) {
+    const audio = engine();
+    if (!audio) return;
+    const osc = audio.createOscillator();
+    const amp = audio.createGain();
+    osc.type = type;
+    osc.frequency.value = frequency;
+    amp.gain.setValueAtTime(gain, audio.currentTime);
+    amp.gain.exponentialRampToValueAtTime(1e-4, audio.currentTime + duration / 1e3);
+    osc.connect(amp).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + duration / 1e3);
+  }
+  function sweep(from, to, duration = 260) {
+    const audio = engine();
+    if (!audio) return;
+    const osc = audio.createOscillator();
+    const amp = audio.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(from, audio.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(to, audio.currentTime + duration / 1e3);
+    amp.gain.setValueAtTime(0.03, audio.currentTime);
+    amp.gain.exponentialRampToValueAtTime(1e-4, audio.currentTime + duration / 1e3);
+    osc.connect(amp).connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + duration / 1e3);
+  }
+  function haptic(pattern) {
+    if (muted) return;
+    try {
+      navigator.vibrate?.(pattern);
+    } catch {
+    }
+  }
+  function wakeAudioOnInteraction() {
+    const resume = () => {
+      if (ctx?.state === "suspended") void ctx.resume().catch(() => {
+      });
+    };
+    ["pointerdown", "touchstart", "keydown", "pageshow"].forEach((type) => window.addEventListener(type, resume, { passive: true }));
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) resume();
+    });
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/fighter.js
+  var seq = 0;
+  var LIMB = { thigh: 15, shin: 11, upper: 11, fore: 9 };
+  function fighterSvg({ element = "fire", side = "player" } = {}) {
+    const uid = `f${seq += 1}`;
+    const glow = ELEMENT[element]?.color ?? "#94a3b8";
+    return `
+<svg viewBox="0 0 120 170" preserveAspectRatio="xMidYMax meet"
+     xmlns="http://www.w3.org/2000/svg" role="img" class="fighter-svg">
+  <defs>
+    <!-- userSpaceOnUse \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u0435\u043D: \u0434\u043E\u043B\u0438 \u043E\u0433\u0440\u0430\u043D\u0438\u0447\u0438\u0432\u0430\u044E\u0449\u0435\u0433\u043E \u043F\u0440\u044F\u043C\u043E\u0443\u0433\u043E\u043B\u044C\u043D\u0438\u043A\u0430
+         \u0432\u044B\u0440\u043E\u0436\u0434\u0430\u044E\u0442\u0441\u044F \u043D\u0430 \u0432\u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u043B\u0438\u043D\u0438\u0438, \u0438 \u043A\u043E\u043D\u0435\u0447\u043D\u043E\u0441\u0442\u0438 \u043D\u0435 \u0440\u0438\u0441\u0443\u044E\u0442\u0441\u044F \u0432\u043E\u0432\u0441\u0435. -->
+    <linearGradient id="body-${uid}" gradientUnits="userSpaceOnUse"
+                    x1="20" y1="20" x2="96" y2="164">
+      <stop offset="0%" stop-color="#1b2130"/>
+      <stop offset="100%" stop-color="#04060b"/>
+    </linearGradient>
+    <!-- \u0421\u0432\u0435\u0442 \u0438\u0437-\u043F\u043E\u0434 \u043D\u043E\u0433, \u0430 \u043D\u0435 \u0448\u0430\u0440 \u0432\u043E\u043A\u0440\u0443\u0433 \u0431\u043E\u0439\u0446\u0430: \u0441\u0438\u043B\u0443\u044D\u0442 \u0434\u043E\u043B\u0436\u0435\u043D \u0447\u0438\u0442\u0430\u0442\u044C\u0441\u044F
+         \u043D\u0430 \u0444\u043E\u043D\u0435, \u0430 \u043D\u0435 \u0441\u0438\u0434\u0435\u0442\u044C \u0432 \u043F\u0443\u0437\u044B\u0440\u0435. -->
+    <radialGradient id="rim-${uid}" gradientUnits="userSpaceOnUse" cx="58" cy="150" r="58">
+      <stop offset="0%" stop-color="${glow}" stop-opacity=".38"/>
+      <stop offset="55%" stop-color="${glow}" stop-opacity=".1"/>
+      <stop offset="100%" stop-color="${glow}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <ellipse class="ground-shadow" cx="58" cy="163" rx="30" ry="5" fill="#000" opacity=".45"/>
+  <ellipse class="aura" cx="58" cy="150" rx="56" ry="34" fill="url(#rim-${uid})"/>
+
+  <g class="fig" stroke="url(#body-${uid})" fill="none" stroke-linecap="round">
+    <!-- \u0434\u0430\u043B\u044C\u043D\u0438\u0435 \u043A\u043E\u043D\u0435\u0447\u043D\u043E\u0441\u0442\u0438 \u0442\u0435\u043C\u043D\u0435\u0435: \u0442\u0430\u043A \u0441\u0438\u043B\u0443\u044D\u0442 \u043D\u0435 \u0441\u043B\u0438\u0432\u0430\u0435\u0442\u0441\u044F \u0432 \u043F\u044F\u0442\u043D\u043E -->
+    <g class="leg-back" opacity=".72">
+      <path d="M58 96 L58 128" stroke-width="${LIMB.thigh}"/>
+      <g class="shin-back">
+        <path d="M58 128 L58 156" stroke-width="${LIMB.shin}"/>
+        <path class="foot" d="M58 156 L74 156" stroke-width="${LIMB.shin}"/>
+      </g>
+    </g>
+    <g class="arm-back" opacity=".72">
+      <path d="M58 62 L58 88" stroke-width="${LIMB.upper}"/>
+      <g class="fore-back">
+        <path d="M58 88 L58 110" stroke-width="${LIMB.fore}"/>
+        <circle class="fist" cx="58" cy="112" r="7" fill="url(#body-${uid})" stroke="none"/>
+      </g>
+    </g>
+
+    <g class="torso">
+      <path d="M58 98 L58 58" stroke-width="26"/>
+      <path class="belt" d="M46 92 L70 92" stroke="${glow}" stroke-width="4" opacity=".8"/>
+      <g class="head">
+        <circle cx="58" cy="42" r="14" fill="url(#body-${uid})" stroke="none"/>
+        <path class="band" d="M45 38 L71 38" stroke="${glow}" stroke-width="3.4" opacity=".9"/>
+        <path class="band-tail" d="M45 38 L33 30" stroke="${glow}" stroke-width="3" opacity=".75"/>
+        <ellipse class="eye" cx="64" cy="43" rx="4" ry="2.4" fill="${glow}" stroke="none"/>
+      </g>
+
+      <g class="arm-front">
+        <path d="M58 62 L58 88" stroke-width="${LIMB.upper}"/>
+        <g class="fore-front">
+          <path d="M58 88 L58 110" stroke-width="${LIMB.fore}"/>
+          <circle class="fist" cx="58" cy="112" r="7.5" fill="url(#body-${uid})" stroke="none"/>
+        </g>
+      </g>
+    </g>
+
+    <g class="leg-front">
+      <path d="M58 96 L58 128" stroke-width="${LIMB.thigh}"/>
+      <g class="shin-front">
+        <path d="M58 128 L58 156" stroke-width="${LIMB.shin}"/>
+        <path class="foot" d="M58 156 L74 156" stroke-width="${LIMB.shin}"/>
+      </g>
+    </g>
+  </g>
+</svg>`.trim();
+  }
+  var POSES = {
+    idle: { torso: -2, head: 2, armBack: 24, foreBack: -78, armFront: -18, foreFront: -74, legBack: 12, shinBack: -14, legFront: -12, shinFront: 10 },
+    guard: { torso: -6, head: 4, armBack: 14, foreBack: -96, armFront: -34, foreFront: -96, legBack: 16, shinBack: -18, legFront: -14, shinFront: 12 },
+    punch: { torso: -12, head: 6, armBack: 34, foreBack: -110, armFront: -96, foreFront: -6, legBack: 18, shinBack: -16, legFront: -16, shinFront: 10 },
+    hook: { torso: -18, head: 10, armBack: 40, foreBack: -100, armFront: -74, foreFront: -58, legBack: 20, shinBack: -18, legFront: -20, shinFront: 14 },
+    kick: { torso: 10, head: -6, armBack: 44, foreBack: -70, armFront: -50, foreFront: -70, legBack: 6, shinBack: -8, legFront: -84, shinFront: 6 },
+    highKick: { torso: 18, head: -10, armBack: 56, foreBack: -60, armFront: -62, foreFront: -60, legBack: 4, shinBack: -6, legFront: -116, shinFront: -4 },
+    jumpKick: { torso: 6, head: -4, armBack: 62, foreBack: -70, armFront: -70, foreFront: -70, legBack: -46, shinBack: -84, legFront: -100, shinFront: 4 },
+    headbutt: { torso: -26, head: 22, armBack: 30, foreBack: -104, armFront: -26, foreFront: -104, legBack: 22, shinBack: -20, legFront: -24, shinFront: 16 },
+    // Апперкот, локоть, вертушка и низкий подсек: шести ударов на пять
+    // обменов в раунде мало — повтор бросался в глаза уже на втором раунде.
+    uppercut: { torso: -8, head: -14, armBack: 26, foreBack: -96, armFront: -150, foreFront: -40, legBack: 14, shinBack: -12, legFront: -30, shinFront: 22 },
+    elbow: { torso: -22, head: 8, armBack: 36, foreBack: -96, armFront: -40, foreFront: -142, legBack: 16, shinBack: -14, legFront: -18, shinFront: 12 },
+    spinKick: { torso: 26, head: 16, armBack: -70, foreBack: -30, armFront: 74, foreFront: -34, legBack: 10, shinBack: -10, legFront: -96, shinFront: -22 },
+    lowKick: { torso: 4, head: -2, armBack: 38, foreBack: -84, armFront: -44, foreFront: -78, legBack: 10, shinBack: -12, legFront: -46, shinFront: 32 },
+    hurt: { torso: 22, head: -18, armBack: -34, foreBack: -40, armFront: 30, foreFront: -30, legBack: 18, shinBack: -12, legFront: 8, shinFront: 18 },
+    down: { torso: 74, head: -30, armBack: -60, foreBack: -20, armFront: 50, foreFront: -14, legBack: 30, shinBack: -70, legFront: 44, shinFront: -60 },
+    win: { torso: -4, head: -4, armBack: 150, foreBack: -30, armFront: 140, foreFront: -26, legBack: 10, shinBack: -10, legFront: -10, shinFront: 8 }
+  };
+  var ATTACK_POSES = [
+    "punch",
+    "hook",
+    "uppercut",
+    "elbow",
+    "headbutt",
+    "kick",
+    "lowKick",
+    "highKick",
+    "spinKick",
+    "jumpKick"
+  ];
+  var JOINTS = {
+    torso: [".torso", 58, 98],
+    head: [".head", 58, 58],
+    armBack: [".arm-back", 58, 62],
+    foreBack: [".fore-back", 58, 88],
+    armFront: [".arm-front", 58, 62],
+    foreFront: [".fore-front", 58, 88],
+    legBack: [".leg-back", 58, 96],
+    shinBack: [".shin-back", 58, 128],
+    legFront: [".leg-front", 58, 96],
+    shinFront: [".shin-front", 58, 128]
+  };
+  function applyPose(node, poseName) {
+    const pose = POSES[poseName] ?? POSES.idle;
+    for (const joint of Object.keys(JOINTS)) {
+      node.style.setProperty(`--${joint}`, `${pose[joint] ?? 0}deg`);
+    }
+    node.dataset.pose = poseName;
+  }
+  function pickAttack(recent) {
+    const skip = new Set(Array.isArray(recent) ? recent : [recent]);
+    const options = ATTACK_POSES.filter((name) => !skip.has(name));
+    return options[Math.floor(Math.random() * options.length)];
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/backdrop.js
+  var seq2 = 0;
+  var SKY = {
+    fire: { top: "#150a12", bottom: "#3a1408", haze: "#f97316" },
+    water: { top: "#07131f", bottom: "#0b3247", haze: "#38bdf8" },
+    wind: { top: "#0b1418", bottom: "#1d2e18", haze: "#a3e635" }
+  };
+  var BACKDROP_LAYERS = ["far", "mid", "near"];
+  function layerSrc(element, layer) {
+    return `./assets/bg-${element}-${layer}.webp`;
+  }
+  function backdropSvg(element = "fire") {
+    const uid = `b${seq2 += 1}`;
+    const sky = SKY[element] ?? SKY.fire;
+    return `
+<svg class="backdrop" viewBox="0 0 400 200" preserveAspectRatio="none"
+     xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <linearGradient id="sky-${uid}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="200">
+      <stop offset="0%" stop-color="${sky.top}"/>
+      <stop offset="100%" stop-color="${sky.bottom}"/>
+    </linearGradient>
+    <radialGradient id="haze-${uid}" gradientUnits="userSpaceOnUse" cx="200" cy="150" r="190">
+      <stop offset="0%" stop-color="${sky.haze}" stop-opacity=".34"/>
+      <stop offset="100%" stop-color="${sky.haze}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="400" height="200" fill="url(#sky-${uid})"/>
+  <ellipse cx="200" cy="152" rx="190" ry="76" fill="url(#haze-${uid})"/>
+</svg>`.trim();
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/animateka.js
+  var ANIMATEKA = Object.freeze({
+    pageMs: 600,
+    softOut: "cubic-bezier(.22,.61,.36,1)",
+    fadeIn: "cubic-bezier(.4,0,.2,1)",
+    fadeOut: "cubic-bezier(.4,0,1,1)"
+  });
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/arena.js
+  var CLASH_MS = 220 + 320 + 200 + 210 + 200;
+  var T = {
+    windup: 220,
+    travel: 320,
+    meet: 200,
+    follow: 210,
+    recover: 200,
+    ko: 700
+  };
+  var IMPACT = {
+    "water:fire": "steam",
+    "wind:water": "spray",
+    "fire:wind": "flare"
+  };
+  var impactStyle = (winner, loser) => IMPACT[`${winner}:${loser}`] ?? "plain";
+  var PLAYER_WINS = /* @__PURE__ */ new Set(["win", "stun", "super-hit"]);
+  var ENEMY_WINS = /* @__PURE__ */ new Set(["lose", "crit", "super-fail"]);
+  var schedule = (fn, ms) => {
+    setTimeout(fn, ms);
+  };
+  function setScheduler(fn) {
+    if (typeof fn !== "function") {
+      throw new TypeError("setScheduler: \u043D\u0443\u0436\u043D\u044B \u0447\u0430\u0441\u044B-\u0444\u0443\u043D\u043A\u0446\u0438\u044F (fn, ms), \u043F\u0440\u0438\u0448\u043B\u043E " + typeof fn);
+    }
+    const before = schedule;
+    schedule = fn;
+    return () => {
+      schedule = before;
+    };
+  }
+  function createArena({ root, fxLayer, caption, playerNode, enemyNode }) {
+    let lastAttack = { player: null, enemy: null };
+    let speed = 1;
+    let pendingSpeed = 1;
+    let busy = false;
+    let generation = 0;
+    const instant = () => speed === 0;
+    const rate = () => Math.max(0.05, speed);
+    const wait = (ms) => instant() ? Promise.resolve() : new Promise((r) => schedule(r, ms / rate()));
+    const abort = () => {
+      generation += 1;
+    };
+    const stale = (mine) => mine !== generation;
+    function mount({ playerElement = "water", enemyElement = "fire" } = {}) {
+      abort();
+      playerNode.innerHTML = fighterSvg({ element: playerElement, side: "player" });
+      enemyNode.innerHTML = fighterSvg({ element: enemyElement, side: "enemy" });
+      applyPose(playerNode, "idle");
+      applyPose(enemyNode, "idle");
+      lastAttack = { player: null, enemy: null };
+      let stage = root.querySelector(".backdrop-layer");
+      if (!stage) {
+        stage = document.createElement("div");
+        stage.className = "backdrop-layer";
+        root.prepend(stage);
+      }
+      stage.replaceChildren();
+      stage.insertAdjacentHTML("afterbegin", backdropSvg(enemyElement));
+      for (const layer of BACKDROP_LAYERS) {
+        const img = document.createElement("img");
+        img.className = `backdrop-plane backdrop-plane--${layer}`;
+        img.decoding = "async";
+        img.alt = "";
+        img.src = layerSrc(enemyElement, layer);
+        stage.append(img);
+      }
+      root.style.setProperty("--enemy-glow", tint(enemyElement, 0.16));
+      root.style.setProperty("--player-glow", tint(playerElement, 0.12));
+      resetPoses();
+      fxLayer.replaceChildren();
+      hideCaption();
+      spawnMotes(enemyElement);
+    }
+    const tint = (element, alpha) => {
+      const hex = ELEMENT[element]?.color ?? "#94a3b8";
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+    function spawnMotes(element) {
+      root.querySelectorAll(".mote").forEach((node) => node.remove());
+      root.dataset.air = element;
+      const count = element === "wind" ? 14 : 10;
+      for (let i = 0; i < count; i += 1) {
+        const mote = document.createElement("div");
+        mote.className = "mote";
+        mote.style.left = `${4 + Math.random() * 92}%`;
+        mote.style.bottom = `${2 + Math.random() * 34}%`;
+        const base = element === "fire" ? 4 : element === "wind" ? 3 : 9;
+        mote.style.animationDuration = `${base + Math.random() * base}s`;
+        mote.style.animationDelay = `${-Math.random() * 12}s`;
+        mote.style.setProperty("--drift", `${(Math.random() - 0.5) * 60}px`);
+        root.prepend(mote);
+      }
+    }
+    function resetPoses() {
+      for (const node of [playerNode, enemyNode]) {
+        node.classList.remove("casting", "hurt", "stunned", "down", "victor", "striking", "engaged");
+        applyPose(node, "idle");
+      }
+    }
+    function tintStrike(node, element, cls = "struck") {
+      node.style.setProperty("--strike", ELEMENT[element]?.color ?? "#f87171");
+      node.classList.remove(cls);
+      void node.offsetWidth;
+      node.classList.add(cls);
+    }
+    function strike(node, who) {
+      const pose = pickAttack(lastAttack[who]);
+      lastAttack[who] = [pose, lastAttack[who]?.[0]].filter(Boolean);
+      node.classList.add("striking");
+      applyPose(node, pose);
+      return pose;
+    }
+    const settle = (node, pose) => {
+      node.classList.remove("striking");
+      applyPose(node, pose);
+    };
+    function setOrb(node, element) {
+      const color = ELEMENT[element]?.color;
+      if (!color) return;
+      node.querySelectorAll(".eye, .belt, .band, .band-tail").forEach((el2) => {
+        el2.style[el2.tagName === "path" ? "stroke" : "fill"] = color;
+      });
+    }
+    const point = (el2, yShare = 0.5) => {
+      const box = root.getBoundingClientRect();
+      const rect = el2.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2 - box.left,
+        y: rect.top + rect.height * yShare - box.top
+      };
+    };
+    const orbPoint = (node) => {
+      const fist = node.querySelector(".arm-front .fist");
+      return fist ? point(fist) : point(node, 0.35);
+    };
+    const bodyPoint = (node) => point(node, 0.42);
+    function spawnBolt(element, from, to, { big = false, duration = T.travel } = {}) {
+      const info = ELEMENT[element];
+      const bolt = document.createElement("div");
+      bolt.className = big ? "bolt super" : "bolt";
+      bolt.textContent = info.glyph;
+      bolt.style.setProperty("--bolt-color", info.color);
+      fxLayer.appendChild(bolt);
+      const anim = bolt.animate(
+        [
+          { transform: `translate(${from.x}px, ${from.y}px) scale(.35)`, opacity: 0 },
+          { transform: `translate(${from.x + (to.x - from.x) * 0.18}px, ${from.y + (to.y - from.y) * 0.18 - 12}px) scale(1)`, opacity: 1, offset: 0.22 },
+          { transform: `translate(${to.x}px, ${to.y}px) scale(1.05)`, opacity: 1 }
+        ],
+        { duration: duration / rate(), easing: "cubic-bezier(.25,.6,.4,1)", fill: "forwards" }
+      );
+      return { node: bolt, done: anim.finished.catch(() => {
+      }) };
+    }
+    function extinguishFire(at) {
+      if (!document.body.classList.contains("showcase") && !root.isConnected) return;
+      const wave = document.createElement("div");
+      wave.className = "element-clash-wave";
+      wave.style.transform = `translate(${at.x}px, ${at.y}px)`;
+      fxLayer.appendChild(wave);
+      const steam = document.createElement("div");
+      steam.className = "element-clash-steam";
+      steam.style.transform = `translate(${at.x}px, ${at.y}px)`;
+      fxLayer.appendChild(steam);
+      const crownAt = bodyPoint(enemyNode);
+      const crown = document.createElement("div");
+      crown.className = "element-crown-fire";
+      crown.textContent = "\u265B\u{1F525}";
+      crown.style.transform = `translate(${crownAt.x}px, ${crownAt.y - 58}px)`;
+      fxLayer.appendChild(crown);
+      crown.animate([
+        { transform: `translate(${crownAt.x}px, ${crownAt.y - 58}px) scale(1)`, opacity: 1, filter: "brightness(1.8) saturate(1.35)" },
+        { transform: `translate(${crownAt.x}px, ${crownAt.y - 68}px) scale(.72) rotate(-8deg)`, opacity: 0.12, filter: "brightness(.45) saturate(.2)" }
+      ], { duration: ANIMATEKA.pageMs, easing: ANIMATEKA.fadeOut, fill: "forwards" }).finished.catch(() => {
+      }).then(() => crown.remove());
+      const options = { duration: ANIMATEKA.pageMs, easing: ANIMATEKA.softOut, fill: "forwards" };
+      wave.animate([
+        { transform: `translate(${at.x + 210}px, ${at.y}px) scale(.25, .45)`, opacity: 0 },
+        { transform: `translate(${at.x - 28}px, ${at.y}px) scale(2.8, 1.25)`, opacity: 0.96, offset: 0.62 },
+        { transform: `translate(${at.x - 108}px, ${at.y}px) scale(3.7, 1.65)`, opacity: 0 }
+      ], options).finished.catch(() => {
+      }).then(() => wave.remove());
+      steam.animate([
+        { transform: `translate(${at.x}px, ${at.y + 16}px) scale(.4)`, opacity: 0 },
+        { transform: `translate(${at.x - 8}px, ${at.y - 52}px) scale(2.2)`, opacity: 0.82, offset: 0.45 },
+        { transform: `translate(${at.x - 18}px, ${at.y - 108}px) scale(3.1)`, opacity: 0 }
+      ], { duration: ANIMATEKA.pageMs, easing: ANIMATEKA.fadeIn, fill: "forwards" }).finished.catch(() => {
+      }).then(() => steam.remove());
+    }
+    function particle(style, index, total) {
+      const spread = Math.PI * 2 * index / total;
+      switch (style) {
+        case "steam":
+          return {
+            angle: -Math.PI / 2 + (Math.random() - 0.5) * 1.7,
+            reach: 34 + Math.random() * 40,
+            duration: 620 + Math.random() * 320,
+            size: 5,
+            color: "#e2e8f0"
+          };
+        case "spray":
+          return {
+            angle: (index % 2 ? 0 : Math.PI) + (Math.random() - 0.5) * 1.1,
+            reach: 46 + Math.random() * 44,
+            duration: 300 + Math.random() * 180,
+            size: 3,
+            color: null
+          };
+        case "flare":
+          return {
+            angle: spread - Math.PI / 6 + Math.random() * 0.5,
+            reach: 38 + Math.random() * 40,
+            duration: 380 + Math.random() * 260,
+            size: 4,
+            color: null
+          };
+        default:
+          return {
+            angle: spread + Math.random() * 0.4,
+            reach: 28 + Math.random() * 34,
+            duration: 360 + Math.random() * 220,
+            size: 3,
+            color: null
+          };
+      }
+    }
+    function burst(at, color, { size = 1, sparks = 8, style = "plain" } = {}) {
+      const ring = document.createElement("div");
+      ring.className = "burst";
+      ring.style.setProperty("--burst-color", color);
+      ring.style.transform = `translate(${at.x}px, ${at.y}px)`;
+      fxLayer.appendChild(ring);
+      ring.animate(
+        [
+          { transform: `translate(${at.x}px, ${at.y}px) scale(.2)`, opacity: 1 },
+          { transform: `translate(${at.x}px, ${at.y}px) scale(${3.4 * size})`, opacity: 0 }
+        ],
+        { duration: 420 / rate(), easing: "cubic-bezier(.1,.8,.3,1)" }
+      ).finished.catch(() => {
+      }).then(() => ring.remove());
+      for (let i = 0; i < sparks; i += 1) {
+        const p = particle(style, i, sparks);
+        const reach = p.reach * size;
+        const spark = document.createElement("div");
+        spark.className = "spark";
+        spark.style.setProperty("--burst-color", p.color ?? color);
+        spark.style.width = `${p.size}px`;
+        spark.style.height = `${p.size}px`;
+        spark.style.margin = `${-p.size / 2}px 0 0 ${-p.size / 2}px`;
+        if (style === "steam") spark.style.filter = "blur(1.5px)";
+        fxLayer.appendChild(spark);
+        spark.animate(
+          [
+            { transform: `translate(${at.x}px, ${at.y}px) scale(1)`, opacity: style === "steam" ? 0.75 : 1 },
+            { transform: `translate(${at.x + Math.cos(p.angle) * reach}px, ${at.y + Math.sin(p.angle) * reach}px) scale(${style === "steam" ? 1.8 : 0.2})`, opacity: 0 }
+          ],
+          { duration: p.duration / rate(), easing: "ease-out" }
+        ).finished.catch(() => {
+        }).then(() => spark.remove());
+      }
+    }
+    function damagePop(at, amount, critical) {
+      const pop = document.createElement("div");
+      pop.className = critical ? "damage-pop crit" : "damage-pop";
+      pop.textContent = `\u2212${amount}`;
+      pop.style.color = critical ? "" : "#fca5a5";
+      fxLayer.appendChild(pop);
+      pop.animate(
+        [
+          { transform: `translate(${at.x}px, ${at.y}px) scale(.6)`, opacity: 0 },
+          { transform: `translate(${at.x}px, ${at.y - 18}px) scale(1.1)`, opacity: 1, offset: 0.3 },
+          { transform: `translate(${at.x}px, ${at.y - 52}px) scale(1)`, opacity: 0 }
+        ],
+        { duration: 780 / rate(), easing: "ease-out" }
+      ).finished.catch(() => {
+      }).then(() => pop.remove());
+    }
+    function shake(hard) {
+      const cls = hard ? "shake-hard" : "shake";
+      root.classList.remove("shake", "shake-hard");
+      void root.offsetWidth;
+      root.classList.add(cls);
+      schedule(() => root.classList.remove(cls), hard ? 440 : 340);
+    }
+    function showCaption(text) {
+      if (!text) return;
+      caption.textContent = text;
+      caption.classList.add("on");
+    }
+    const hideCaption = () => caption.classList.remove("on");
+    async function playClash(event, { onImpact, enemySignature = null } = {}) {
+      speed = pendingSpeed;
+      const mine = generation;
+      const land = () => onImpact?.(event);
+      if (instant()) {
+        land();
+        return;
+      }
+      busy = true;
+      try {
+        await runClash(event, land, mine, enemySignature);
+      } finally {
+        busy = false;
+      }
+    }
+    async function runClash(event, land, mine, enemySignature) {
+      const victim = PLAYER_WINS.has(event.outcome) ? enemyNode : ENEMY_WINS.has(event.outcome) ? playerNode : null;
+      const critical = event.outcome === "crit" || event.outcome === "super-fail" || event.damage > 1;
+      const isSuper = event.outcome.startsWith("super");
+      playerNode.classList.add("engaged");
+      enemyNode.classList.add("engaged");
+      setOrb(playerNode, event.player);
+      playerNode.classList.add("casting");
+      strike(playerNode, "player");
+      tone(ELEMENT[event.player].tone, 70);
+      if (event.enemy) {
+        setOrb(enemyNode, event.enemy);
+        enemyNode.classList.add("casting");
+        strike(enemyNode, "enemy");
+        if (enemySignature) tintStrike(enemyNode, enemySignature, "tell");
+      }
+      if (isSuper) sweep(220, 720, 240);
+      await wait(T.windup);
+      if (stale(mine)) return;
+      playerNode.classList.remove("casting");
+      enemyNode.classList.remove("casting");
+      const from = orbPoint(playerNode);
+      const enemyFrom = orbPoint(enemyNode);
+      const meet = { x: (from.x + enemyFrom.x) / 2, y: (from.y + enemyFrom.y) / 2 + 6 };
+      if (!event.enemy) {
+        enemyNode.classList.add("stunned");
+        const bolt = spawnBolt(event.player, from, bodyPoint(enemyNode), { duration: T.travel + T.follow });
+        await bolt.done;
+        if (stale(mine)) return;
+        bolt.node.remove();
+        burst(bodyPoint(enemyNode), ELEMENT[event.player].color, { size: 1.1, sparks: 10 });
+        enemyNode.classList.add("hurt");
+        tintStrike(enemyNode, event.player);
+        applyPose(enemyNode, "hurt");
+        land();
+        damagePop(bodyPoint(enemyNode), event.damage, false);
+        showCaption(event.phrase);
+        haptic(14);
+        tone(180, 110);
+        await wait(T.meet + T.recover);
+        if (stale(mine)) return;
+        enemyNode.classList.remove("hurt", "stunned", "struck");
+        settle(playerNode, "guard");
+        applyPose(enemyNode, "guard");
+        hideCaption();
+        return;
+      }
+      const playerBolt = spawnBolt(event.player, from, meet, { big: isSuper });
+      const enemyBolt = spawnBolt(event.enemy, enemyFrom, meet);
+      await Promise.all([playerBolt.done, enemyBolt.done]);
+      if (stale(mine)) return;
+      showCaption(event.phrase);
+      if (!victim) {
+        burst(meet, "#94a3b8", { size: 1.1, sparks: 12 });
+        playerBolt.node.remove();
+        enemyBolt.node.remove();
+        playerNode.classList.remove("clash");
+        enemyNode.classList.remove("clash");
+        void playerNode.offsetWidth;
+        playerNode.classList.add("clash");
+        enemyNode.classList.add("clash");
+        tone(150, 90, { type: "triangle" });
+        land();
+        await wait(T.meet + T.recover);
+        if (stale(mine)) return;
+        playerNode.classList.remove("clash");
+        enemyNode.classList.remove("clash");
+        settle(playerNode, "guard");
+        settle(enemyNode, "guard");
+        hideCaption();
+        return;
+      }
+      const winnerBolt = victim === enemyNode ? playerBolt : enemyBolt;
+      const loserBolt = victim === enemyNode ? enemyBolt : playerBolt;
+      const winnerElement = victim === enemyNode ? event.player : event.enemy;
+      const loserElement = victim === enemyNode ? event.enemy : event.player;
+      const style = impactStyle(winnerElement, loserElement);
+      burst(meet, ELEMENT[winnerElement].color, {
+        size: isSuper ? 1.4 : 1,
+        sparks: style === "steam" ? 12 : 10,
+        style
+      });
+      if (winnerElement === "water" && loserElement === "fire") extinguishFire(meet);
+      loserBolt.node.remove();
+      tone(ELEMENT[winnerElement].tone * 1.5, 80);
+      await wait(T.meet);
+      if (stale(mine)) return;
+      const target = bodyPoint(victim);
+      const current = winnerBolt.node.getBoundingClientRect();
+      const box = root.getBoundingClientRect();
+      const at = { x: current.left + current.width / 2 - box.left, y: current.top + current.height / 2 - box.top };
+      await winnerBolt.node.animate(
+        [
+          { transform: `translate(${at.x}px, ${at.y}px) scale(1)`, opacity: 1 },
+          { transform: `translate(${target.x}px, ${target.y}px) scale(${isSuper ? 1.5 : 1.2})`, opacity: 1 }
+        ],
+        { duration: T.follow / rate(), easing: "ease-in", fill: "forwards" }
+      ).finished.catch(() => {
+      });
+      if (stale(mine)) return;
+      winnerBolt.node.remove();
+      burst(target, ELEMENT[winnerElement].color, {
+        size: event.parry ? 2 : critical ? 1.5 : 1.1,
+        sparks: event.parry ? 20 : critical ? 14 : 8,
+        style
+      });
+      if (event.parry) {
+        sweep(300, 1100, 300);
+        shake(false);
+      }
+      victim.classList.add("hurt");
+      tintStrike(victim, winnerElement);
+      applyPose(victim, "hurt");
+      if (critical) shake(false);
+      land();
+      damagePop(target, event.damage, critical);
+      haptic(critical ? [22, 20, 34] : 14);
+      tone(critical ? 110 : 170, critical ? 170 : 110);
+      if (event.parry) {
+        showCaption(event.phrase);
+        tone(880, 130, { type: "triangle" });
+      }
+      await wait(T.recover);
+      if (stale(mine)) return;
+      victim.classList.remove("hurt", "struck");
+      settle(playerNode, "guard");
+      settle(enemyNode, "guard");
+      hideCaption();
+    }
+    async function playCombo(event) {
+      speed = pendingSpeed;
+      const mine = generation;
+      if (instant()) return;
+      showCaption(event.phrase);
+      const target = event.damage ? bodyPoint(enemyNode) : bodyPoint(playerNode);
+      const color = event.damage ? ELEMENT[event.element]?.color ?? "#fbbf24" : "#c084fc";
+      burst(target, color, { size: 1.8, sparks: 16, style: impactStyle(event.element, "wind") });
+      if (event.damage) {
+        enemyNode.classList.add("hurt");
+        damagePop(target, event.damage, true);
+        shake(false);
+      }
+      sweep(260, 900, 380);
+      haptic([24, 18, 34]);
+      await wait(T.meet + T.recover);
+      if (stale(mine)) return;
+      enemyNode.classList.remove("hurt");
+      hideCaption();
+    }
+    async function playComboMiss(event) {
+      speed = pendingSpeed;
+      const mine = generation;
+      if (instant()) return;
+      showCaption(event.phrase);
+      burst(bodyPoint(playerNode), "#8b7bb8", { size: 1.1, sparks: 7, style: "wind" });
+      haptic([12]);
+      await wait(T.meet);
+      if (stale(mine)) return;
+      hideCaption();
+    }
+    async function playOverheat(event) {
+      speed = pendingSpeed;
+      const mine = generation;
+      if (instant()) return;
+      showCaption(event.phrase);
+      const at = bodyPoint(playerNode);
+      burst(at, ELEMENT[event.element]?.color ?? "#f87171", {
+        size: 1.6,
+        sparks: 14,
+        style: impactStyle(event.element, "wind")
+      });
+      playerNode.classList.add("hurt");
+      tintStrike(playerNode, event.element, "overheating");
+      applyPose(playerNode, "hurt");
+      damagePop(at, event.damage, true);
+      shake(true);
+      sweep(520, 120, 320);
+      haptic([30, 20, 40]);
+      await wait(T.meet + T.recover);
+      if (stale(mine)) return;
+      playerNode.classList.remove("hurt", "overheating");
+      applyPose(playerNode, "guard");
+      hideCaption();
+    }
+    async function playKo(winner) {
+      speed = pendingSpeed;
+      const mine = generation;
+      const loser = winner === "player" ? enemyNode : playerNode;
+      const victor = winner === "player" ? playerNode : enemyNode;
+      loser.classList.remove("hurt", "stunned");
+      loser.classList.add("down");
+      victor.classList.add("victor");
+      applyPose(loser, "down");
+      applyPose(victor, "win");
+      burst(bodyPoint(loser), winner === "player" ? "#34d399" : "#f87171", { size: 2, sparks: 18 });
+      shake(true);
+      sweep(winner === "player" ? 260 : 420, winner === "player" ? 880 : 130, 420);
+      haptic(winner === "player" ? [26, 24, 40] : [60, 40, 80]);
+      await wait(T.ko);
+      return !stale(mine);
+    }
+    return {
+      mount,
+      resetPoses,
+      setOrb,
+      setPlayerElement: (element) => setOrb(playerNode, element),
+      setSpeed: (value) => {
+        pendingSpeed = value;
+        if (!busy) speed = value;
+      },
+      getSpeed: () => pendingSpeed,
+      abort,
+      playClash,
+      playCombo,
+      playComboMiss,
+      playOverheat,
+      playKo,
+      hideCaption
+    };
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/campaign.js
+  var HEAL_AFTER_WIN = 5;
+  var PLAYER_MAX_HP = 14;
+  var CAMPAIGN = [
+    {
+      id: "ember",
+      tier: "\u042F\u0420\u0423\u0421 I",
+      name: "\u0423\u0413\u041E\u041B\u0401\u041A",
+      title: "\u0443\u0447\u0435\u043D\u0438\u043A \u043E\u0433\u043D\u044F",
+      element: "fire",
+      hp: 11,
+      slots: 5,
+      timer: 20,
+      // Первый ярус учит ровно одному, и учит без исключений: он бьёт
+      // только огнём. Прежние 28% других стихий сбивали чтение именно там,
+      // где человек только учится смотреть, — и первая победа могла прийти
+      // от удачи, а не от разгадки.
+      signatureChance: 1,
+      baitWeight: 0,
+      readsPatterns: false,
+      teaches: "\u041E\u043D \u0431\u044C\u0451\u0442 \u0442\u043E\u043B\u044C\u043A\u043E \u043E\u0433\u043D\u0451\u043C. \u041F\u043E\u0441\u043C\u043E\u0442\u0440\u0438, \u0447\u0435\u043C \u0438\u043C\u0435\u043D\u043D\u043E, \u0438 \u043F\u043E\u0434\u0431\u0435\u0440\u0438 \u0441\u0442\u0438\u0445\u0438\u044E, \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u044D\u0442\u043E \u0433\u0430\u0441\u0438\u0442.",
+      reveal: "\u041E\u043D \u0438 \u043F\u0440\u0430\u0432\u0434\u0430 \u0437\u043D\u0430\u043B \u0442\u043E\u043B\u044C\u043A\u043E \u043E\u0433\u043E\u043D\u044C.",
+      intro: "\u042F \u0423\u0433\u043E\u043B\u0451\u043A. \u0417\u043D\u0430\u044E \u043E\u0434\u0438\u043D \u0442\u0440\u044E\u043A \u2014 \u043E\u0433\u043E\u043D\u044C. \u041D\u043E \u0438 \u0435\u0433\u043E \u0445\u0432\u0430\u0442\u0438\u0442, \u0435\u0441\u043B\u0438 \u0442\u044B \u043D\u0435 \u0437\u043D\u0430\u0435\u0448\u044C, \u0447\u0435\u043C \u0435\u0433\u043E \u0442\u0443\u0448\u0438\u0442\u044C.",
+      taunt: "\u0413\u043E\u0440\u0438!",
+      defeat: "\u041F\u043E\u0433\u0430\u0441... \u0418\u0434\u0438 \u0432\u044B\u0448\u0435, \u0442\u0430\u043C \u0441\u044B\u0440\u043E."
+    },
+    {
+      id: "stream",
+      tier: "\u042F\u0420\u0423\u0421 II",
+      name: "\u0420\u0423\u0421\u041B\u041E",
+      title: "\u0441\u0442\u0440\u0430\u0436 \u043F\u043E\u0442\u043E\u043A\u0430",
+      element: "water",
+      hp: 13,
+      slots: 5,
+      timer: 18,
+      signatureChance: 0.66,
+      baitWeight: 0.55,
+      punishBaitWeight: 0.92,
+      punishSlots: 3,
+      readWindow: 4,
+      readThreshold: 0.7,
+      readsPatterns: true,
+      readsSuper: true,
+      superRounds: 3,
+      superThreshold: 0.7,
+      spamWindow: 5,
+      spamThreshold: 0.6,
+      counterSlots: 1,
+      teaches: "\u0420\u0430\u0437\u0432\u0435\u0434\u043A\u0430 \u043D\u0430\u0434 \u0430\u0440\u0435\u043D\u043E\u0439 \u0441\u0447\u0438\u0442\u0430\u0435\u0442, \u0447\u0435\u043C \u043E\u043D \u0431\u044C\u0451\u0442. \u041D\u043E \u0438 \u043E\u043D \u0441\u0447\u0438\u0442\u0430\u0435\u0442 \u0437\u0430 \u0442\u043E\u0431\u043E\u0439: \u043E\u0434\u0438\u043D \u0438 \u0442\u043E\u0442 \u0436\u0435 \u0436\u0435\u0441\u0442 \u043F\u043E\u0434\u0440\u044F\u0434 \u2014 \u0447\u0438\u0442\u0430\u0435\u0442\u0441\u044F.",
+      reveal: "\u0415\u0433\u043E \u043A\u043E\u0440\u043E\u043D\u043A\u043E\u0439 \u0431\u044B\u043B\u0430 \u0432\u043E\u0434\u0430.",
+      intro: "\u042F \u0437\u0430\u043F\u043E\u043C\u0438\u043D\u0430\u044E \u0444\u043E\u0440\u043C\u0443 \u0431\u0435\u0440\u0435\u0433\u0430. \u041F\u043E\u0432\u0442\u043E\u0440\u0438\u0448\u044C\u0441\u044F \u0442\u0440\u0438\u0436\u0434\u044B \u2014 \u043F\u043E\u0434\u0441\u0442\u0440\u043E\u044E\u0441\u044C.",
+      taunt: "\u0422\u0435\u0447\u0435\u043D\u0438\u0435 \u0441\u0438\u043B\u044C\u043D\u0435\u0435 \u0442\u0435\u0431\u044F.",
+      defeat: "\u0420\u0430\u0437\u043B\u0438\u043B\u0441\u044F... \u0422\u044B \u043C\u0435\u043D\u044F\u0435\u0448\u044C\u0441\u044F \u0431\u044B\u0441\u0442\u0440\u0435\u0435, \u0447\u0435\u043C \u044F \u0443\u0441\u043F\u0435\u0432\u0430\u044E \u0437\u0430\u043F\u043E\u043C\u043D\u0438\u0442\u044C."
+    },
+    {
+      id: "draft",
+      tier: "\u042F\u0420\u0423\u0421 III",
+      name: "\u0421\u041A\u0412\u041E\u0417\u041D\u042F\u041A",
+      title: "\u0432\u0435\u0442\u0440\u0435\u043D\u044B\u0439 \u043F\u043B\u0443\u0442",
+      element: "wind",
+      hp: 16,
+      slots: 5,
+      timer: 16,
+      signatureChance: 0.7,
+      baitWeight: 0.6,
+      punishBaitWeight: 0.92,
+      punishSlots: 2,
+      readWindow: 4,
+      readThreshold: 0.7,
+      readsPatterns: true,
+      readsSuper: true,
+      superRounds: 2,
+      superThreshold: 0.6,
+      readsRhythm: true,
+      breaksCombos: true,
+      comboRounds: 3,
+      comboThreshold: 0.7,
+      rhythmSlots: 3,
+      rhythmRounds: 3,
+      rhythmThreshold: 0.8,
+      spamWindow: 5,
+      spamThreshold: 0.6,
+      counterSlots: 1,
+      teaches: "\u041F\u0440\u043E\u0431\u0435\u0439 \u043A\u043E\u0440\u043E\u043D\u043A\u0443 \u2014 \u0440\u0430\u0437 \u0437\u0430 \u0440\u0430\u0443\u043D\u0434 \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u043E\u0433\u043B\u0443\u0448\u0451\u043D \u0438 \u043F\u0440\u043E\u043F\u0443\u0441\u043A\u0430\u0435\u0442 \u0445\u043E\u0434. \u041D\u043E \u043E\u043D \u043F\u043E\u0434\u043C\u0435\u0448\u0438\u0432\u0430\u0435\u0442 \u0441\u0442\u0438\u0445\u0438\u044E, \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u0431\u044C\u0451\u0442 \u043E\u0447\u0435\u0432\u0438\u0434\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442.",
+      reveal: "\u0415\u0433\u043E \u043A\u043E\u0440\u043E\u043D\u043A\u043E\u0439 \u0431\u044B\u043B \u0432\u0435\u0442\u0435\u0440.",
+      intro: "\u042F \u0431\u044B\u0441\u0442\u0440\u0435\u0435. \u041D\u043E \u0442\u043E\u0442, \u043A\u0442\u043E \u043F\u043E\u0439\u043C\u0430\u0435\u0442 \u043C\u0435\u043D\u044F \u043D\u0430 \u043C\u043E\u0435\u0439 \u0436\u0435 \u0441\u0442\u0438\u0445\u0438\u0438, \u0441\u043E\u0431\u044C\u0451\u0442 \u043C\u0435\u043D\u044F \u0441 \u043D\u043E\u0433.",
+      taunt: "\u041D\u0435 \u0434\u043E\u0433\u043E\u043D\u0438\u0448\u044C.",
+      defeat: "\u0421\u0431\u0438\u0442... \u041B\u0430\u0434\u043D\u043E. \u041D\u0430\u0432\u0435\u0440\u0445\u0443 \u0442\u0435\u0431\u044F \u0436\u0434\u0443\u0442 \u0434\u0432\u043E\u0435 \u0432 \u043E\u0434\u043D\u043E\u043C."
+    },
+    {
+      id: "twoface",
+      tier: "\u042F\u0420\u0423\u0421 IV",
+      name: "\u0414\u0412\u0423\u041B\u0418\u041A\u0418\u0419",
+      title: "\u043D\u043E\u0441\u0438\u0442\u0435\u043B\u044C \u0434\u0432\u0443\u0445 \u043C\u0430\u0441\u043E\u043A",
+      element: "fire",
+      cycle: ["fire", "water", "wind"],
+      switchAt: 3,
+      hp: 19,
+      slots: 5,
+      timer: 14,
+      signatureChance: 0.74,
+      baitWeight: 0.6,
+      punishBaitWeight: 0.92,
+      punishSlots: 1,
+      readWindow: 4,
+      readThreshold: 0.7,
+      readsPatterns: true,
+      readsSuper: true,
+      superRounds: 2,
+      superThreshold: 0.6,
+      readsRhythm: true,
+      breaksCombos: true,
+      comboRounds: 2,
+      comboThreshold: 0.6,
+      rhythmSlots: 3,
+      rhythmRounds: 3,
+      rhythmThreshold: 0.8,
+      spamWindow: 5,
+      spamThreshold: 0.6,
+      counterSlots: 2,
+      teaches: "\u041E\u043D \u043D\u043E\u0441\u0438\u0442 \u0434\u0432\u0435 \u043C\u0430\u0441\u043A\u0438 \u0441\u0440\u0430\u0437\u0443: \u043E\u0434\u043D\u0443 \u0432 \u043D\u0430\u0447\u0430\u043B\u0435 \u0446\u0435\u043F\u043E\u0447\u043A\u0438, \u0434\u0440\u0443\u0433\u0443\u044E \u0432 \u043A\u043E\u043D\u0446\u0435. \u041F\u043E\u0441\u043C\u043E\u0442\u0440\u0438 \u043D\u0430 \u043F\u0440\u043E\u0448\u043B\u044B\u0439 \u0440\u0430\u0443\u043D\u0434 \u0432 \u0440\u0430\u0437\u0432\u0435\u0434\u043A\u0435 \u2014 \u043F\u0435\u0440\u0435\u0445\u043E\u0434 \u0432\u0438\u0434\u043D\u043E.",
+      reveal: "\u041F\u0435\u0440\u0432\u044B\u0435 \u0442\u0440\u0438 \u0441\u043B\u043E\u0442\u0430 \u043E\u043D \u0431\u0438\u043B \u043E\u0433\u043D\u0451\u043C, \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u0434\u0432\u0430 \u2014 \u0432\u043E\u0434\u043E\u0439.",
+      intro: "\u041E\u0434\u043D\u0430 \u043C\u0430\u0441\u043A\u0430 \u0443 \u043C\u0435\u043D\u044F \u0434\u043B\u044F \u043D\u0430\u0447\u0430\u043B\u0430 \u0431\u043E\u044F, \u0434\u0440\u0443\u0433\u0430\u044F \u0434\u043B\u044F \u043A\u043E\u043D\u0446\u0430. \u041F\u044F\u0442\u0438 \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445 \u0436\u0435\u0441\u0442\u043E\u0432 \u0442\u0435\u0431\u0435 \u043D\u0435 \u0445\u0432\u0430\u0442\u0438\u0442.",
+      taunt: "\u041A\u0430\u043A\u0430\u044F \u043C\u0430\u0441\u043A\u0430 \u043D\u0430 \u043C\u043D\u0435 \u0441\u0435\u0439\u0447\u0430\u0441?",
+      defeat: "\u041E\u0431\u0435 \u043C\u0430\u0441\u043A\u0438 \u0442\u0440\u0435\u0441\u043D\u0443\u043B\u0438. \u0412\u044B\u0448\u0435 \u2014 \u0442\u043E\u0442, \u043A\u0442\u043E \u043D\u0430\u0441 \u0441\u044E\u0434\u0430 \u043F\u043E\u0441\u0442\u0430\u0432\u0438\u043B."
+    },
+    {
+      id: "abyss",
+      tier: "\u042F\u0420\u0423\u0421 V",
+      name: "\u0410\u0420\u0425\u0418\u041C\u0410\u0413 \u0411\u0415\u0417\u0414\u041D\u042B",
+      title: "\u0445\u043E\u0437\u044F\u0438\u043D \u0431\u0430\u0448\u043D\u0438",
+      element: "fire",
+      hp: 19,
+      slots: 5,
+      timer: 12,
+      signatureChance: 0.72,
+      baitWeight: 0.7,
+      punishBaitWeight: 0.92,
+      punishSlots: 3,
+      readWindow: 4,
+      readThreshold: 0.7,
+      readsPatterns: true,
+      readsSuper: true,
+      superRounds: 2,
+      superThreshold: 0.55,
+      readsRhythm: true,
+      breaksCombos: true,
+      comboRounds: 2,
+      comboThreshold: 0.55,
+      rhythmSlots: 2,
+      rhythmRounds: 3,
+      rhythmThreshold: 0.8,
+      spamWindow: 5,
+      spamThreshold: 0.55,
+      counterSlots: 2,
+      enrageAt: 6,
+      enrageElement: "wind",
+      enrageSignatureChance: 0.78,
+      enrageBaitWeight: 0.72,
+      teaches: "\u041F\u043E\u043A\u0430 \u043E\u043D \u0441\u0438\u043B\u0451\u043D \u2014 \u0443 \u043D\u0435\u0433\u043E \u043E\u0434\u043D\u0430 \u0441\u0442\u0438\u0445\u0438\u044F. \u041A\u043E\u0433\u0434\u0430 \u043E\u0441\u0442\u0430\u043D\u0435\u0442\u0441\u044F \u043C\u0430\u043B\u043E \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u044F, \u043F\u0440\u043E\u0432\u0435\u0440\u044C, \u0442\u0430 \u0436\u0435 \u043B\u0438 \u043E\u043D\u0430.",
+      reveal: "\u041E\u043D \u043D\u0430\u0447\u0438\u043D\u0430\u043B \u0441 \u043E\u0433\u043D\u044F, \u0430 \u043D\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0445 \u0441\u0438\u043B\u0430\u0445 \u0443\u0445\u043E\u0434\u0438\u043B \u0432 \u0432\u0435\u0442\u0435\u0440.",
+      intro: "\u0422\u044B \u0434\u043E\u0448\u0451\u043B. \u0417\u043D\u0430\u0447\u0438\u0442, \u043F\u043E\u043D\u044F\u043B \u043F\u0440\u0430\u0432\u0438\u043B\u0430. \u041F\u043E\u0441\u043C\u043E\u0442\u0440\u0438\u043C, \u0447\u0442\u043E \u043E\u0441\u0442\u0430\u043D\u0435\u0442\u0441\u044F, \u043A\u043E\u0433\u0434\u0430 \u044F \u0438\u0445 \u0441\u043C\u0435\u043D\u044E \u043D\u0430 \u0441\u0435\u0440\u0435\u0434\u0438\u043D\u0435.",
+      taunt: "\u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u2014 \u043C\u043E\u0438.",
+      defeat: "\u0411\u0430\u0448\u043D\u044F \u0442\u0432\u043E\u044F. \u0421\u0442\u0438\u0445\u0438\u0438 \u0441\u043B\u0443\u0448\u0430\u044E\u0442 \u0442\u043E\u0433\u043E, \u043A\u0442\u043E \u043F\u043E\u043D\u044F\u043B, \u043F\u043E\u0447\u0435\u043C\u0443 \u043E\u043D\u0438 \u0441\u043B\u0443\u0448\u0430\u044E\u0442\u0441\u044F."
+    }
+  ];
+  var PROLOGUE = "\u0411\u0430\u0448\u043D\u044F \u0422\u0440\u0451\u0445 \u0421\u0442\u0438\u0445\u0438\u0439 \u043D\u0435 \u043F\u0443\u0441\u043A\u0430\u0435\u0442 \u043D\u0430\u0432\u0435\u0440\u0445 \u0442\u0435\u0445, \u043A\u0442\u043E \u043D\u0435 \u043F\u043E\u043D\u044F\u043B \u043F\u0440\u043E\u0441\u0442\u043E\u0433\u043E: \u0443 \u043A\u0430\u0436\u0434\u043E\u0439 \u0441\u0442\u0438\u0445\u0438\u0438 \u0435\u0441\u0442\u044C \u0442\u0430, \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u0435\u0451 \u0433\u0430\u0441\u0438\u0442. \u041F\u044F\u0442\u044C \u044F\u0440\u0443\u0441\u043E\u0432 \u2014 \u043F\u044F\u0442\u044C \u0441\u043F\u043E\u0441\u043E\u0431\u043E\u0432 \u044D\u0442\u043E \u0437\u0430\u0431\u044B\u0442\u044C.";
+  var EPILOGUE = "\u041D\u0430\u0432\u0435\u0440\u0445\u0443 \u043D\u0435\u0442 \u0441\u043E\u043A\u0440\u043E\u0432\u0438\u0449\u0430. \u0415\u0441\u0442\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u0432\u0438\u0434 \u043D\u0430 \u0442\u0440\u0438 \u0441\u0442\u0438\u0445\u0438\u0438, \u043A\u043E\u0442\u043E\u0440\u044B\u0435 \u043D\u0430\u043A\u043E\u043D\u0435\u0446 \u0432\u0441\u0442\u0430\u043B\u0438 \u0432 \u043F\u043E\u043D\u044F\u0442\u043D\u044B\u0439 \u043A\u0440\u0443\u0433. \u042D\u0442\u043E\u0433\u043E \u0434\u043E\u0441\u0442\u0430\u0442\u043E\u0447\u043D\u043E.";
+  var opponentAt = (index) => CAMPAIGN[index] ?? null;
+  var isFinalTier = (index) => index === CAMPAIGN.length - 1;
+  var healAfterWin = (hp) => Math.min(PLAYER_MAX_HP, hp + HEAL_AFTER_WIN);
+  function campaignScore({ tierIndex, cleared, hp, wins }) {
+    const tiers = cleared ? CAMPAIGN.length : tierIndex;
+    const gestures = Object.values(wins ?? {}).reduce((a, b) => a + b, 0);
+    return tiers * 500 + Math.max(0, hp) * 100 + gestures * 10 + (cleared ? 1e3 : 0);
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/rng.js
+  function makeRng(seed = 1) {
+    let a = seed >>> 0 || 1;
+    return function rng() {
+      a += 1831565813;
+      let t = a;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var pick = (list, rng) => list[Math.floor(rng() * list.length) % list.length];
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/showcase.js?v=2
+  var SEED = 20260830;
+  var SIZE = { width: 960, height: 540 };
+  var realRandom = null;
+  function pinRandom(seed) {
+    if (!realRandom) realRandom = Math.random;
+    const rng = makeRng(seed);
+    Math.random = rng;
+    return () => {
+      if (realRandom) Math.random = realRandom;
+    };
+  }
+  function makeClock() {
+    let now = 0;
+    let seq4 = 0;
+    let queue = [];
+    const known = /* @__PURE__ */ new WeakSet();
+    const schedule2 = (fn, ms) => {
+      seq4 += 1;
+      queue.push({ at: now + Math.max(0, ms), order: seq4, fn });
+    };
+    async function settle(times = 8) {
+      for (let i = 0; i < times; i += 1) await Promise.resolve();
+    }
+    const alive = () => document.getAnimations().filter((a) => a.playState !== "finished" && a.playState !== "idle");
+    function adopt() {
+      for (const a of alive()) {
+        if (known.has(a)) continue;
+        known.add(a);
+        try {
+          a.pause();
+          a.currentTime = 0;
+        } catch {
+        }
+      }
+    }
+    function advanceAnimations(ms) {
+      for (const a of alive()) {
+        let end = Infinity;
+        try {
+          end = a.effect?.getComputedTiming?.().endTime ?? Infinity;
+        } catch {
+        }
+        try {
+          const t = Number(a.currentTime) || 0;
+          a.currentTime = t + ms;
+          if (Number.isFinite(end) && t + ms >= end) a.finish();
+        } catch {
+        }
+      }
+    }
+    return {
+      schedule: schedule2,
+      get now() {
+        return now;
+      },
+      get pending() {
+        return queue.length;
+      },
+      hold() {
+        adopt();
+        return setScheduler(schedule2);
+      },
+      /**
+       * Продвинуть время на `ms`. Шагает квантами по кадру, потому что за
+       * один квант мир успевает родить новые анимации и новые таймеры, и
+       * прыжок через них сразу в конец их бы не проиграл.
+       */
+      async step(ms, quantum = 16) {
+        const target = now + ms;
+        while (now < target) {
+          const dt = Math.min(quantum, target - now);
+          now += dt;
+          adopt();
+          advanceAnimations(dt);
+          await settle();
+          for (; ; ) {
+            queue.sort((a, b) => a.at - b.at || a.order - b.order);
+            const i = queue.findIndex((t) => t.at <= now);
+            if (i < 0) break;
+            const [task] = queue.splice(i, 1);
+            task.fn();
+            await settle();
+          }
+          adopt();
+        }
+        await settle();
+      },
+      /** Вернуть настоящее время: часы арены и ход всем анимациям. */
+      release(restore) {
+        restore?.();
+        queue = [];
+        for (const a of document.getAnimations()) {
+          try {
+            a.play();
+          } catch {
+          }
+        }
+      }
+    };
+  }
+  function installShowcase(deps) {
+    const {
+      app: app2,
+      arena: arena2,
+      dom: dom2,
+      createBattle: createBattle2,
+      resolveRound: resolveRound2,
+      renderSlots: renderSlots2,
+      setSlot: setSlot2,
+      setHp: setHp2,
+      stopTimer: stopTimer2,
+      PLAYER_MAX_HP: PLAYER_MAX_HP2
+    } = deps;
+    const opponent = CAMPAIGN[0];
+    let casts = [];
+    let frozen = false;
+    let running = false;
+    let sceneRun = 0;
+    function sizeArena(width, height) {
+      dom2.arena.style.width = `${width}px`;
+      dom2.arena.style.height = `${height}px`;
+      dom2.arena.style.maxWidth = "none";
+      dom2.arena.style.minHeight = "0";
+    }
+    function stopFeeds() {
+      stopTimer2();
+      arena2.abort();
+      arena2.setSpeed(1);
+    }
+    function engage() {
+      dom2.fighterPlayer.classList.add("engaged");
+      dom2.fighterEnemy.classList.add("engaged");
+    }
+    function bareStage(on) {
+      document.body.classList.toggle("showcase", on);
+    }
+    function showOutcome(on) {
+      dom2.showcaseOutcome.hidden = !on;
+    }
+    function state() {
+      const box = dom2.arena.getBoundingClientRect();
+      const pose = (node) => node.dataset.pose ?? "";
+      const glow = (node) => node.style.getPropertyValue("--strike") || "";
+      const slots = (node) => [...node.querySelectorAll(".slot")].map((s) => `${s.textContent.trim() || "\xB7"}:${s.className.replace("slot ", "")}`).join("|");
+      const motes = [...dom2.arena.querySelectorAll(".mote")].map((m) => `${m.style.left}/${m.style.bottom}/${m.style.animationDelay}`).join(",");
+      return {
+        \u0430\u0440\u0435\u043D\u0430: [Math.round(box.width), Math.round(box.height)],
+        \u0444\u043E\u043D: [...dom2.arena.querySelectorAll(".backdrop-plane")].map((i) => i.getAttribute("src").split("/").pop()).join(","),
+        \u0431\u043E\u0439\u0446\u044B: {
+          \u0438\u0433\u0440\u043E\u043A: { \u043F\u043E\u0437\u0430: pose(dom2.fighterPlayer), \u0441\u0432\u0435\u0447\u0435\u043D\u0438\u0435: glow(dom2.fighterPlayer) },
+          \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A: { \u043F\u043E\u0437\u0430: pose(dom2.fighterEnemy), \u0441\u0432\u0435\u0447\u0435\u043D\u0438\u0435: glow(dom2.fighterEnemy) }
+        },
+        \u0441\u043B\u043E\u0442\u044B: { \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A: slots(dom2.enemySlots), \u0438\u0433\u0440\u043E\u043A: slots(dom2.playerSlots) },
+        \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435: [dom2.playerHpNum.textContent, dom2.enemyHpNum.textContent],
+        \u0447\u0430\u0441\u0442\u0438\u0446\u044B: motes,
+        \u043F\u0443\u043B\u044C\u0442: { \u043D\u0430\u0431\u0440\u0430\u043D\u043E: casts.length, \u0437\u0430\u043C\u043E\u0440\u043E\u0436\u0435\u043D: frozen, \u0438\u0434\u0451\u0442\u0423\u0434\u0430\u0440: running }
+      };
+    }
+    function scene({ seed = SEED, width = SIZE.width, height = SIZE.height, bare = true } = {}) {
+      sceneRun += 1;
+      setMuted(true);
+      pinRandom(seed);
+      stopFeeds();
+      casts = [];
+      frozen = false;
+      running = false;
+      bareStage(bare);
+      showOutcome(false);
+      sizeArena(width, height);
+      app2.rng = makeRng(seed);
+      app2.story = null;
+      app2.opponent = opponent;
+      app2.mode = { id: "showcase", name: "\u0412\u0418\u0422\u0420\u0418\u041D\u0410", slots: 5, timer: 0, log: "muted" };
+      app2.battle = createBattle2({
+        opponent,
+        slots: 5,
+        playerHp: PLAYER_MAX_HP2,
+        playerMaxHp: PLAYER_MAX_HP2,
+        charge: 0
+      });
+      app2.battle.favour = opponent.element;
+      app2.playerSlots = renderSlots2(dom2.playerSlots, 5, { window: 3 });
+      app2.enemySlots = renderSlots2(dom2.enemySlots, 5, { window: 3 });
+      app2.seq = [];
+      document.body.dataset.screen = "battle";
+      for (const id of ["screen-menu", "screen-modes", "screen-learn", "screen-story"]) {
+        document.getElementById(id).hidden = true;
+      }
+      document.getElementById("screen-battle").hidden = false;
+      document.getElementById("overlay").hidden = true;
+      document.getElementById("screen-battle").dataset.favour = opponent.element;
+      arena2.mount({ enemyElement: opponent.element, playerElement: counterTo(opponent.element) });
+      arena2.resetPoses();
+      arena2.hideCaption();
+      setHp2(dom2.playerHpBar, dom2.playerHpNum, PLAYER_MAX_HP2, PLAYER_MAX_HP2);
+      setHp2(dom2.enemyHpBar, dom2.enemyHpNum, opponent.hp, opponent.hp);
+      engage();
+      return state();
+    }
+    function cast(element) {
+      if (!ELEMENT[element]) return { \u043E\u0448\u0438\u0431\u043A\u0430: `\u043D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u0430\u044F \u0441\u0442\u0438\u0445\u0438\u044F: ${element}` };
+      if (frozen) return { \u043E\u0448\u0438\u0431\u043A\u0430: "\u0441\u0446\u0435\u043D\u0430 \u0437\u0430\u043C\u043E\u0440\u043E\u0436\u0435\u043D\u0430: \u0432\u044B\u0437\u043E\u0432\u0438 stihii.scene() \u0438 \u043F\u043E\u0441\u0442\u0430\u0432\u044C \u0435\u0451 \u0437\u0430\u043D\u043E\u0432\u043E" };
+      if (running) return { \u043E\u0448\u0438\u0431\u043A\u0430: "\u0443\u0434\u0430\u0440 \u0443\u0436\u0435 \u0438\u0434\u0451\u0442" };
+      if (!app2.battle) return { \u043E\u0448\u0438\u0431\u043A\u0430: "\u0441\u043D\u0430\u0447\u0430\u043B\u0430 \u0432\u044B\u0437\u043E\u0432\u0438 stihii.scene()" };
+      if (casts.length >= app2.battle.slots) return { \u043E\u0448\u0438\u0431\u043A\u0430: "\u0432\u0441\u0435 \u0441\u043B\u043E\u0442\u044B \u0441\u0446\u0435\u043D\u044B \u0443\u0436\u0435 \u0437\u0430\u043D\u044F\u0442\u044B" };
+      const index = casts.length;
+      casts.push(element);
+      setSlot2(app2.playerSlots[index], { element, state: "filled" });
+      setSlot2(app2.enemySlots[index], { element: opponent.element, state: "now", signature: true });
+      arena2.setPlayerElement(element);
+      return { \u043D\u0430\u0431\u0440\u0430\u043D\u043E: casts.length, \u0438\u0433\u0440\u043E\u043A: element, \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A: opponent.element };
+    }
+    function strike() {
+      if (frozen) return { \u043E\u0448\u0438\u0431\u043A\u0430: "\u0441\u0446\u0435\u043D\u0430 \u0437\u0430\u043C\u043E\u0440\u043E\u0436\u0435\u043D\u0430: \u0432\u044B\u0437\u043E\u0432\u0438 stihii.scene() \u0438 \u043F\u043E\u0441\u0442\u0430\u0432\u044C \u0435\u0451 \u0437\u0430\u043D\u043E\u0432\u043E" };
+      if (running) return { \u043E\u0448\u0438\u0431\u043A\u0430: "\u0443\u0434\u0430\u0440 \u0443\u0436\u0435 \u0438\u0434\u0451\u0442" };
+      const element = casts.at(-1);
+      if (!element) return { \u043E\u0448\u0438\u0431\u043A\u0430: "\u0441\u043D\u0430\u0447\u0430\u043B\u0430 \u0432\u044B\u0431\u0435\u0440\u0438 \u0441\u0442\u0438\u0445\u0438\u044E: stihii.cast('water')" };
+      const oneExchange = { ...app2.battle, slots: 1 };
+      const plan = [{ element: opponent.element, signature: true, sig: opponent.element }];
+      const { state: resolved, events } = resolveRound2(oneExchange, [element], plan);
+      const event = events.find((item) => item.type === "clash");
+      if (!event) return { \u043E\u0448\u0438\u0431\u043A\u0430: "\u0434\u0432\u0438\u0436\u043E\u043A \u043D\u0435 \u0441\u043E\u0431\u0440\u0430\u043B \u043E\u0431\u043C\u0435\u043D" };
+      app2.battle = { ...resolved, slots: 5 };
+      running = true;
+      void arena2.playClash(event, {
+        enemySignature: opponent.element,
+        onImpact: () => setHp2(dom2.enemyHpBar, dom2.enemyHpNum, event.hp.enemy, opponent.hp)
+      }).finally(() => {
+        if (!frozen) {
+          setHp2(dom2.playerHpBar, dom2.playerHpNum, event.hp.player, PLAYER_MAX_HP2);
+          setHp2(dom2.enemyHpBar, dom2.enemyHpNum, event.hp.enemy, opponent.hp);
+        }
+        running = false;
+      });
+      return {
+        \u0438\u0433\u0440\u043E\u043A: element,
+        \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A: opponent.element,
+        \u0438\u0441\u0445\u043E\u0434: event.phrase,
+        \u043D\u0430\u043C\u0435\u0440\u0435\u043D\u043D\u0430\u044F\u0414\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C: CLASH_MS
+      };
+    }
+    function freeze() {
+      frozen = true;
+      running = false;
+      arena2.abort();
+      return state();
+    }
+    function moment() {
+      const answer = counterTo(opponent.element);
+      const chain = [answer, answer, answer, answer, answer];
+      const plan = chain.map(() => ({
+        element: opponent.element,
+        signature: true,
+        sig: opponent.element
+      }));
+      const { events } = resolveRound2(app2.battle, chain, plan);
+      const clashes = events.filter((e) => e.type === "clash");
+      const at = clashes.findIndex((e) => e.parry);
+      return { clashes, at, plan };
+    }
+    function showcase(opts = {}) {
+      const { steps = 2 } = opts;
+      scene(opts);
+      const run = sceneRun;
+      const { clashes, at, plan } = moment();
+      if (at < 0) return { \u0441\u044B\u0433\u0440\u0430\u043D\u043E: 0, \u043E\u0448\u0438\u0431\u043A\u0430: "\u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u043D\u0435 \u043F\u0440\u043E\u0431\u0438\u0442\u0430, \u0441\u043D\u0438\u043C\u0430\u0442\u044C \u043D\u0435\u0447\u0435\u0433\u043E" };
+      const chosen = clashes.slice(at, at + steps);
+      const started = performance.now();
+      void (async () => {
+        for (const event of chosen) {
+          const slot = app2.playerSlots[event.index];
+          setSlot2(slot, { element: event.player, state: "filled" });
+          setSlot2(app2.enemySlots[event.index], {
+            element: plan[event.index].element,
+            state: "now",
+            signature: plan[event.index].signature
+          });
+          await arena2.playClash(event, {
+            enemySignature: plan[event.index].signature ? plan[event.index].sig : null
+          });
+          setHp2(dom2.enemyHpBar, dom2.enemyHpNum, event.hp.enemy, opponent.hp);
+          setHp2(dom2.playerHpBar, dom2.playerHpNum, event.hp.player, PLAYER_MAX_HP2);
+        }
+        if (run === sceneRun) showOutcome(true);
+      })();
+      return {
+        \u0441\u044B\u0433\u0440\u0430\u043D\u043E: chosen.length,
+        \u043D\u0430\u043C\u0435\u0440\u0435\u043D\u0430\u044F\u0414\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C: chosen.length * CLASH_MS,
+        \u0437\u0430\u043C\u0435\u0440\u0435\u043D\u043E: () => Math.round(performance.now() - started),
+        \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442: "\u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u0431\u044C\u0451\u0442 \u043A\u043E\u0440\u043E\u043D\u043A\u043E\u0439 \u2014 \u0438\u0433\u0440\u043E\u043A \u0435\u0451 \u0433\u0430\u0441\u0438\u0442"
+      };
+    }
+    const clock = makeClock();
+    let restore = null;
+    function hold() {
+      if (restore) return { \u0447\u0430\u0441\u044B: "\u043F\u0443\u043B\u044C\u0442\u0430", \u0443\u0436\u0435\u0411\u044B\u043B\u043E: true };
+      stopFeeds();
+      restore = clock.hold();
+      return { \u0447\u0430\u0441\u044B: "\u043F\u0443\u043B\u044C\u0442\u0430", \u0443\u0436\u0435\u0411\u044B\u043B\u043E: false };
+    }
+    async function step(\u0441\u0435\u043A\u0443\u043D\u0434\u044B) {
+      if (!restore) throw new Error("\u0432\u0438\u0442\u0440\u0438\u043D\u0430: \u0441\u043D\u0430\u0447\u0430\u043B\u0430 hold(), \u0438\u043D\u0430\u0447\u0435 \u0432\u0440\u0435\u043C\u044F \u0438\u0434\u0451\u0442 \u0434\u0432\u0430\u0436\u0434\u044B");
+      const ms = Number(\u0441\u0435\u043A\u0443\u043D\u0434\u044B) * 1e3;
+      if (!Number.isFinite(ms) || ms < 0) {
+        throw new TypeError(`\u0432\u0438\u0442\u0440\u0438\u043D\u0430: step \u0436\u0434\u0451\u0442 \u0441\u0435\u043A\u0443\u043D\u0434\u044B \u0447\u0438\u0441\u043B\u043E\u043C, \u043F\u0440\u0438\u0448\u043B\u043E ${\u0441\u0435\u043A\u0443\u043D\u0434\u044B}`);
+      }
+      await clock.step(ms);
+      return state();
+    }
+    function release() {
+      if (!restore) return { \u043E\u0442\u043F\u0443\u0449\u0435\u043D\u043E: false };
+      clock.release(restore);
+      restore = null;
+      return { \u043E\u0442\u043F\u0443\u0449\u0435\u043D\u043E: true };
+    }
+    function render() {
+      void dom2.arena.offsetWidth;
+      return state();
+    }
+    function loop({ steps = 2, fps = 30, ...opts } = {}) {
+      scene(opts);
+      const run = sceneRun;
+      hold();
+      const { clashes, at, plan } = moment();
+      if (at < 0) {
+        release();
+        throw new Error("\u0432\u0438\u0442\u0440\u0438\u043D\u0430: \u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u043D\u0435 \u043F\u0440\u043E\u0431\u0438\u0442\u0430 \u2014 \u0441\u043D\u0438\u043C\u0430\u0442\u044C \u043D\u0435\u0447\u0435\u0433\u043E");
+      }
+      const chosen = clashes.slice(at, at + steps);
+      const \u0436\u0434\u0451\u043C = chosen[chosen.length - 1].hp.enemy;
+      let \u0434\u043E\u0438\u0433\u0440\u0430\u043D\u043E = false;
+      void (async () => {
+        for (const event of chosen) {
+          setSlot2(app2.playerSlots[event.index], { element: event.player, state: "filled" });
+          setSlot2(app2.enemySlots[event.index], {
+            element: plan[event.index].element,
+            state: "now",
+            signature: plan[event.index].signature
+          });
+          await arena2.playClash(event, {
+            enemySignature: plan[event.index].signature ? plan[event.index].sig : null
+          });
+          setHp2(dom2.enemyHpBar, dom2.enemyHpNum, event.hp.enemy, opponent.hp);
+          setHp2(dom2.playerHpBar, dom2.playerHpNum, event.hp.player, PLAYER_MAX_HP2);
+        }
+        if (run === sceneRun) showOutcome(true);
+        \u0434\u043E\u0438\u0433\u0440\u0430\u043D\u043E = true;
+      })();
+      const \u043E\u0446\u0435\u043D\u043A\u0430\u041C\u0441 = chosen.length * CLASH_MS;
+      return {
+        \u0434\u043E\u0438\u0433\u0440\u0430\u043D\u043E: () => \u0434\u043E\u0438\u0433\u0440\u0430\u043D\u043E,
+        \u043A\u0430\u0434\u0440\u043E\u0432\u0421\u0437\u0430\u043F\u0430\u0441\u043E\u043C: Math.ceil(\u043E\u0446\u0435\u043D\u043A\u0430\u041C\u0441 * 2 / 1e3 * fps),
+        \u043A\u0430\u0434\u0440\u043E\u0432\u041E\u0446\u0435\u043D\u043A\u0430: Math.ceil(\u043E\u0446\u0435\u043D\u043A\u0430\u041C\u0441 / 1e3 * fps),
+        \u0448\u0430\u0433\u0421\u0435\u043A\u0443\u043D\u0434: 1 / fps,
+        \u043E\u0446\u0435\u043D\u043A\u0430\u041C\u0441,
+        \u0445\u0432\u043E\u0441\u0442\u041C\u0441: 700,
+        \u043F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0435\u0442: "\u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u0431\u044C\u0451\u0442 \u043A\u043E\u0440\u043E\u043D\u043A\u043E\u0439 \u2014 \u0438\u0433\u0440\u043E\u043A \u0435\u0451 \u0433\u0430\u0441\u0438\u0442",
+        \u043F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C() {
+          if (!\u0434\u043E\u0438\u0433\u0440\u0430\u043D\u043E) {
+            throw new Error(
+              "\u0432\u0438\u0442\u0440\u0438\u043D\u0430: \u0431\u043E\u0439 \u0435\u0449\u0451 \u0438\u0434\u0451\u0442 \u2014 \u0448\u0430\u0433\u0430\u0439 `step(\u0448\u0430\u0433\u0421\u0435\u043A\u0443\u043D\u0434)`, \u043F\u043E\u043A\u0430 `\u0434\u043E\u0438\u0433\u0440\u0430\u043D\u043E()` \u043D\u0435 \u0441\u0442\u0430\u043D\u0435\u0442 true (\u043D\u043E \u043D\u0435 \u0434\u043E\u043B\u044C\u0448\u0435 `\u043A\u0430\u0434\u0440\u043E\u0432\u0421\u0437\u0430\u043F\u0430\u0441\u043E\u043C`)."
+            );
+          }
+          const \u0441\u0442\u0430\u043B\u043E = Number(dom2.enemyHpNum.textContent);
+          if (\u0441\u0442\u0430\u043B\u043E !== \u0436\u0434\u0451\u043C) {
+            throw new Error(
+              `\u0432\u0438\u0442\u0440\u0438\u043D\u0430: \u043F\u043E\u043A\u0430\u0437\u0430\u043B\u0430 \u043D\u0435 \u0442\u043E \u2014 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435 \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0430 ${\u0441\u0442\u0430\u043B\u043E}, \u0436\u0434\u0430\u043B\u0438 ${\u0436\u0434\u0451\u043C}. \u0421\u043A\u043E\u0440\u0435\u0435 \u0432\u0441\u0435\u0433\u043E \u0448\u0430\u0433\u043E\u0432 \u0441\u0434\u0435\u043B\u0430\u043D\u043E \u043C\u0435\u043D\u044C\u0448\u0435, \u0447\u0435\u043C \u0441\u043A\u0430\u0437\u0430\u043D\u043E \u0432 \`\u043A\u0430\u0434\u0440\u043E\u0432\`.`
+            );
+          }
+          return { \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u0435\u041F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0430: \u0441\u0442\u0430\u043B\u043E, \u0441\u043E\u0448\u043B\u043E\u0441\u044C: true };
+        }
+      };
+    }
+    window.stihii = {
+      scene,
+      cast,
+      strike,
+      freeze,
+      showcase,
+      state,
+      seed: SEED,
+      hold,
+      step,
+      release,
+      render,
+      loop
+    };
+    document.documentElement.dataset.stihiiSceneApi = "scene cast strike freeze hold step release render loop";
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/modes.js
+  var MODES = {
+    easy: {
+      id: "easy",
+      name: "\u041B\u0401\u0413\u041A\u0418\u0419",
+      note: "5 \u0441\u043B\u043E\u0442\u043E\u0432 \xB7 \u043F\u043E\u043B\u043D\u044B\u0439 \u043B\u043E\u0433 \xB7 \u043F\u043E\u0434\u0441\u043A\u0430\u0437\u043A\u0430",
+      slots: 5,
+      timer: 18,
+      reveal: "step",
+      log: "full",
+      showWheel: true
+    },
+    medium: {
+      id: "medium",
+      name: "\u0421\u0420\u0415\u0414\u041D\u0418\u0419",
+      note: "5 \u0441\u043B\u043E\u0442\u043E\u0432 \xB7 \u0443\u0440\u043E\u043D \u0441\u043A\u0440\u044B\u0442",
+      slots: 5,
+      timer: 15,
+      reveal: "step",
+      log: "muted",
+      showWheel: true
+    },
+    hard: {
+      id: "hard",
+      name: "\u0421\u041B\u041E\u0416\u041D\u042B\u0419",
+      note: "5 \u0441\u043B\u043E\u0442\u043E\u0432 \xB7 \u043C\u0433\u043D\u043E\u0432\u0435\u043D\u043D\u043E \xB7 \u0442\u043E\u043B\u044C\u043A\u043E \u0438\u0442\u043E\u0433",
+      slots: 5,
+      timer: 12,
+      reveal: "instant",
+      log: "summary",
+      showWheel: false
+    },
+    duel: {
+      id: "duel",
+      name: "\u0424\u0415\u0425\u0422\u041E\u0412\u0410\u041D\u0418\u0415",
+      note: "1 \u0441\u043B\u043E\u0442 \xB7 \u043E\u0434\u0438\u043D \u043E\u0431\u043C\u0435\u043D \u0437\u0430 \u0440\u0430\u0437",
+      slots: 1,
+      timer: 10,
+      reveal: "step",
+      log: "full",
+      showWheel: true
+    }
+  };
+  var STORY_MODE = {
+    id: "story",
+    name: "\u0421\u042E\u0416\u0415\u0422",
+    note: "\u043F\u044F\u0442\u044C \u044F\u0440\u0443\u0441\u043E\u0432 \u0431\u0430\u0448\u043D\u0438",
+    reveal: "step",
+    log: "full",
+    showWheel: true
+  };
+  var MODE_ORDER = ["easy", "medium", "hard", "duel"];
+  var sparring = (id, name, element) => ({
+    id: `spar-${element}`,
+    name,
+    title: "\u0441\u0442\u0440\u0430\u043D\u0441\u0442\u0432\u0443\u044E\u0449\u0438\u0439 \u043C\u0430\u0433",
+    element,
+    hp: 13,
+    signatureChance: 0.7,
+    baitWeight: 0.6,
+    readsPatterns: true,
+    readsSuper: true,
+    superRounds: 2,
+    superThreshold: 0.6,
+    counterSlots: 2,
+    punishSlots: 2,
+    reveal: "\u0415\u0433\u043E \u043A\u043E\u0440\u043E\u043D\u043A\u0443 \u0442\u044B \u0443\u0436\u0435 \u0432\u0438\u0434\u0435\u043B \u0432 \u0431\u043E\u044E."
+  });
+  var SPARRING = {
+    fire: sparring("spar-fire", "\u0411\u0410\u0413\u0420\u041E\u0412\u042B\u0419", "fire"),
+    water: sparring("spar-water", "\u0413\u041B\u0423\u0411\u0418\u041D\u041D\u042B\u0419", "water"),
+    wind: sparring("spar-wind", "\u041D\u0415\u0421\u041E\u041C\u042B\u0419", "wind")
+  };
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/glyphs.js
+  var seq3 = 0;
+  var SHAPES = {
+    fire: "M32 8 C34 18 44 22 44 34 C44 43 39 50 32 50 C25 50 20 43 20 34 C20 28 24 25 25 20 C29 25 30 15 32 8 Z M32 50 C28 46 27 41 29 36 C31 40 34 40 35 37 C38 41 36 47 32 50 Z",
+    water: "M32 8 C32 8 46 26 46 36 C46 44 40 50 32 50 C24 50 18 44 18 36 C18 26 32 8 32 8 Z M26 38 C26 43 29 46 33 46",
+    wind: "M12 22 C22 22 30 22 38 22 C44 22 46 18 44 15 C42 12 38 13 37 16 M10 32 C24 32 36 32 46 32 C52 32 54 28 52 25 M14 42 C24 42 32 42 39 42 C45 42 47 46 45 49 C43 52 39 51 38 48"
+  };
+  function elementGlyph(element) {
+    const uid = `g${seq3 += 1}`;
+    const color = ELEMENT[element]?.color ?? "#94a3b8";
+    const path = SHAPES[element] ?? SHAPES.fire;
+    const filled = element !== "wind";
+    return `
+<svg class="glyph" viewBox="0 0 64 58" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <filter id="neon-${uid}" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.6" result="soft"/>
+      <feMerge><feMergeNode in="soft"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#neon-${uid})">
+    <path d="${path}" stroke="${color}" stroke-width="6" opacity=".28"/>
+    <path d="${path}" stroke="${color}" stroke-width="2.4" opacity=".95"/>
+    <path d="${path}" stroke="#fff" stroke-width="0.9" opacity=".8"/>
+  </g>
+  ${filled ? `<path d="${path}" fill="${color}" opacity=".07"/>` : ""}
+</svg>`.trim();
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/ui.js
+  var $ = (id) => document.getElementById(id);
+  var el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== void 0) node.textContent = text;
+    return node;
+  };
+  function showScreen(name) {
+    document.querySelectorAll("[data-screen]").forEach((node) => {
+      node.hidden = node.dataset.screen !== name;
+    });
+  }
+  function renderWheel(node) {
+    node.replaceChildren(
+      ...WHEEL.map(({ winner, loser, reason }) => {
+        const row = el("div", "wheel-row");
+        const win = el("span", "wheel-glyph", ELEMENT[winner].glyph);
+        const arrow = el("span", "wheel-arrow", "\u25B8");
+        const lose = el("span", "wheel-glyph", ELEMENT[loser].glyph);
+        const why = el("span", "wheel-reason");
+        why.innerHTML = reason.replace(
+          new RegExp(`^(${ELEMENT[winner].name})`, "i"),
+          "<b>$1</b>"
+        );
+        row.append(win, arrow, lose, why);
+        return row;
+      })
+    );
+  }
+  function renderCastRow(node, onCast) {
+    node.replaceChildren(
+      ...ELEMENTS.map((id) => {
+        const info = ELEMENT[id];
+        const button = el("button", "cast");
+        button.dataset.element = id;
+        button.type = "button";
+        const glyph = el("span", "cast-glyph");
+        glyph.insertAdjacentHTML("afterbegin", elementGlyph(id));
+        button.append(glyph);
+        button.title = `${info.name.toUpperCase()} \u2014 \u0431\u044C\u0451\u0442 ${ELEMENT[info.beats].accusative}`;
+        button.setAttribute("aria-label", button.title);
+        button.addEventListener("click", () => onCast(id));
+        return button;
+      })
+    );
+    return [...node.querySelectorAll(".cast")];
+  }
+  function renderSlots(node, count, { window: windowSize = 0 } = {}) {
+    const make = (n) => Array.from({ length: n }, () => el("div", "slot", ""));
+    if (!windowSize || windowSize >= count) {
+      node.replaceChildren(...make(count));
+    } else {
+      const zone = el("div", "slot-group slot-group--window");
+      zone.dataset.label = "\u0423\u0417\u041E\u0420";
+      zone.append(...make(windowSize));
+      const rest = el("div", "slot-group slot-group--free");
+      rest.dataset.label = "\u0420\u0410\u0417\u041C\u0415\u041D";
+      rest.append(...make(count - windowSize));
+      node.replaceChildren(zone, rest);
+    }
+    return [...node.querySelectorAll(".slot")];
+  }
+  function setSlot(slot, { element, state, signature } = {}) {
+    slot.className = "slot";
+    slot.textContent = element ? ELEMENT[element].glyph : "";
+    if (element) slot.classList.add("filled");
+    if (state) slot.classList.add(state);
+    if (signature) {
+      const mark = el("span", "sig", "\u2605");
+      mark.title = "\u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0430";
+      slot.append(mark);
+    }
+  }
+  var clearSlots = (slots) => slots.forEach((slot) => setSlot(slot, {}));
+  function pushLog(node, text, kind = "neutral") {
+    if (!text) return;
+    const line = el("div", `log-line ${kind}`, text);
+    node.append(line);
+    while (node.childElementCount > 60) node.firstElementChild.remove();
+    node.scrollTop = node.scrollHeight;
+  }
+  function renderSeen(node, seen, enemyRounds = []) {
+    const total = ELEMENTS.reduce((sum, id) => sum + (seen[id] ?? 0), 0);
+    const meters = ELEMENTS.map((id) => {
+      const count = seen[id] ?? 0;
+      const row = el("div", "seen-row");
+      const track = el("span", "seen-track");
+      const fill = el("span", "seen-fill");
+      fill.style.width = `${total ? (count / total * 100).toFixed(0) : 0}%`;
+      fill.style.background = ELEMENT[id].color;
+      track.append(fill);
+      row.append(el("span", "seen-glyph", ELEMENT[id].glyph), track, el("span", "seen-count", String(count)));
+      return row;
+    });
+    const last = enemyRounds.at(-1);
+    const history = el("div", "seen-last");
+    if (last) {
+      history.append(el("span", "seen-last-label", "\u041F\u0420\u041E\u0428\u041B\u042B\u0419 \u0420\u0410\u0423\u041D\u0414"));
+      for (const element of last) {
+        history.append(el("span", "seen-cell", element ? ELEMENT[element].glyph : "\xB7"));
+      }
+    }
+    node.replaceChildren(...meters, ...last ? [history] : []);
+  }
+  function setHp(barNode, numNode, value, max) {
+    const share = max > 0 ? Math.max(0, value) / max : 0;
+    barNode.style.width = `${(share * 100).toFixed(1)}%`;
+    if (numNode.textContent !== String(value)) {
+      numNode.textContent = String(value);
+      numNode.classList.remove("tick");
+      void numNode.offsetWidth;
+      numNode.classList.add("tick");
+    }
+  }
+  function setCharge(fill, label, wrap, value, cost) {
+    fill.style.width = `${Math.min(100, value / cost * 100)}%`;
+    label.textContent = `\u0417\u0410\u0420\u042F\u0414 ${value}/${cost}`;
+    wrap.classList.toggle("ready", value >= cost);
+  }
+  var demoCell = (element, verdict) => {
+    const cell = el("div", `demo-cell ${verdict ?? ""}`.trim(), ELEMENT[element].glyph);
+    cell.append(el("small", null, ELEMENT[element].name.toUpperCase()));
+    return cell;
+  };
+  var clash = (winner, loser, note) => {
+    const row = el("div", "demo-line");
+    row.append(demoCell(winner, "win"), el("span", "demo-verdict", "\u2694"), demoCell(loser, "lose"));
+    if (note) row.append(el("span", "demo-verdict", note));
+    return row;
+  };
+  var LEARN_STEPS = [
+    {
+      title: "\u0422\u0420\u0418 \u0421\u0422\u0418\u0425\u0418\u0418, \u041E\u0414\u0418\u041D \u041A\u0420\u0423\u0413",
+      body: "\u041A\u0430\u0436\u0434\u0430\u044F \u0441\u0442\u0438\u0445\u0438\u044F \u0433\u0430\u0441\u0438\u0442 \u0440\u043E\u0432\u043D\u043E \u043E\u0434\u043D\u0443 \u0434\u0440\u0443\u0433\u0443\u044E \u2014 \u0438 \u043F\u0440\u043E\u0438\u0433\u0440\u044B\u0432\u0430\u0435\u0442 \u0440\u043E\u0432\u043D\u043E \u043E\u0434\u043D\u043E\u0439. \u041D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043D\u0443\u0436\u043D\u043E \u0437\u0430\u043F\u043E\u043C\u0438\u043D\u0430\u0442\u044C: \u043F\u0440\u0430\u0432\u0438\u043B\u043E \u043C\u043E\u0436\u043D\u043E \u0432\u044B\u0432\u0435\u0441\u0442\u0438 \u0438\u0437 \u0437\u0434\u0440\u0430\u0432\u043E\u0433\u043E \u0441\u043C\u044B\u0441\u043B\u0430.",
+      build: () => {
+        const box = el("div", "demo-list");
+        for (const { winner, loser, reason } of WHEEL) {
+          const row = el("div", "demo-line");
+          row.append(
+            demoCell(winner, "win"),
+            el("span", "demo-verdict", "\u25B8"),
+            demoCell(loser, "lose"),
+            el("span", "demo-verdict", reason)
+          );
+          box.append(row);
+        }
+        return box;
+      }
+    },
+    {
+      title: "\u0420\u0410\u0423\u041D\u0414 \u2014 \u042D\u0422\u041E \u041F\u042F\u0422\u042C \u0417\u0410\u041A\u041B\u0418\u041D\u0410\u041D\u0418\u0419",
+      body: "\u0422\u044B \u0437\u0430\u0440\u0430\u043D\u0435\u0435 \u043D\u0430\u0431\u0438\u0440\u0430\u0435\u0448\u044C \u0446\u0435\u043F\u043E\u0447\u043A\u0443 \u0438\u0437 \u043F\u044F\u0442\u0438 \u0441\u0442\u0438\u0445\u0438\u0439. \u041F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u0434\u0435\u043B\u0430\u0435\u0442 \u0442\u043E \u0436\u0435 \u0441\u0430\u043C\u043E\u0435 \u0432\u0442\u0430\u0439\u043D\u0435. \u041F\u043E\u0442\u043E\u043C \u043E\u0431\u0435 \u0446\u0435\u043F\u043E\u0447\u043A\u0438 \u0432\u0441\u043A\u0440\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u0438 \u0440\u0430\u0437\u044B\u0433\u0440\u044B\u0432\u0430\u044E\u0442\u0441\u044F \u0441\u043B\u043E\u0442 \u0437\u0430 \u0441\u043B\u043E\u0442\u043E\u043C. \u041F\u043E\u0431\u0435\u0434\u0430 \u0432 \u0441\u043B\u043E\u0442\u0435 \u2014 \u043C\u0438\u043D\u0443\u0441 1 \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u044F \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0443.",
+      build: () => {
+        const row = el("div", "demo-row");
+        ["water", "fire", "wind", "water", "fire"].forEach((id) => {
+          const slot = el("div", "slot filled", ELEMENT[id].glyph);
+          slot.style.flex = "0 0 44px";
+          row.append(slot);
+        });
+        return row;
+      }
+    },
+    {
+      title: "\u0423 \u041F\u0420\u041E\u0422\u0418\u0412\u041D\u0418\u041A\u0410 \u0415\u0421\u0422\u042C \u041A\u041E\u0420\u041E\u041D\u041A\u0410",
+      body: "\u041A\u0430\u0436\u0434\u044B\u0439 \u043C\u0430\u0433 \u0447\u0430\u0449\u0435 \u0432\u0441\u0435\u0433\u043E \u0431\u044C\u0451\u0442 \u043E\u0434\u043D\u043E\u0439 \u0441\u0442\u0438\u0445\u0438\u0435\u0439 \u2014 \u044D\u0442\u043E \u0435\u0433\u043E <b>\u043A\u043E\u0440\u043E\u043D\u043A\u0430</b>. \u041D\u0438\u043A\u0442\u043E \u0435\u0451 \u043D\u0435 \u043D\u0430\u0437\u043E\u0432\u0451\u0442: \u0441\u043F\u0440\u0430\u0432\u0430 \u043E\u0442 \u0430\u0440\u0435\u043D\u044B \u043A\u043E\u043F\u0438\u0442\u0441\u044F \u0440\u0430\u0437\u0432\u0435\u0434\u043A\u0430 \u2014 \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0440\u0430\u0437 \u043A\u0430\u043A\u0443\u044E \u0441\u0442\u0438\u0445\u0438\u044E \u043E\u043D \u0432\u044B\u0431\u0440\u043E\u0441\u0438\u043B, \u2014 \u0438 \u0432\u044B\u0432\u043E\u0434 \u0434\u0435\u043B\u0430\u0435\u0448\u044C \u0442\u044B. \u041F\u043E\u0431\u044C\u0451\u0448\u044C \u043A\u043E\u0440\u043E\u043D\u043A\u0443 \u2014 \u043F\u043E\u043B\u0443\u0447\u0438\u0448\u044C \u0437\u0430\u0440\u044F\u0434, \u0430 \u0440\u0430\u0437 \u0437\u0430 \u0440\u0430\u0443\u043D\u0434 \u0435\u0449\u0451 \u0438 <b>\u043E\u0433\u043B\u0443\u0448\u0438\u0448\u044C</b> \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0430. \u041F\u0440\u043E\u0438\u0433\u0440\u0430\u0435\u0448\u044C \u043A\u043E\u0440\u043E\u043D\u043A\u0435 \u2014 <b>\u0434\u0432\u043E\u0439\u043D\u043E\u0439 \u0443\u0440\u043E\u043D</b>.",
+      build: () => {
+        const box = el("div", "demo-list");
+        box.append(clash("water", "fire", "\u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u043F\u0440\u043E\u0431\u0438\u0442\u0430 \u2192 \u043E\u0433\u043B\u0443\u0448\u0435\u043D\u0438\u0435"));
+        const bad = el("div", "demo-line");
+        bad.append(
+          demoCell("fire", "lose"),
+          el("span", "demo-verdict", "\u2694"),
+          demoCell("water", "win"),
+          el("span", "demo-verdict", "\u043F\u0440\u043E\u0438\u0433\u0440\u044B\u0448 \u043A\u043E\u0440\u043E\u043D\u043A\u0435 \u2192 \u22122")
+        );
+        box.append(bad);
+        return box;
+      }
+    },
+    {
+      title: "\u0423\u0417\u041E\u0420\u042B \u0412\u041D\u0423\u0422\u0420\u0418 \u0426\u0415\u041F\u041E\u0427\u041A\u0418",
+      body: "\u0422\u0440\u0438 \u043F\u043E\u0434\u0440\u044F\u0434 \u0438\u0434\u0443\u0449\u0438\u0445 \u0441\u043B\u043E\u0442\u0430 \u043C\u043E\u0433\u0443\u0442 \u0441\u043B\u043E\u0436\u0438\u0442\u044C\u0441\u044F \u0432 <b>\u0443\u0437\u043E\u0440</b>. \u041E\u043D \u043F\u043E\u0434\u0441\u0432\u0435\u0447\u0438\u0432\u0430\u0435\u0442\u0441\u044F, \u043F\u043E\u043A\u0430 \u0442\u044B \u043D\u0430\u0431\u0438\u0440\u0430\u0435\u0448\u044C, \u2014 \u0441\u044E\u0440\u043F\u0440\u0438\u0437\u043E\u043C \u043D\u0435 \u0431\u0443\u0434\u0435\u0442. \u041D\u043E \u0443\u0437\u043E\u0440 \u0441\u0440\u0430\u0431\u0430\u0442\u044B\u0432\u0430\u0435\u0442 \u0442\u043E\u043B\u044C\u043A\u043E \u0435\u0441\u043B\u0438 \u0442\u044B \u0432\u044B\u0438\u0433\u0440\u0430\u043B \u043D\u0443\u0436\u043D\u043E\u0435 \u0447\u0438\u0441\u043B\u043E \u043E\u0431\u043C\u0435\u043D\u043E\u0432 \u0432\u043D\u0443\u0442\u0440\u0438 \u043D\u0435\u0433\u043E: \u044D\u0442\u043E \u0443\u0441\u0438\u043B\u0435\u043D\u0438\u0435 \u0443\u0441\u043F\u0435\u0445\u0430, \u0430 \u043D\u0435 \u0437\u0430\u043C\u0435\u043D\u0430 \u0435\u043C\u0443. \u041F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u043B\u043E\u043C\u0430\u0435\u0442 \u0443\u0437\u043E\u0440 \u043E\u0434\u043D\u0438\u043C \u0442\u043E\u0447\u043D\u044B\u043C \u0443\u0434\u0430\u0440\u043E\u043C \u0432\u043D\u0443\u0442\u0440\u044C, \u0430 \u043D\u0435 \u0437\u0430\u043B\u0438\u0432\u043A\u043E\u0439 \u0432\u0441\u0435\u0439 \u0446\u0435\u043F\u043E\u0447\u043A\u0438.",
+      build: () => {
+        const box = el("div", "demo-list demo-list--combo");
+        const shapes = {
+          surge: ["fire", "fire", "fire"],
+          bond: ["fire", "water", "fire"],
+          prism: ["fire", "water", "wind"]
+        };
+        for (const combo of COMBO_LIST) {
+          const row = el("div", "demo-line");
+          const mark = el("img", "demo-mark");
+          mark.src = `./assets/mark-${combo.id}.webp`;
+          mark.alt = "";
+          mark.decoding = "async";
+          mark.width = 512;
+          mark.height = 512;
+          row.append(mark);
+          for (const id of shapes[combo.id]) {
+            row.append(el("div", "slot filled in-combo", ELEMENT[id].glyph));
+          }
+          const text = el("span", "demo-verdict");
+          const gain = [
+            combo.damage ? `+${combo.damage} \u0443\u0440\u043E\u043D\u0430` : "",
+            combo.charge ? `+${combo.charge} \u0437\u0430\u0440\u044F\u0434\u0430` : ""
+          ].filter(Boolean).join(" \u0438 ");
+          text.innerHTML = `<b>${combo.name}</b> \u2014 ${combo.hint}: ${gain}`;
+          row.append(text);
+          box.append(row);
+        }
+        const hot = el("div", "demo-line demo-line--wide");
+        const hotMark = el("img", "demo-mark");
+        hotMark.src = "./assets/mark-overheat.webp";
+        hotMark.alt = "";
+        hotMark.decoding = "async";
+        hotMark.width = 512;
+        hotMark.height = 512;
+        hot.append(hotMark, el("span", "demo-verdict", "\u041F\u0415\u0420\u0415\u0413\u0420\u0415\u0412 \u2014 \u0447\u0435\u0442\u044B\u0440\u0435 \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445 \u0432 \u043F\u044F\u0442\u0451\u0440\u043A\u0435 \u0431\u044C\u044E\u0442 \u043F\u043E \u0442\u0435\u0431\u0435 \u0441\u0430\u043C\u043E\u043C\u0443"));
+        box.append(hot);
+        const rule = el("p", "demo-note demo-span");
+        rule.textContent = `\u041F\u0440\u0430\u0432\u0438\u043B\u043E \u043E\u0434\u043D\u043E: \u0447\u0435\u043C \u0431\u043E\u043B\u044C\u0448\u0435 \u0432 \u0442\u0440\u043E\u0439\u043A\u0435 \u043F\u043E\u0432\u0442\u043E\u0440\u043E\u0432, \u0442\u0435\u043C \u0441\u0438\u043B\u044C\u043D\u0435\u0435 \u0443\u0434\u0430\u0440. \u0426\u0435\u043D\u0430 \u0442\u043E\u0436\u0435 \u043E\u0434\u043D\u0430 \u2014 \u0432\u044B\u0438\u0433\u0440\u0430\u0442\u044C ${COMBO_NEEDS} \u043E\u0431\u043C\u0435\u043D\u0430 \u0438\u0437 3 \u0432\u043D\u0443\u0442\u0440\u0438 \u0443\u0437\u043E\u0440\u0430. \u041D\u043E \u043F\u043E\u0432\u0442\u043E\u0440\u044B \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u0447\u0438\u0442\u0430\u0435\u0442, \u0430 \u0447\u0435\u0442\u044B\u0440\u0435 \u043E\u0434\u0438\u043D\u0430\u043A\u043E\u0432\u044B\u0445 \u0432 \u043F\u044F\u0442\u0451\u0440\u043A\u0435 \u0431\u044C\u044E\u0442 \u043F\u043E \u0442\u0435\u0431\u0435 \u0441\u0430\u043C\u043E\u043C\u0443.`;
+        box.append(rule);
+        return box;
+      }
+    },
+    {
+      title: "\u041F\u0420\u0418\u041C\u0410\u041D\u041A\u0410 \u2014 \u0413\u041B\u0410\u0412\u041D\u0410\u042F \u041B\u041E\u0412\u0423\u0428\u041A\u0410",
+      body: "\u0411\u0438\u0442\u044C \u0441\u0442\u0440\u043E\u0433\u043E \u043F\u043E \u043A\u043E\u0440\u043E\u043D\u043A\u0435 \u2014 \u043E\u0447\u0435\u0432\u0438\u0434\u043D\u043E, \u0438 \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u044D\u0442\u043E \u0432\u0438\u0434\u0438\u0442. \u0422\u043E\u0433\u0434\u0430 \u043E\u043D \u043F\u043E\u0434\u043C\u0435\u0448\u0438\u0432\u0430\u0435\u0442 <b>\u043F\u0440\u0438\u043C\u0430\u043D\u043A\u0443</b>: \u0441\u0442\u0438\u0445\u0438\u044E, \u043A\u043E\u0442\u043E\u0440\u0430\u044F \u0433\u0430\u0441\u0438\u0442 \u0442\u0432\u043E\u0439 \u043E\u0436\u0438\u0434\u0430\u0435\u043C\u044B\u0439 \u043E\u0442\u0432\u0435\u0442. \u0421\u043F\u0430\u0441\u0435\u043D\u0438\u0435 \u043F\u0440\u043E\u0441\u0442\u043E\u0435 \u2014 \u0438\u043D\u043E\u0433\u0434\u0430 \u0431\u0440\u043E\u0441\u0430\u0439 <b>\u0435\u0433\u043E \u0436\u0435 \u043A\u043E\u0440\u043E\u043D\u043A\u0443</b>: \u043F\u0440\u043E\u0442\u0438\u0432 \u043A\u043E\u0440\u043E\u043D\u043A\u0438 \u0431\u0443\u0434\u0435\u0442 \u043D\u0438\u0447\u044C\u044F, \u0430 \u043F\u0440\u0438\u043C\u0430\u043D\u043A\u0443 \u043E\u043D\u0430 \u0441\u043E\u0436\u0436\u0451\u0442.",
+      build: () => {
+        const box = el("div", "demo-list");
+        const line = (label, cells, note) => {
+          const row = el("div", "demo-line");
+          row.append(el("span", "demo-verdict", label));
+          cells.forEach(([id, verdict]) => row.append(demoCell(id, verdict)));
+          row.append(el("span", "demo-verdict", note));
+          return row;
+        };
+        box.append(
+          el("span", "demo-verdict demo-span", "\u041A\u043E\u0440\u043E\u043D\u043A\u0430 \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0430 \u2014 \u{1F525} \u043E\u0433\u043E\u043D\u044C. \u041E\u0447\u0435\u0432\u0438\u0434\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u2014 \u{1F4A7} \u0432\u043E\u0434\u0430."),
+          line("\u043F\u0440\u0438\u043C\u0430\u043D\u043A\u0430:", [["wind", "win"], ["water", "lose"]], "\u0432\u0435\u0442\u0435\u0440 \u0440\u0430\u0437\u0433\u043E\u043D\u044F\u0435\u0442 \u0442\u0432\u043E\u044E \u0432\u043E\u0434\u0443"),
+          line("\u043E\u0442\u0432\u0435\u0442:", [["fire", "win"], ["wind", "lose"]], "\u0435\u0433\u043E \u0436\u0435 \u043E\u0433\u043E\u043D\u044C \u0441\u0436\u0438\u0433\u0430\u0435\u0442 \u043F\u0440\u0438\u043C\u0430\u043D\u043A\u0443")
+        );
+        return box;
+      }
+    },
+    {
+      title: "\u0417\u0410\u0420\u042F\u0414 \u0418 \u0421\u0423\u041F\u0415\u0420\u0423\u0414\u0410\u0420",
+      body: "\u041A\u0430\u0436\u0434\u0430\u044F \u043F\u0440\u043E\u0431\u0438\u0442\u0430\u044F \u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u0434\u0430\u0451\u0442 \u043E\u0447\u043A\u043E \u0437\u0430\u0440\u044F\u0434\u0430. \u0422\u0440\u0438 \u043E\u0447\u043A\u0430 \u2014 \u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0442\u043E\u0431\u043E\u0439 \u0436\u0435\u0441\u0442 \u0441\u0442\u0430\u043D\u0435\u0442 <b>\u0441\u0443\u043F\u0435\u0440\u0443\u0434\u0430\u0440\u043E\u043C</b>: \u043E\u043D \u0431\u044C\u0451\u0442 \u043D\u0430 2, \u043D\u043E \u0435\u0441\u043B\u0438 \u043F\u0440\u043E\u0438\u0433\u0440\u0430\u0435\u0442 \u2014 \u044D\u0442\u0438 2 \u043F\u0440\u0438\u043B\u0435\u0442\u044F\u0442 \u0442\u0435\u0431\u0435. <b>\u0421\u043B\u043E\u0442 \u0432\u044B\u0431\u0438\u0440\u0430\u0435\u0448\u044C \u0442\u044B</b>, \u0438 \u044D\u0442\u043E \u0432\u0430\u0436\u043D\u043E: \u043F\u044B\u043B\u0430\u044E\u0449\u0438\u0439 \u043F\u043E\u0441\u043E\u0445 \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A \u0432\u0438\u0434\u0438\u0442, \u0438 \u0435\u0441\u043B\u0438 \u0442\u044B \u0431\u044C\u0451\u0448\u044C \u0432\u0441\u0435\u0433\u0434\u0430 \u0432 \u043E\u0434\u043D\u043E \u043C\u0435\u0441\u0442\u043E \u2014 \u043E\u043D \u044D\u0442\u043E \u043C\u0435\u0441\u0442\u043E \u0437\u0430\u043A\u0440\u043E\u0435\u0442. \u0417\u0430\u0440\u044F\u0434 \u043F\u0435\u0440\u0435\u043D\u043E\u0441\u0438\u0442\u0441\u044F \u043C\u0435\u0436\u0434\u0443 \u0431\u043E\u044F\u043C\u0438 \u043A\u0430\u043C\u043F\u0430\u043D\u0438\u0438.",
+      build: () => {
+        const box = el("div", "demo-stack");
+        const bar = el("div", "charge");
+        bar.style.width = "220px";
+        const fill = el("div", "charge-fill");
+        fill.style.width = "100%";
+        bar.append(fill, el("span", "charge-label", "\u0417\u0410\u0420\u042F\u0414 3/3"));
+        box.append(bar, el("span", "demo-verdict", "\u0432\u044B\u0438\u0433\u0440\u0430\u043D\u043D\u044B\u0439 \u0441\u0443\u043F\u0435\u0440\u0443\u0434\u0430\u0440: \u22122 \xB7 \u0441\u043E\u0440\u0432\u0430\u043D\u043D\u044B\u0439: \u22122 \u0442\u0435\u0431\u0435"));
+        return box;
+      }
+    },
+    {
+      title: "\u041D\u0415 \u041F\u041E\u0412\u0422\u041E\u0420\u042F\u0419\u0421\u042F",
+      body: "\u041F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0438 \u043F\u043E\u043C\u043D\u044F\u0442 \u0442\u0432\u043E\u0438 \u0445\u043E\u0434\u044B \u0434\u0432\u0443\u043C\u044F \u0441\u043F\u043E\u0441\u043E\u0431\u0430\u043C\u0438. \u0415\u0441\u043B\u0438 \u043E\u0434\u043D\u0430 \u0441\u0442\u0438\u0445\u0438\u044F \u0437\u0430\u043D\u0438\u043C\u0430\u0435\u0442 \u0431\u043E\u043B\u044C\u0448\u0435 \u043F\u043E\u043B\u043E\u0432\u0438\u043D\u044B \u0438\u0441\u0442\u043E\u0440\u0438\u0438 \u2014 \u0437\u0430\u043A\u0440\u044B\u0432\u0430\u044E\u0442 \u0447\u0430\u0441\u0442\u044C \u0441\u043B\u043E\u0442\u043E\u0432 \u043A\u043E\u043D\u0442\u0440-\u0441\u0442\u0438\u0445\u0438\u0435\u0439. \u0410 \u043D\u0430 \u0432\u0435\u0440\u0445\u043D\u0438\u0445 \u044F\u0440\u0443\u0441\u0430\u0445 \u043F\u043E\u043C\u043D\u044F\u0442 \u0435\u0449\u0451 \u0438 <b>\u043F\u043E \u043F\u043E\u0437\u0438\u0446\u0438\u044F\u043C</b>: \u0435\u0441\u043B\u0438 \u0432 \u0442\u0440\u0435\u0442\u0438\u0439 \u0441\u043B\u043E\u0442 \u0442\u044B \u0440\u0430\u0443\u043D\u0434 \u0437\u0430 \u0440\u0430\u0443\u043D\u0434\u043E\u043C \u0441\u0442\u0430\u0432\u0438\u0448\u044C \u043E\u0434\u043D\u043E \u0438 \u0442\u043E \u0436\u0435, \u0442\u0443\u0434\u0430 \u043F\u0440\u0438\u043B\u0435\u0442\u0438\u0442 \u0442\u043E\u0447\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442. \u0420\u043E\u0432\u043D\u043E\u0435 \u0447\u0435\u0440\u0435\u0434\u043E\u0432\u0430\u043D\u0438\u0435 \u2014 \u0442\u043E\u0436\u0435 \u0443\u0437\u043E\u0440.",
+      build: () => {
+        const box = el("div", "demo-list demo-list--chain");
+        const chain = (label, ids) => {
+          const row = el("div", "demo-line");
+          row.append(el("span", "demo-verdict", label));
+          ids.forEach((id) => row.append(el("div", "slot filled", ELEMENT[id].glyph)));
+          return row;
+        };
+        box.append(
+          chain("\u0442\u044B:", Array(5).fill("fire")),
+          chain("\u043E\u043D:", ["water", "water", "water", "fire", "wind"]),
+          el("span", "demo-verdict demo-span", "\u0443\u0437\u043E\u0440 \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u043D \u2014 \u0447\u0430\u0441\u0442\u044C \u0441\u043B\u043E\u0442\u043E\u0432 \u0437\u0430\u043A\u0440\u044B\u0442\u0430 \u043A\u043E\u043D\u0442\u0440-\u0441\u0442\u0438\u0445\u0438\u0435\u0439"),
+          el("span", "demo-verdict demo-span", "\u043B\u0443\u0447\u0448\u0430\u044F \u0437\u0430\u0449\u0438\u0442\u0430 \u2014 \u043D\u0435 \u0438\u043C\u0435\u0442\u044C \u0443\u0437\u043E\u0440\u0430 \u0432\u043E\u043E\u0431\u0449\u0435")
+        );
+        return box;
+      }
+    }
+  ];
+  function renderLearnStep(cardNode, progressNode, index) {
+    const step = LEARN_STEPS[index];
+    const card = el("div", "learn-card");
+    card.append(el("h3", null, step.title));
+    const body = el("p");
+    body.innerHTML = step.body;
+    card.append(body);
+    if (step.build) card.append(step.build());
+    cardNode.replaceWith(card);
+    card.id = cardNode.id;
+    progressNode.replaceChildren(
+      ...LEARN_STEPS.map((_, i) => el("span", `learn-dot${i === index ? " on" : ""}`))
+    );
+    return card;
+  }
+  function renderModes(node, modes, order, onPick) {
+    node.replaceChildren(
+      ...order.map((id) => {
+        const mode = modes[id];
+        const button = el("button", "mbtn");
+        button.dataset.mode = id;
+        button.type = "button";
+        button.append(el("span", "mbtn-name", mode.name), el("span", "mbtn-note", mode.note));
+        button.addEventListener("click", () => onPick(id));
+        return button;
+      })
+    );
+  }
+  function renderPortrait(node, element, side, { art = null } = {}) {
+    node.replaceChildren();
+    node.classList.toggle("story-portrait--art", Boolean(art));
+    if (!art) {
+      node.insertAdjacentHTML("afterbegin", fighterSvg({ element, side }));
+      applyPose(node, "guard");
+      return;
+    }
+    const img = el("img", "portrait-art");
+    img.decoding = "async";
+    img.width = 512;
+    img.height = 720;
+    img.alt = "";
+    img.addEventListener("error", () => renderPortrait(node, element, side));
+    img.src = art;
+    node.append(img);
+  }
+  function renderStoryTrack(node, total, current) {
+    node.replaceChildren(
+      ...Array.from({ length: total }, (_, i) => el("span", `story-pip${i < current ? " done" : i === current ? " now" : ""}`))
+    );
+  }
+
+  // ../../_games/___НЕ РАБОТАЕТ/bitva-stihiy/src/main.js
+  var dom = {
+    menuWheel: $("menu-wheel"),
+    leaders: $("leaders"),
+    modeGrid: $("mode-grid"),
+    learnCard: $("learn-card"),
+    learnProgress: $("learn-progress"),
+    learnPrev: $("learn-prev"),
+    learnNext: $("learn-next"),
+    storyTier: $("story-tier"),
+    storyName: $("story-name"),
+    storyPortrait: $("story-portrait"),
+    storyText: $("story-text"),
+    storyHint: $("story-hint"),
+    storyTrack: $("story-track"),
+    storyGo: $("story-go"),
+    playerName: $("player-name"),
+    enemyName: $("enemy-name"),
+    playerHpBar: $("player-hp-bar"),
+    playerHpNum: $("player-hp-num"),
+    enemyHpBar: $("enemy-hp-bar"),
+    enemyHpNum: $("enemy-hp-num"),
+    hudTier: $("hud-tier"),
+    hudRound: $("hud-round"),
+    arena: $("arena"),
+    fxLayer: $("fx-layer"),
+    caption: $("caption"),
+    intel: $("intel"),
+    showcaseOutcome: $("showcase-outcome"),
+    fighterPlayer: $("fighter-player"),
+    fighterEnemy: $("fighter-enemy"),
+    board: document.querySelector(".board"),
+    playerSlots: $("player-slots"),
+    enemySlots: $("enemy-slots"),
+    chargeFill: $("charge-fill"),
+    chargeLabel: $("charge-label"),
+    charge: document.querySelector(".charge"),
+    coach: $("coach"),
+    favour: $("favour"),
+    castRow: $("cast-row"),
+    btnUndo: $("btn-undo"),
+    btnGo: $("btn-go"),
+    btnSuper: $("btn-super"),
+    timer: $("timer"),
+    timerNum: $("timer-num"),
+    timerFill: $("timer-fill"),
+    log: $("log"),
+    overlay: $("overlay"),
+    overlayTitle: $("overlay-title"),
+    overlayText: $("overlay-text"),
+    overlayActions: $("overlay-actions"),
+    overlayArt: $("overlay-art"),
+    btnSpeed: $("btn-speed"),
+    btnRules: $("btn-rules"),
+    btnQuit: $("btn-quit"),
+    notice: $("notice")
+  };
+  var arena = createArena({
+    root: dom.arena,
+    fxLayer: dom.fxLayer,
+    caption: dom.caption,
+    playerNode: dom.fighterPlayer,
+    enemyNode: dom.fighterEnemy
+  });
+  var SPEEDS = [
+    { key: "normal", mul: 1, label: "\u041D\u041E\u0420\u041C\u0410" },
+    { key: "fast", mul: 2, label: "\u0411\u042B\u0421\u0422\u0420\u041E" },
+    { key: "instant", mul: 0, label: "\u0411\u0415\u0417 \u0410\u041D\u0418\u041C\u0410\u0426\u0418\u0418" }
+  ];
+  var app = {
+    mode: MODES.easy,
+    opponent: null,
+    battle: null,
+    seq: [],
+    playerSlots: [],
+    enemySlots: [],
+    running: false,
+    timerId: null,
+    timeLeft: 0,
+    rng: makeRng((Date.now() ^ 24378) >>> 0),
+    speedIndex: 0,
+    shownWins: null,
+    superPending: false,
+    superSlotIndex: null,
+    learnStep: 0,
+    learnReturn: "menu",
+    story: null,
+    startedAt: 0
+  };
+  var LEADERBOARD_GAME = "knb-2";
+  var leaderboardToken = "";
+  var leaderboardIssue = "";
+  async function loadLeaderboard() {
+    try {
+      const data = await fetch(`/api/leaderboard/scores?game=${LEADERBOARD_GAME}&limit=3`).then((r) => r.json());
+      const top = data.scores?.map((e, i) => `${i + 1}. ${e.nickname} ${e.score}`).join(" \xB7 ");
+      dom.leaders.textContent = `\u0413\u041B\u041E\u0411\u0410\u041B\u042C\u041D\u042B\u0419 \u0422\u041E\u041F: ${top || "\u2014"}`;
+    } catch {
+    }
+  }
+  async function beginLeaderboard() {
+    leaderboardToken = "";
+    leaderboardIssue = "";
+    try {
+      const response = await fetch("/api/leaderboard/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game: LEADERBOARD_GAME })
+      });
+      if (!response.ok) {
+        leaderboardIssue = response.status === 429 ? "\u0421\u041B\u0418\u0428\u041A\u041E\u041C \u0427\u0410\u0421\u0422\u042B\u0415 \u041F\u0415\u0420\u0415\u0417\u0410\u041F\u0423\u0421\u041A\u0418 \u2014 \u0417\u0410\u0425\u041E\u0414 \u041D\u0415 \u0417\u0410\u0421\u0427\u0418\u0422\u042B\u0412\u0410\u0415\u0422\u0421\u042F. \u041F\u041E\u0414\u041E\u0416\u0414\u0418 \u041C\u0418\u041D\u0423\u0422\u0423" : "\u0422\u0410\u0411\u041B\u0418\u0426\u0410 \u0420\u0415\u041A\u041E\u0420\u0414\u041E\u0412 \u041D\u0415\u0414\u041E\u0421\u0422\u0423\u041F\u041D\u0410 \u2014 \u0420\u0415\u0417\u0423\u041B\u042C\u0422\u0410\u0422 \u041D\u0415 \u0417\u0410\u0421\u0427\u0418\u0422\u0410\u0415\u0422\u0421\u042F";
+        return;
+      }
+      const data = await response.json();
+      leaderboardToken = data.token || "";
+    } catch {
+      leaderboardIssue = "\u0422\u0410\u0411\u041B\u0418\u0426\u0410 \u0420\u0415\u041A\u041E\u0420\u0414\u041E\u0412 \u041D\u0415\u0414\u041E\u0421\u0422\u0423\u041F\u041D\u0410 \u2014 \u0420\u0415\u0417\u0423\u041B\u042C\u0422\u0410\u0422 \u041D\u0415 \u0417\u0410\u0421\u0427\u0418\u0422\u0410\u0415\u0422\u0421\u042F";
+    }
+  }
+  var leaderboardDay = () => {
+    const now = /* @__PURE__ */ new Date();
+    return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+  };
+  async function resolvePlayerName() {
+    try {
+      const me = await fetch("/api/auth/me").then((r) => r.json());
+      if (me.authenticated && me.nickname) return me.nickname;
+    } catch {
+    }
+    if (typeof window.requestPlayerName !== "function") return "";
+    return await window.requestPlayerName() || "";
+  }
+  async function submitLeaderboard(score) {
+    hideNotice();
+    const dailyKey = `${LEADERBOARD_GAME}-daily-best:${leaderboardDay()}`;
+    const dailyBest = Number(localStorage.getItem(dailyKey) || 0);
+    if (score <= 0 || score <= dailyBest) {
+      leaderboardToken = "";
+      return;
+    }
+    if (!leaderboardToken) {
+      if (leaderboardIssue) showNotice(leaderboardIssue);
+      return;
+    }
+    const token = leaderboardToken;
+    try {
+      const nickname = await resolvePlayerName();
+      if (!nickname) return;
+      const response = await fetch("/api/leaderboard/scores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, nickname, score })
+      });
+      if (!response.ok) throw Object.assign(new Error(`leaderboard ${response.status}`), { status: response.status });
+      localStorage.setItem(dailyKey, String(score));
+      leaderboardToken = "";
+      await loadLeaderboard();
+    } catch (error) {
+      const { text, keepToken } = submitFailure(error.status);
+      if (!keepToken) leaderboardToken = "";
+      showNotice(text);
+    }
+  }
+  function submitFailure(status) {
+    if (status === 422) {
+      return { keepToken: true, text: "\u0411\u041E\u0419 \u0421\u041B\u0418\u0428\u041A\u041E\u041C \u041A\u041E\u0420\u041E\u0422\u041A\u0418\u0419 \u0414\u041B\u042F \u0422\u0410\u0411\u041B\u0418\u0426\u042B. \u0421\u041B\u0415\u0414\u0423\u042E\u0429\u0410\u042F \u041F\u041E\u0411\u0415\u0414\u0410 \u0417\u0410\u0421\u0427\u0418\u0422\u0410\u0415\u0422\u0421\u042F" };
+    }
+    if (status === 409) {
+      return { keepToken: false, text: "\u0417\u0410\u0425\u041E\u0414 \u0418\u0421\u0422\u0401\u041A \u2014 \u0420\u0415\u0417\u0423\u041B\u042C\u0422\u0410\u0422 \u041D\u0415 \u0417\u0410\u0421\u0427\u0418\u0422\u0410\u041D. \u041D\u0410\u0427\u041D\u0418 \u041D\u041E\u0412\u042B\u0419" };
+    }
+    if (status >= 400 && status < 500) {
+      return { keepToken: false, text: "\u0421\u0415\u0420\u0412\u0415\u0420 \u041D\u0415 \u041F\u0420\u0418\u041D\u042F\u041B \u0420\u0415\u0417\u0423\u041B\u042C\u0422\u0410\u0422" };
+    }
+    return { keepToken: true, text: "\u0420\u0415\u0417\u0423\u041B\u042C\u0422\u0410\u0422 \u041D\u0415 \u0423\u0428\u0401\u041B \u0412 \u0422\u0410\u0411\u041B\u0418\u0426\u0423: \u0421\u0415\u0422\u042C. \u0421\u041B\u0415\u0414\u0423\u042E\u0429\u0410\u042F \u041F\u041E\u0411\u0415\u0414\u0410 \u041F\u041E\u041F\u0420\u041E\u0411\u0423\u0415\u0422 \u0421\u041D\u041E\u0412\u0410" };
+  }
+  function showNotice(text) {
+    dom.notice.textContent = text;
+    dom.notice.hidden = false;
+  }
+  var hideNotice = () => {
+    dom.notice.hidden = true;
+  };
+  function loadSpeed() {
+    const saved = localStorage.getItem("knb-speed");
+    const index = SPEEDS.findIndex((s) => s.key === saved);
+    app.speedIndex = index >= 0 ? index : 0;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches && index < 0) {
+      app.speedIndex = SPEEDS.length - 1;
+    }
+    applySpeed();
+  }
+  function applySpeed() {
+    const { mul, label } = SPEEDS[app.speedIndex];
+    dom.btnSpeed.textContent = `\u0421\u041A\u041E\u0420\u041E\u0421\u0422\u042C: ${label}`;
+    const boosted = mul === 0 ? 0 : app.mode?.reveal === "instant" ? mul * 2.5 : mul;
+    arena.setSpeed(boosted);
+    document.documentElement.style.setProperty("--speed", String(boosted || 1));
+  }
+  function cycleSpeed() {
+    app.speedIndex = (app.speedIndex + 1) % SPEEDS.length;
+    localStorage.setItem("knb-speed", SPEEDS[app.speedIndex].key);
+    applySpeed();
+  }
+  function battleInProgress() {
+    return Boolean(app.battle) && !app.battle.outcome && !$("screen-battle").hidden && dom.overlay.hidden;
+  }
+  function confirmLeave(where) {
+    if (!battleInProgress()) return true;
+    return window.confirm(`\u0412\u044B\u0439\u0442\u0438 ${where}? \u0411\u043E\u0439 \u043F\u0440\u0435\u0440\u0432\u0451\u0442\u0441\u044F, \u043F\u0440\u043E\u0433\u0440\u0435\u0441\u0441 \u043C\u043E\u0436\u0435\u0442 \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C\u0441\u044F.`);
+  }
+  function goMenu() {
+    stopTimer();
+    arena.abort();
+    app.story = null;
+    hideOverlay();
+    showScreen("menu");
+  }
+  function goModes() {
+    showScreen("modes");
+  }
+  function goLearn(returnTo = "menu") {
+    app.learnReturn = returnTo;
+    app.learnStep = 0;
+    paintLearn();
+    showScreen("learn");
+  }
+  function paintLearn() {
+    dom.learnCard = renderLearnStep(dom.learnCard, dom.learnProgress, app.learnStep);
+    dom.learnPrev.textContent = app.learnStep === 0 ? "\u0417\u0410\u041A\u0420\u042B\u0422\u042C" : "\u041D\u0410\u0417\u0410\u0414";
+    dom.learnNext.textContent = app.learnStep === LEARN_STEPS.length - 1 ? "\u041F\u041E\u041D\u042F\u0422\u041D\u041E" : "\u0414\u0410\u041B\u042C\u0428\u0415";
+  }
+  function startStory() {
+    app.story = {
+      index: 0,
+      hp: PLAYER_MAX_HP,
+      charge: 0,
+      wins: { fire: 0, water: 0, wind: 0 },
+      prologueSeen: false
+    };
+    void beginLeaderboard();
+    window.umami?.track("game-start", { game: LEADERBOARD_GAME, difficulty: "story" });
+    showPrologue();
+  }
+  function showPrologue() {
+    dom.storyTier.textContent = "\u0411\u0410\u0428\u041D\u042F \u0422\u0420\u0401\u0425 \u0421\u0422\u0418\u0425\u0418\u0419";
+    dom.storyName.textContent = "\u041F\u0420\u041E\u041B\u041E\u0413";
+    renderPortrait(dom.storyPortrait, "water", "player", { art: "./assets/portrait-hero.webp" });
+    dom.storyText.textContent = PROLOGUE;
+    dom.storyHint.textContent = `\u0412\u043F\u0435\u0440\u0435\u0434\u0438 ${CAMPAIGN.length} \u044F\u0440\u0443\u0441\u043E\u0432. \u0417\u0434\u043E\u0440\u043E\u0432\u044C\u0435 \u043F\u0435\u0440\u0435\u043D\u043E\u0441\u0438\u0442\u0441\u044F \u043C\u0435\u0436\u0434\u0443 \u0431\u043E\u044F\u043C\u0438, \u043F\u043E\u0441\u043B\u0435 \u043F\u043E\u0431\u0435\u0434\u044B \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442\u0441\u044F \u0447\u0430\u0441\u0442\u044C.`;
+    renderStoryTrack(dom.storyTrack, CAMPAIGN.length, 0);
+    dom.storyGo.textContent = "\u041D\u0410\u0427\u0410\u0422\u042C \u0412\u041E\u0421\u0425\u041E\u0416\u0414\u0415\u041D\u0418\u0415";
+    dom.storyGo.onclick = () => showTier(0);
+    showScreen("story");
+  }
+  function showTier(index) {
+    const opponent = opponentAt(index);
+    if (!opponent) {
+      showEpilogue();
+      return;
+    }
+    app.story.index = index;
+    dom.storyTier.textContent = opponent.tier;
+    dom.storyName.textContent = opponent.name;
+    renderPortrait(dom.storyPortrait, opponent.element, "enemy", { art: portraitArt(opponent.id) });
+    dom.storyText.textContent = `\xAB${opponent.intro}\xBB`;
+    dom.storyHint.textContent = opponent.teaches;
+    renderStoryTrack(dom.storyTrack, CAMPAIGN.length, index);
+    dom.storyGo.textContent = "\u0412 \u0411\u041E\u0419";
+    dom.storyGo.onclick = () => startBattle({
+      opponent,
+      mode: { ...STORY_MODE, slots: opponent.slots, timer: opponent.timer },
+      playerHp: app.story.hp,
+      charge: app.story.charge,
+      wins: app.story.wins,
+      tierLabel: `${opponent.tier} \xB7 ${opponent.title}`
+    });
+    showScreen("story");
+  }
+  function showEpilogue() {
+    dom.storyTier.textContent = "\u0412\u0415\u0420\u0428\u0418\u041D\u0410";
+    dom.storyName.textContent = "\u0411\u0410\u0428\u041D\u042F \u041F\u0420\u041E\u0419\u0414\u0415\u041D\u0410";
+    renderPortrait(dom.storyPortrait, "wind", "player", { art: "./assets/portrait-hero-win.webp" });
+    dom.storyText.textContent = EPILOGUE;
+    dom.storyHint.textContent = `\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u044F: ${app.story.hp}/${PLAYER_MAX_HP}.`;
+    renderStoryTrack(dom.storyTrack, CAMPAIGN.length, CAMPAIGN.length);
+    dom.storyGo.textContent = "\u0412 \u041C\u0415\u041D\u042E";
+    dom.storyGo.onclick = goMenu;
+    window.umami?.track("game-finish", {
+      game: LEADERBOARD_GAME,
+      difficulty: "story",
+      result: "clear",
+      tier: CAMPAIGN.length,
+      tier_id: "summit",
+      duration_seconds: Math.round((Date.now() - app.startedAt) / 1e3)
+    });
+    void submitLeaderboard(campaignScore({
+      tierIndex: CAMPAIGN.length,
+      cleared: true,
+      hp: app.story.hp,
+      wins: app.story.wins
+    }));
+    sweep(240, 900, 620);
+    showScreen("story");
+  }
+  function startFreeBattle(modeId) {
+    const mode = MODES[modeId];
+    const opponent = SPARRING[pick(ELEMENTS, app.rng)];
+    app.story = null;
+    void beginLeaderboard();
+    window.umami?.track("game-start", { game: LEADERBOARD_GAME, difficulty: modeId });
+    startBattle({
+      opponent,
+      mode,
+      playerHp: PLAYER_MAX_HP,
+      charge: 0,
+      wins: { fire: 0, water: 0, wind: 0 },
+      tierLabel: `\u0421\u0412\u041E\u0411\u041E\u0414\u041D\u042B\u0419 \u0411\u041E\u0419 \xB7 ${mode.name}`
+    });
+  }
+  function startBattle({ opponent, mode, playerHp, charge, wins, tierLabel }) {
+    app.mode = mode;
+    app.opponent = opponent;
+    app.battle = createBattle({
+      opponent,
+      slots: mode.slots ?? 5,
+      playerHp,
+      playerMaxHp: PLAYER_MAX_HP,
+      charge
+    });
+    app.battle.wins = { ...wins };
+    app.startedAt = app.startedAt || Date.now();
+    if (!app.story) app.startedAt = Date.now();
+    dom.hudTier.textContent = tierLabel;
+    dom.playerName.textContent = "\u0422\u042B";
+    dom.enemyName.textContent = opponent.name;
+    dom.board.classList.toggle("duel", app.battle.slots === 1);
+    app.playerSlots = renderSlots(dom.playerSlots, app.battle.slots, { window: COMBO_LENGTH });
+    app.enemySlots = renderSlots(dom.enemySlots, app.battle.slots, { window: COMBO_LENGTH });
+    dom.log.replaceChildren();
+    arena.mount({ playerElement: "water", enemyElement: opponent.element });
+    applySpeed();
+    pushLog(dom.log, `${opponent.name} \u2014 ${opponent.title}.`, "system");
+    pushLog(dom.log, opponent.teaches ?? "\u041A\u043E\u0440\u043E\u043D\u043A\u0443 \u043F\u0440\u043E\u0442\u0438\u0432\u043D\u0438\u043A\u0430 \u043F\u0440\u0438\u0434\u0451\u0442\u0441\u044F \u0432\u044B\u0447\u0438\u0441\u043B\u0438\u0442\u044C \u043F\u043E \u0431\u043E\u044E.", "neutral");
+    pushLog(dom.log, "\u041F\u043E\u043B\u043E\u0441\u0430 \u043D\u0430\u0434 \u0430\u0440\u0435\u043D\u043E\u0439 \u043F\u043E\u043C\u043D\u0438\u0442 \u0437\u0430 \u0442\u0435\u0431\u044F: \u0441\u043A\u043E\u043B\u044C\u043A\u043E \u0440\u0430\u0437 \u043A\u0430\u043A\u0443\u044E \u0441\u0442\u0438\u0445\u0438\u044E \u043E\u043D \u0432\u044B\u0431\u0440\u043E\u0441\u0438\u043B \u0438 \u0447\u0435\u043C \u0431\u0438\u043B \u0432 \u043F\u0440\u043E\u0448\u043B\u043E\u043C \u0440\u0430\u0443\u043D\u0434\u0435.", "neutral");
+    hideNotice();
+    hideOverlay();
+    showScreen("battle");
+    paintAll();
+    beginRound();
+  }
+  function beginRound() {
+    app.battle = { ...app.battle, favour: rollFavour(app.rng) };
+    paintFavour();
+    app.seq = [];
+    clearSlots(app.playerSlots);
+    clearSlots(app.enemySlots);
+    arena.resetPoses();
+    arena.hideCaption();
+    paintCombo();
+    dom.hudRound.textContent = `\u0420\u0410\u0423\u041D\u0414 ${app.battle.round}`;
+    paintIntel();
+    setControlsEnabled(true);
+    startTimer(app.mode.timer ?? 15);
+  }
+  function paintFavour() {
+    const favour = app.battle?.favour ?? null;
+    dom.favour.textContent = favourText(favour);
+    const screen = dom.arena.closest(".screen--battle");
+    if (favour) screen.dataset.favour = favour;
+    else delete screen.dataset.favour;
+  }
+  function timesWord(n) {
+    const tail = n % 100;
+    if (tail >= 11 && tail <= 14) return "\u0440\u0430\u0437";
+    const last = n % 10;
+    if (last === 1) return "\u0440\u0430\u0437";
+    if (last >= 2 && last <= 4) return "\u0440\u0430\u0437\u0430";
+    return "\u0440\u0430\u0437";
+  }
+  function signatureReport(battle, opponent) {
+    const el2 = ELEMENT[opponent.element];
+    const seen = battle.sigSeen ?? 0;
+    const parried = battle.sigParried ?? 0;
+    const crits = battle.sigCrits ?? 0;
+    const total = ELEMENTS.reduce((sum, id) => sum + (battle.seen?.[id] ?? 0), 0);
+    if (!total) return "";
+    const lines = [`${opponent.name} \u0432\u044B\u0431\u0440\u0430\u0441\u044B\u0432\u0430\u043B ${el2.accusative} ${seen} ${timesWord(seen)} \u0438\u0437 ${total}.`];
+    if (parried) lines.push(`\u0422\u044B \u0433\u0430\u0441\u0438\u043B \u043A\u043E\u0440\u043E\u043D\u043A\u0443 ${parried} ${timesWord(parried)} \u2014 \u0441\u043D\u044F\u043B \u044D\u0442\u0438\u043C ${parried} \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u044F.`);
+    else lines.push("\u041A\u043E\u0440\u043E\u043D\u043A\u0443 \u0442\u044B \u043D\u0435 \u043F\u043E\u0433\u0430\u0441\u0438\u043B \u043D\u0438 \u0440\u0430\u0437\u0443.");
+    if (crits) lines.push(`\u041F\u0440\u043E\u043F\u0443\u0441\u0442\u0438\u043B ${crits} ${timesWord(crits)} \u2014 \u043F\u043E\u0442\u0435\u0440\u044F\u043B ${crits * 2}: \u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u0431\u044C\u0451\u0442 \u0432\u0434\u0432\u043E\u0435.`);
+    return lines.join("\n");
+  }
+  function portraitArt(id) {
+    return id ? `./assets/portrait-${id}.webp` : null;
+  }
+  function paintIntel() {
+    renderSeen(dom.intel, app.battle.seen, app.battle.enemyRounds);
+  }
+  function paintAll(snapshot) {
+    const b = app.battle;
+    const hp = snapshot?.hp ?? b.hp;
+    const charge = snapshot?.charge ?? b.charge;
+    setHp(dom.playerHpBar, dom.playerHpNum, hp.player, b.maxHp.player);
+    setHp(dom.enemyHpBar, dom.enemyHpNum, hp.enemy, b.maxHp.enemy);
+    setCharge(dom.chargeFill, dom.chargeLabel, dom.charge, charge, CHARGE_COST);
+    renderSeen(dom.intel, b.seen, b.enemyRounds);
+    const ready = canArmSuper(b) && !app.running;
+    dom.btnSuper.disabled = !ready;
+    dom.btnSuper.classList.toggle("ready", ready);
+    dom.btnSuper.classList.toggle("picking", app.superPending);
+    dom.btnSuper.textContent = app.superPending ? "\u0412\u042B\u0411\u0415\u0420\u0418 \u0416\u0415\u0421\u0422" : app.superSlotIndex !== null ? `\u0421\u0423\u041F\u0415\u0420 \u2192 ${app.superSlotIndex + 1}` : "\u0421\u0423\u041F\u0415\u0420";
+  }
+  function castElement(id) {
+    if (app.running || app.battle.outcome) return;
+    if (app.seq.length >= app.battle.slots) return;
+    app.seq.push(id);
+    const index = app.seq.length - 1;
+    setSlot(app.playerSlots[index], { element: id, state: "filled" });
+    if (app.superPending) {
+      app.superPending = false;
+      app.superSlotIndex = index;
+      markSuperSlot();
+      paintAll();
+    }
+    paintCombo();
+    const button = document.querySelector(`.cast[data-element="${id}"]`);
+    button?.classList.remove("struck");
+    void button?.offsetWidth;
+    button?.classList.add("struck");
+    arena.setPlayerElement(id);
+    tone(ELEMENT[id].tone, 55);
+    haptic(8);
+    if (app.seq.length === app.battle.slots) void runRound();
+  }
+  function undoCast() {
+    if (app.running || app.seq.length === 0) return;
+    app.seq.pop();
+    setSlot(app.playerSlots[app.seq.length], {});
+    if (app.superSlotIndex === app.seq.length) {
+      app.superSlotIndex = null;
+      app.superPending = true;
+      paintAll();
+    }
+    markSuperSlot();
+    paintCombo();
+    haptic(6);
+  }
+  function useSuper() {
+    if (app.running || !canArmSuper(app.battle)) return;
+    if (app.superPending || app.superSlotIndex !== null) {
+      app.superPending = false;
+      clearSuperMark();
+      app.superSlotIndex = null;
+      pushLog(dom.log, "\u0421\u0443\u043F\u0435\u0440\u0443\u0434\u0430\u0440 \u0441\u043D\u044F\u0442.", "system");
+      paintAll();
+      return;
+    }
+    app.superPending = true;
+    sweep(200, 700, 260);
+    haptic([18, 22, 30]);
+    pushLog(dom.log, "\u0417\u0430\u0440\u044F\u0434 \u0433\u043E\u0442\u043E\u0432. \u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0439 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439 \u0436\u0435\u0441\u0442 \u0441\u0442\u0430\u043D\u0435\u0442 \u0441\u0443\u043F\u0435\u0440\u0443\u0434\u0430\u0440\u043E\u043C \u2014 \u0440\u0435\u0448\u0438, \u0432 \u043A\u0430\u043A\u043E\u0439 \u043C\u043E\u043C\u0435\u043D\u0442 \u0446\u0435\u043F\u043E\u0447\u043A\u0438 \u043E\u043D \u0443\u0434\u0430\u0440\u0438\u0442.", "system");
+    paintAll();
+  }
+  function paintCombo() {
+    app.playerSlots.forEach((slot) => slot.classList.remove("in-combo", "combo-missed", "overheating"));
+    const found = findCombo(app.seq);
+    const hot = overheatOf(app.seq);
+    paintCoach(found, hot);
+    paintWindowLabel(found, hot);
+    if (hot) {
+      app.seq.forEach((element, i) => {
+        if (element === hot.element) app.playerSlots[i]?.classList.add("overheating");
+      });
+      return;
+    }
+    found?.slots.forEach((i) => app.playerSlots[i]?.classList.add("in-combo"));
+  }
+  function paintWindowLabel(found, hot) {
+    const zone = dom.playerSlots.querySelector(".slot-group--window");
+    if (!zone) return;
+    if (hot) {
+      zone.dataset.label = `\u041F\u0415\u0420\u0415\u0413\u0420\u0415\u0412 \u2212${hot.damage}`;
+      zone.dataset.state = "hot";
+      return;
+    }
+    if (!found) {
+      zone.dataset.label = "\u0423\u0417\u041E\u0420";
+      delete zone.dataset.state;
+      return;
+    }
+    const favoured = isFavoured(found, app.battle?.favour);
+    const gain = found.combo.damage ? `+${found.combo.damage}` : `+${found.combo.charge}\u26A1`;
+    zone.dataset.label = `${found.combo.name} ${gain}${favoured ? " \xD72" : ""}`;
+    zone.dataset.state = favoured ? "favour" : "armed";
+  }
+  function paintCoach(found, hot) {
+    if (!app.battle) return;
+    const line = coachLine(app.battle, {
+      chargeCost: CHARGE_COST,
+      overheat: hot,
+      combo: found?.combo ?? null,
+      favoured: isFavoured(found, app.battle.favour)
+    });
+    if (!line) {
+      dom.coach.replaceChildren();
+      dom.coach.removeAttribute("data-tone");
+      return;
+    }
+    dom.coach.dataset.tone = line.tone;
+    dom.coach.textContent = line.text;
+  }
+  function clearSuperMark() {
+    app.playerSlots.forEach((slot) => slot.classList.remove("super-armed"));
+  }
+  function markSuperSlot() {
+    clearSuperMark();
+    if (app.superSlotIndex !== null) {
+      app.playerSlots[app.superSlotIndex]?.classList.add("super-armed");
+    }
+  }
+  function startTimer(seconds) {
+    stopTimer();
+    app.timeLeft = seconds;
+    paintTimer();
+    app.timerId = setInterval(() => {
+      app.timeLeft -= 1;
+      paintTimer();
+      if (app.timeLeft <= 0) {
+        stopTimer();
+        void runRound();
+      }
+    }, 1e3);
+  }
+  function stopTimer() {
+    if (app.timerId) clearInterval(app.timerId);
+    app.timerId = null;
+  }
+  function paintTimer() {
+    const left = Math.max(0, app.timeLeft);
+    dom.timerNum.textContent = String(left);
+    const total = app.mode?.timer ?? 15;
+    dom.timerFill.style.width = `${Math.min(100, left / total * 100)}%`;
+    dom.timer.classList.toggle("urgent", left <= 5);
+  }
+  function setControlsEnabled(on) {
+    document.querySelectorAll(".cast").forEach((b) => {
+      b.disabled = !on;
+    });
+    dom.btnUndo.disabled = !on;
+    dom.btnGo.disabled = !on;
+    dom.btnSuper.disabled = !on || !canArmSuper(app.battle);
+  }
+  async function runRound() {
+    if (app.running || !app.battle || app.battle.outcome) return;
+    app.running = true;
+    stopTimer();
+    setControlsEnabled(false);
+    while (app.seq.length < app.battle.slots) {
+      const id = pick(ELEMENTS, app.rng);
+      setSlot(app.playerSlots[app.seq.length], { element: id, state: "filled" });
+      app.seq.push(id);
+    }
+    if (app.superSlotIndex !== null) app.battle = armSuper(app.battle, app.superSlotIndex);
+    app.superPending = false;
+    const { plan, counteredElement, punishing, rhythmSlots, defendedSlot } = planEnemyRound(app.battle, app.rng);
+    if (defendedSlot !== null) {
+      pushLog(dom.log, `${app.opponent.name} \u0432\u0438\u0434\u0438\u0442 \u0437\u0430\u0440\u044F\u0436\u0435\u043D\u043D\u044B\u0439 \u043F\u043E\u0441\u043E\u0445 \u0438 \u0436\u0434\u0451\u0442 \u0443\u0434\u0430\u0440\u0430 \u0432 \u0441\u043B\u043E\u0442 ${defendedSlot + 1}.`, "system");
+    }
+    if (rhythmSlots.length) {
+      const slots = rhythmSlots.map((i) => i + 1).join(", ");
+      pushLog(dom.log, `${app.opponent.name} \u043F\u043E\u0439\u043C\u0430\u043B \u0442\u0432\u043E\u0439 \u0440\u0438\u0442\u043C: \u043E\u043D \u0437\u043D\u0430\u0435\u0442, \u0447\u0442\u043E \u0442\u044B \u0441\u0442\u0430\u0432\u0438\u0448\u044C \u0432 \u0441\u043B\u043E\u0442\u044B ${slots}. \u0421\u043B\u043E\u043C\u0430\u0439 \u043F\u0440\u0438\u0432\u044B\u0447\u043A\u0443.`, "system");
+    } else if (counteredElement) {
+      pushLog(dom.log, `${app.opponent.name} \u0440\u0430\u0437\u0433\u0430\u0434\u0430\u043B \u0443\u0437\u043E\u0440: \u0441\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u043D\u043E\u0433\u043E ${ELEMENT[counteredElement].genitive}. \u0427\u0430\u0441\u0442\u044C \u0441\u043B\u043E\u0442\u043E\u0432 \u0437\u0430\u043A\u0440\u044B\u0442\u0430 \u043A\u043E\u043D\u0442\u0440-\u0441\u0442\u0438\u0445\u0438\u0435\u0439.`, "system");
+    } else if (punishing) {
+      pushLog(dom.log, `${app.opponent.name} \u0437\u0430\u043C\u0435\u0442\u0438\u043B, \u0447\u0442\u043E \u0442\u044B \u0431\u044C\u0451\u0448\u044C \u0441\u0442\u0440\u043E\u0433\u043E \u043F\u043E \u043A\u043E\u0440\u043E\u043D\u043A\u0435, \u0438 \u0441\u0442\u0430\u0432\u0438\u0442 \u043F\u0440\u0438\u043C\u0430\u043D\u043A\u0438 \u043F\u043E\u0434 \u0442\u0432\u043E\u0439 \u043E\u0442\u0432\u0435\u0442.`, "system");
+    }
+    app.shownWins = { ...app.battle.wins };
+    const { state, events } = resolveRound(app.battle, [...app.seq], plan);
+    app.battle = state;
+    await playEvents(events, plan);
+    app.shownWins = null;
+    paintAll();
+    app.running = false;
+    if (app.battle.outcome) {
+      finishBattle(app.battle.outcome);
+      return;
+    }
+    beginRound();
+  }
+  async function playEvents(events, plan) {
+    for (const event of events) {
+      if (event.type === "clash") {
+        const pSlot = app.playerSlots[event.index];
+        const eSlot = app.enemySlots[event.index];
+        pSlot.classList.add("now");
+        eSlot.classList.add("now");
+        setSlot(eSlot, {
+          element: plan[event.index].element,
+          state: "now",
+          signature: plan[event.index].signature
+        });
+        await arena.playClash(event, {
+          onImpact: applyImpact,
+          // Коронка помечена в плане — арена подсветит ею противника.
+          enemySignature: plan[event.index].signature ? plan[event.index].sig : null
+        });
+        pSlot.classList.remove("now");
+        setSlot(pSlot, { element: event.player, state: slotStateFor(event, "player") });
+        setSlot(eSlot, {
+          element: plan[event.index].element,
+          state: slotStateFor(event, "enemy"),
+          signature: plan[event.index].signature
+        });
+      } else if (event.type === "combo") {
+        for (const i of event.slots) {
+          app.playerSlots[i]?.classList.toggle("in-combo", !event.fired);
+          if (event.fired) app.playerSlots[i]?.classList.add("combo-fired");
+        }
+        pushLog(dom.log, event.phrase, event.fired ? "system" : "neutral");
+        if (event.fired) {
+          paintAll({ hp: event.hp, charge: app.battle.charge });
+          await arena.playCombo(event);
+        } else {
+          for (const i of event.slots) app.playerSlots[i]?.classList.add("combo-missed");
+          await arena.playComboMiss(event);
+        }
+      } else if (event.type === "overheat") {
+        for (const [i, element] of app.seq.entries()) {
+          if (element === event.element) app.playerSlots[i]?.classList.add("overheating");
+        }
+        pushLog(dom.log, `${event.phrase} \u2212${event.damage}`, "enemy");
+        paintAll({ hp: event.hp, charge: app.battle.charge });
+        await arena.playOverheat(event);
+      } else if (event.type === "ko") {
+        await arena.playKo(event.winner);
+      } else if (event.type === "round-end") {
+        if (app.mode.log === "summary") {
+          pushLog(dom.log, `\u0418\u0442\u043E\u0433 \u0440\u0430\u0443\u043D\u0434\u0430: \u0442\u044B \u2212${event.dealt.player}, ${app.opponent.name} \u2212${event.dealt.enemy}.`, "system");
+        }
+      }
+    }
+  }
+  var SLOT_STATE = {
+    win: ["win", "lose"],
+    stun: ["stun", "stun"],
+    "super-hit": ["super", "lose"],
+    "super-fail": ["crit", "super"],
+    "super-fizzle": ["super", "draw"],
+    crit: ["crit", "win"],
+    lose: ["lose", "win"],
+    draw: ["draw", "draw"]
+  };
+  var slotStateFor = (event, side) => (SLOT_STATE[event.outcome] ?? ["draw", "draw"])[side === "player" ? 0 : 1];
+  function applyImpact(event) {
+    if (event.target === "enemy" && app.shownWins) app.shownWins[event.player] += 1;
+    paintAll({ hp: event.hp, charge: event.charge });
+    if (app.mode.log === "summary") return;
+    const kind = event.target === "enemy" ? "player" : event.target === "player" ? "enemy" : "neutral";
+    const hidden = app.mode.log === "muted";
+    const amount = hidden || !event.damage ? "" : ` \u2212${event.damage}`;
+    pushLog(dom.log, `${event.phrase}${amount}`, event.outcome === "stun" || event.parry ? "system" : kind);
+  }
+  function finishBattle(winner) {
+    stopTimer();
+    setControlsEnabled(false);
+    const won = winner === "player";
+    if (app.story) {
+      if (won) {
+        app.story.wins = { ...app.battle.wins };
+        app.story.charge = app.battle.charge;
+        const last = isFinalTier(app.story.index);
+        app.story.hp = last ? app.battle.hp.player : healAfterWin(app.battle.hp.player);
+        window.umami?.track("tier-cleared", {
+          game: LEADERBOARD_GAME,
+          tier: app.story.index + 1,
+          tier_id: app.opponent.id,
+          hp_left: app.story.hp
+        });
+        showOverlay({
+          title: "\u042F\u0420\u0423\u0421 \u0412\u0417\u042F\u0422",
+          color: "var(--win)",
+          text: `\xAB${app.opponent.defeat}\xBB
+${app.opponent.reveal ?? ""}${last ? "" : `
+\u0417\u0434\u043E\u0440\u043E\u0432\u044C\u0435 \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u043E \u0434\u043E ${app.story.hp}.`}
+
+${signatureReport(app.battle, app.opponent)}`,
+          actions: last ? [{ label: "\u0424\u0418\u041D\u0410\u041B", primary: true, onClick: showEpilogue }] : [{ label: "\u0414\u0410\u041B\u042C\u0428\u0415", primary: true, onClick: () => showTier(app.story.index + 1) }]
+        });
+      } else {
+        window.umami?.track("game-finish", {
+          game: LEADERBOARD_GAME,
+          difficulty: "story",
+          result: "loss",
+          tier: app.story.index + 1,
+          tier_id: app.opponent.id,
+          duration_seconds: Math.round((Date.now() - app.startedAt) / 1e3)
+        });
+        void submitLeaderboard(campaignScore({
+          tierIndex: app.story.index,
+          cleared: false,
+          hp: 0,
+          wins: app.battle.wins
+        }));
+        const retryHp = app.story.hp;
+        showOverlay({
+          title: "\u041F\u041E\u0420\u0410\u0416\u0415\u041D\u0418\u0415",
+          color: "var(--lose)",
+          art: "./assets/portrait-hero-down.webp",
+          text: `${app.opponent.name} \u0443\u0441\u0442\u043E\u044F\u043B.
+${app.opponent.reveal ?? ""}
+
+${signatureReport(app.battle, app.opponent)}`,
+          actions: [
+            { label: "\u041F\u041E\u0412\u0422\u041E\u0420\u0418\u0422\u042C \u042F\u0420\u0423\u0421", primary: true, onClick: () => {
+              app.story.hp = retryHp;
+              showTier(app.story.index);
+            } },
+            { label: "\u041F\u0420\u0410\u0412\u0418\u041B\u0410", onClick: () => goLearn("story") },
+            { label: "\u0412 \u041C\u0415\u041D\u042E", onClick: goMenu }
+          ]
+        });
+      }
+      return;
+    }
+    window.umami?.track("game-finish", {
+      game: LEADERBOARD_GAME,
+      difficulty: app.mode.id,
+      result: won ? "win" : "loss",
+      duration_seconds: Math.round((Date.now() - app.startedAt) / 1e3)
+    });
+    if (won) {
+      const gestures = Object.values(app.battle.wins).reduce((a, b) => a + b, 0);
+      void submitLeaderboard(1e3 + app.battle.hp.player * 100 + gestures * 10);
+    }
+    showOverlay({
+      title: won ? "\u041F\u041E\u0411\u0415\u0414\u0410" : "\u041F\u041E\u0420\u0410\u0416\u0415\u041D\u0418\u0415",
+      color: won ? "var(--win)" : "var(--lose)",
+      art: won ? null : "./assets/portrait-hero-down.webp",
+      text: (won ? `${app.opponent.name} \u043F\u043E\u0432\u0435\u0440\u0436\u0435\u043D. \u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u0437\u0434\u043E\u0440\u043E\u0432\u044C\u044F: ${app.battle.hp.player}.` : `${app.opponent.name} \u043E\u043A\u0430\u0437\u0430\u043B\u0441\u044F \u0431\u044B\u0441\u0442\u0440\u0435\u0435.`) + `
+\u0415\u0433\u043E \u043A\u043E\u0440\u043E\u043D\u043A\u0430 \u2014 ${ELEMENT[app.opponent.element].name.toLowerCase()}.
+
+${signatureReport(app.battle, app.opponent)}`,
+      actions: [
+        { label: "\u0415\u0429\u0401 \u0420\u0410\u0417", primary: true, onClick: () => startFreeBattle(app.mode.id) },
+        { label: "\u0412 \u041C\u0415\u041D\u042E", onClick: goMenu }
+      ]
+    });
+  }
+  function showOverlay({ title, text, color, actions, art = null }) {
+    if (art) {
+      dom.overlayArt.src = art;
+      dom.overlayArt.hidden = false;
+    } else {
+      dom.overlayArt.hidden = true;
+      dom.overlayArt.removeAttribute("src");
+    }
+    dom.overlayTitle.textContent = title;
+    dom.overlayTitle.style.color = color ?? "var(--text)";
+    dom.overlayText.textContent = text ?? "";
+    dom.overlayText.style.whiteSpace = "pre-line";
+    dom.overlayActions.replaceChildren(
+      ...actions.map(({ label, primary, onClick }) => {
+        const button = document.createElement("button");
+        button.className = primary ? "mbtn mbtn--primary" : "mbtn";
+        button.type = "button";
+        button.textContent = label;
+        button.addEventListener("click", () => {
+          hideOverlay();
+          onClick();
+        });
+        return button;
+      })
+    );
+    dom.overlay.hidden = false;
+  }
+  var hideOverlay = () => {
+    dom.overlay.hidden = true;
+  };
+  var KEY_CODES = {
+    Digit1: "fire",
+    Digit2: "water",
+    Digit3: "wind",
+    Numpad1: "fire",
+    Numpad2: "water",
+    Numpad3: "wind",
+    KeyQ: "fire",
+    KeyW: "water",
+    KeyE: "wind"
+  };
+  var KEY_CHARS = {
+    1: "fire",
+    2: "water",
+    3: "wind",
+    q: "fire",
+    w: "water",
+    e: "wind",
+    \u0439: "fire",
+    \u0446: "water",
+    \u0443: "wind"
+  };
+  var elementFromKey = (event) => KEY_CODES[event.code] ?? KEY_CHARS[event.key?.toLowerCase()] ?? null;
+  var isKey = (event, code, key) => event.code === code || event.key === key;
+  function onKeyDown(event) {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    const battleVisible = !$("screen-battle").hidden && dom.overlay.hidden;
+    if (!battleVisible) return;
+    const element = elementFromKey(event);
+    if (element) {
+      event.preventDefault();
+      castElement(element);
+      return;
+    }
+    if (isKey(event, "Backspace", "Backspace")) {
+      event.preventDefault();
+      undoCast();
+      return;
+    }
+    if (isKey(event, "Enter", "Enter")) {
+      event.preventDefault();
+      void runRound();
+      return;
+    }
+    if (isKey(event, "Space", " ")) {
+      event.preventDefault();
+      useSuper();
+    }
+  }
+  function blockZoomGestures() {
+    for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
+      document.addEventListener(type, (event) => event.preventDefault(), { passive: false });
+    }
+  }
+  function boot() {
+    blockZoomGestures();
+    renderWheel(dom.menuWheel);
+    renderCastRow(dom.castRow, castElement);
+    renderModes(dom.modeGrid, MODES, MODE_ORDER, startFreeBattle);
+    loadSpeed();
+    wakeAudioOnInteraction();
+    installShowcase({
+      app,
+      arena,
+      dom,
+      createBattle,
+      resolveRound,
+      renderSlots,
+      setSlot,
+      setHp,
+      stopTimer,
+      PLAYER_MAX_HP
+    });
+    document.querySelectorAll("[data-goto]").forEach((node) => {
+      node.addEventListener("click", () => {
+        const target = node.dataset.goto;
+        if (target === "menu") goMenu();
+        else if (target === "modes") goModes();
+        else if (target === "learn") goLearn("menu");
+        else if (target === "story") startStory();
+      });
+    });
+    dom.learnPrev.addEventListener("click", () => {
+      if (app.learnStep === 0) {
+        showScreen(app.learnReturn);
+        return;
+      }
+      app.learnStep -= 1;
+      paintLearn();
+    });
+    dom.learnNext.addEventListener("click", () => {
+      if (app.learnStep === LEARN_STEPS.length - 1) {
+        showScreen(app.learnReturn);
+        return;
+      }
+      app.learnStep += 1;
+      paintLearn();
+    });
+    dom.btnUndo.addEventListener("click", undoCast);
+    dom.btnGo.addEventListener("click", () => void runRound());
+    dom.btnSuper.addEventListener("click", useSuper);
+    dom.btnSpeed.addEventListener("click", cycleSpeed);
+    dom.btnRules.addEventListener("click", () => goLearn("battle"));
+    dom.btnQuit.addEventListener("click", () => {
+      if (confirmLeave("\u0432 \u043C\u0435\u043D\u044E")) goMenu();
+    });
+    document.querySelector(".game-home-menu")?.addEventListener("click", (event) => {
+      if (!confirmLeave("\u043D\u0430 \u0433\u043B\u0430\u0432\u043D\u0443\u044E")) event.preventDefault();
+    });
+    window.addEventListener("keydown", onKeyDown);
+    void loadLeaderboard();
+    showScreen("menu");
+  }
+  boot();
+})();
+
+</script>
+</body>
+</html>
